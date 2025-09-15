@@ -13,79 +13,95 @@ document.addEventListener('DOMContentLoaded', () => {
     const channelsPerPage = 20;
 
     // ====================
-    // FETCH CHANNELS — SINGLE WORKING PROXY
+    // FETCH CHANNELS — С ПРОКСИ + ЛОКАЛЬНЫЙ ФОЛЛБЭК
     // ====================
     async function fetchChannels() {
         const CACHE_KEY = 'iptv_channels';
-        const CACHE_EXPIRY = 1000 * 60 * 60 * 24; // 24 hours
+        const CACHE_EXPIRY = 1000 * 60 * 60 * 24; // 24 часа
 
-        // Try cache first
+        // Пробуем кэш
         const cached = localStorage.getItem(CACHE_KEY);
         if (cached) {
             const { data, timestamp } = JSON.parse(cached);
             if (Date.now() - timestamp < CACHE_EXPIRY) {
-                console.log('✅ Loaded from cache');
+                console.log('✅ Загружено из кэша');
                 return data;
             }
         }
 
+        // Пробуем через прокси
         try {
-            // ЕДИНСТВЕННЫЙ РАБОЧИЙ ПРОКСИ
             const proxyUrl = 'https://api.codetabs.com/v1/proxy?quest=';
             const targetUrl = 'https://iptv-org.github.io/iptv/index.m3u8';
             const fullUrl = proxyUrl + encodeURIComponent(targetUrl);
 
-            console.log('📡 Loading from:', fullUrl);
+            console.log('📡 Пробуем загрузить через прокси...');
 
             const controller = new AbortController();
-            const timeoutId = setTimeout(() => controller.abort(), 15000); // 15s timeout
+            const timeoutId = setTimeout(() => controller.abort(), 10000);
 
             const response = await fetch(fullUrl, {
                 signal: controller.signal,
                 headers: {
                     'Accept': 'text/plain',
-                    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
+                    'User-Agent': 'Mozilla/5.0 (compatible; IPTV App)'
                 }
             });
 
             clearTimeout(timeoutId);
 
-            if (!response.ok) {
-                throw new Error(`HTTP ${response.status}: ${response.statusText}`);
-            }
+            if (!response.ok) throw new Error(`HTTP ${response.status}`);
 
             const data = await response.text();
             const channels = parseM3U(data);
 
-            if (channels.length === 0) {
-                throw new Error('No channels found in M3U file');
-            }
+            if (channels.length === 0) throw new Error('Нет каналов');
 
-            // Cache successful result
+            // Сохраняем в кэш
             localStorage.setItem(CACHE_KEY, JSON.stringify({
                  channels,
                 timestamp: Date.now()
             }));
 
-            console.log(`✅ Successfully loaded ${channels.length} channels`);
+            console.log(`✅ Успешно загружено ${channels.length} каналов через прокси`);
             return channels;
 
         } catch (err) {
-            console.error('❌ Failed to fetch channels:', err.message);
-            if (cached) {
-                console.log('🔄 Falling back to cached data');
-                return JSON.parse(cached).data;
+            console.warn('⚠️ Прокси не сработал:', err.message);
+            console.log('🔄 Переключаемся на локальный файл channels.m3u8...');
+
+            // Фоллбэк: локальный файл
+            try {
+                const response = await fetch('channels.m3u8');
+                if (!response.ok) throw new Error('Локальный файл не найден');
+
+                const data = await response.text();
+                const channels = parseM3U(data);
+
+                if (channels.length === 0) throw new Error('Нет каналов в локальном файле');
+
+                // Сохраняем в кэш, даже если прокси не сработал
+                localStorage.setItem(CACHE_KEY, JSON.stringify({
+                     channels,
+                    timestamp: Date.now()
+                }));
+
+                console.log(`✅ Загружено ${channels.length} каналов из локального файла`);
+                return channels;
+
+            } catch (localErr) {
+                console.error('❌ Локальный файл тоже не доступен:', localErr.message);
+                throw new Error('Ни прокси, ни локальный файл не сработали');
             }
-            throw err;
         }
     }
 
     // ====================
-    // PARSE M3U FILE
+    // PARSE M3U
     // ====================
     function parseM3U(data) {
         if (!data || typeof data !== 'string') {
-            console.error('Invalid M3U data');
+            console.error('Некорректные данные M3U');
             return [];
         }
 
@@ -100,37 +116,26 @@ document.addEventListener('DOMContentLoaded', () => {
                 if (!url || url.startsWith('#') || !url) continue;
 
                 let group = 'unknown';
-                let logo = '';
-                
-                // Extract group
                 const groupMatch = line.match(/group-title="([^"]*)"/i);
                 if (groupMatch && groupMatch[1]) {
                     group = groupMatch[1].toLowerCase();
                 }
 
-                // Extract logo
-                const logoMatch = line.match(/tvg-logo="([^"]*)"/i);
-                if (logoMatch && logoMatch[1]) {
-                    logo = logoMatch[1];
-                }
-
-                // Extract name
                 const parts = line.split(',');
-                const name = parts[parts.length - 1]?.trim() || 'Unknown Channel';
+                const name = parts[parts.length - 1]?.trim() || 'Неизвестный канал';
 
-                if (name !== 'Unknown Channel') {
+                if (name !== 'Неизвестный канал') {
                     channels.push({ 
                         name, 
                         url, 
-                        group,
-                        logo
+                        group
                     });
                 }
-                i++; // Skip URL line
+                i++;
             }
         }
 
-        console.log(`📊 Parsed ${channels.length} channels`);
+        console.log(`📊 Распарсено ${channels.length} каналов`);
         return channels;
     }
 
@@ -194,18 +199,18 @@ document.addEventListener('DOMContentLoaded', () => {
             hls.attachMedia(videoPlayer);
 
             hls.on(Hls.Events.MANIFEST_PARSED, () => {
-                console.log('▶️ HLS manifest loaded');
+                console.log('▶️ HLS manifest загружен');
                 videoPlayer.play().then(() => {
                     videoPlayer.controls = true;
                 }).catch(e => {
-                    console.error('Play failed:', e);
+                    console.error('Ошибка воспроизведения:', e);
                     videoPlayer.controls = true;
                     alert('Не удалось воспроизвести канал. Попробуйте другой.');
                 });
             });
 
             hls.on(Hls.Events.ERROR, (event, data) => {
-                console.error('HLS Error:', data.type, data.details);
+                console.error('HLS Ошибка:', data.type, data.details);
                 if (data.fatal) {
                     alert('Ошибка воспроизведения: ' + data.type);
                     hls.destroy();
@@ -219,7 +224,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 videoPlayer.play().then(() => {
                     videoPlayer.controls = true;
                 }).catch(e => {
-                    console.error('Play failed:', e);
+                    console.error('Ошибка воспроизведения:', e);
                     videoPlayer.controls = true;
                     alert('Не удалось воспроизвести канал. Попробуйте другой.');
                 });
@@ -236,7 +241,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     // ====================
-    // RENDER MAIN FUNCTION
+    // RENDER MAIN
     // ====================
     async function renderChannels() {
         loadingEl.classList.remove('hidden');
@@ -254,7 +259,7 @@ document.addEventListener('DOMContentLoaded', () => {
             }, 100);
 
         } catch (err) {
-            console.error('❌ Failed to load channels:', err);
+            console.error('❌ Не удалось загрузить каналы:', err.message);
             loadingEl.classList.add('hidden');
             errorEl.classList.remove('hidden');
         }

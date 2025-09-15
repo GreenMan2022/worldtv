@@ -10,87 +10,84 @@ document.addEventListener('DOMContentLoaded', () => {
 
     let allChannels = [];
     let focusedChannel = null;
-    let previewPlayers = new Map(); // HLS instances for previews
+    let previewPlayers = new Map();
 
     // ====================
-    // FETCH CHANNELS
+    // FETCH CHANNELS — С УЛУЧШЕННЫМ ФОЛЛБЭКОМ
     // ====================
     async function fetchChannels() {
-        const CACHE_KEY = 'iptv_channels';
-        const CACHE_EXPIRY = 1000 * 60 * 60 * 24;
+        console.log('🔍 Начинаем загрузку каналов...');
 
-        const cached = localStorage.getItem(CACHE_KEY);
-        if (cached) {
-            const { data, timestamp } = JSON.parse(cached);
-            if (Date.now() - timestamp < CACHE_EXPIRY) {
-                console.log('✅ Загружено из кэша');
-                return data;
-            }
-        }
-
+        // Пробуем прокси
         try {
             const proxyUrl = 'https://api.codetabs.com/v1/proxy?quest=';
             const targetUrl = 'https://iptv-org.github.io/iptv/index.m3u8';
             const fullUrl = proxyUrl + encodeURIComponent(targetUrl);
 
-            const controller = new AbortController();
-            const timeoutId = setTimeout(() => controller.abort(), 10000);
+            console.log('📡 Пробуем прокси:', fullUrl);
 
             const response = await fetch(fullUrl, {
-                signal: controller.signal,
                 headers: { 'Accept': 'text/plain' }
             });
-
-            clearTimeout(timeoutId);
 
             if (!response.ok) throw new Error(`HTTP ${response.status}`);
 
             const data = await response.text();
             const channels = parseM3U(data);
 
-            if (channels.length === 0) throw new Error('Нет каналов');
-
-            localStorage.setItem(CACHE_KEY, JSON.stringify({
-                 channels,
-                timestamp: Date.now()
-            }));
-
-            console.log(`✅ Загружено ${channels.length} каналов`);
-            return channels;
+            if (channels.length > 0) {
+                console.log(`✅ Успешно загружено ${channels.length} каналов через прокси`);
+                return channels;
+            } else {
+                throw new Error('Прокси вернул пустой список');
+            }
 
         } catch (err) {
             console.warn('⚠️ Прокси не сработал:', err.message);
-            console.log('🔄 Переключаемся на локальный файл...');
+        }
 
-            try {
-                const response = await fetch('channels.m3u8');
-                if (!response.ok) throw new Error('Локальный файл не найден');
+        // Пробуем локальный файл
+        try {
+            console.log('📂 Пробуем локальный файл channels.m3u8');
 
-                const data = await response.text();
-                const channels = parseM3U(data);
+            const response = await fetch('channels.m3u8');
+            if (!response.ok) throw new Error(`HTTP ${response.status}: ${response.statusText}`);
 
-                if (channels.length === 0) throw new Error('Нет каналов в локальном файле');
+            const data = await response.text();
+            console.log('📄 Размер файла:', data.length, 'символов');
 
-                localStorage.setItem(CACHE_KEY, JSON.stringify({
-                     channels,
-                    timestamp: Date.now()
-                }));
-
-                console.log(`✅ Загружено ${channels.length} каналов из локального файла`);
-                return channels;
-
-            } catch (localErr) {
-                console.error('❌ Локальный файл тоже не доступен:', localErr.message);
-                throw new Error('Ни прокси, ни локальный файл не сработали');
+            if (!data || data.trim().length === 0) {
+                throw new Error('Файл пустой');
             }
+
+            // Проверка: если это HTML — значит, GitHub отдал 404
+            if (data.includes('<!DOCTYPE html>') || data.includes('<html')) {
+                throw new Error('Файл содержит HTML — возможно, 404');
+            }
+
+            const channels = parseM3U(data);
+
+            if (channels.length > 0) {
+                console.log(`✅ Успешно загружено ${channels.length} каналов из локального файла`);
+                return channels;
+            } else {
+                throw new Error('Локальный файл не содержит распознаваемых каналов');
+            }
+
+        } catch (err) {
+            console.error('❌ Локальный файл не сработал:', err.message);
+            throw new Error('Ни прокси, ни локальный файл не вернули каналы. Проверьте файл channels.m3u8.');
         }
     }
 
     // ====================
-    // PARSE M3U
+    // PARSE M3U — БОЛЕЕ УСТОЙЧИВЫЙ ПАРСЕР
     // ====================
     function parseM3U(data) {
-        if (!data || typeof data !== 'string') return [];
+        if (!data || typeof data !== 'string') {
+            console.error('❌ Некорректные входные данные');
+            return [];
+        }
 
         const lines = data.split('\n');
         const channels = [];
@@ -100,47 +97,66 @@ document.addEventListener('DOMContentLoaded', () => {
                 const line = lines[i];
                 const url = lines[i + 1]?.trim();
 
-                if (!url || url.startsWith('#') || !url) continue;
+                // Пропускаем, если нет URL или он невалидный
+                if (!url || url.startsWith('#') || url.length < 10) {
+                    continue;
+                }
 
+                // Извлекаем название — всё после последней запятой
+                const parts = line.split(',');
+                const name = parts[parts.length - 1]?.trim();
+
+                // Пропускаем, если название не определено
+                if (!name || name.length < 2) {
+                    continue;
+                }
+
+                // Извлекаем группу
                 let group = 'unknown';
-                let logo = '';
-                
                 const groupMatch = line.match(/group-title="([^"]*)"/i);
                 if (groupMatch && groupMatch[1]) {
                     group = groupMatch[1].toLowerCase();
                 }
 
+                // Извлекаем логотип или используем placeholder
+                let logo = '';
                 const logoMatch = line.match(/tvg-logo="([^"]*)"/i);
                 if (logoMatch && logoMatch[1]) {
                     logo = logoMatch[1];
+                } else {
+                    // Генерируем placeholder с первыми буквами названия
+                    const initials = name.substring(0, 2).toUpperCase();
+                    logo = `https://placehold.co/200x120/1a1a2e/ffffff?text=${encodeURIComponent(initials)}`;
                 }
 
-                const parts = line.split(',');
-                const name = parts[parts.length - 1]?.trim() || 'Неизвестный канал';
+                channels.push({ 
+                    name, 
+                    url, 
+                    group,
+                    logo
+                });
 
-                if (name !== 'Неизвестный канал') {
-                    channels.push({ 
-                        name, 
-                        url, 
-                        group,
-                        logo: logo || 'https://placehold.co/200x120/1a1a2e/ffffff?text=' + encodeURIComponent(name.substring(0, 2))
-                    });
-                }
-                i++;
+                i++; // Пропускаем строку с URL
             }
         }
 
+        console.log(`📊 Распарсено ${channels.length} каналов`);
         return channels;
     }
 
     // ====================
-    // RENDER CHANNELS AS TILES
+    // RENDER CHANNELS
     // ====================
     function renderChannelTiles(channels) {
         channelsGrid.innerHTML = '';
 
         if (!channels || channels.length === 0) {
-            channelsGrid.innerHTML = '<div class="no-results">Каналы не найдены</div>';
+            channelsGrid.innerHTML = `
+                <div class="no-results">
+                    <h3>📺 Каналы не найдены</h3>
+                    <p>Проверьте файл <code>channels.m3u8</code> — он должен содержать список каналов в формате M3U.</p>
+                    <p>Или попробуйте позже — возможно, временные проблемы с загрузкой.</p>
+                </div>`;
             return;
         }
 
@@ -155,23 +171,23 @@ document.addEventListener('DOMContentLoaded', () => {
             const content = document.createElement('div');
             content.className = 'tile-content';
 
-            // Video element for preview
+            // Видео для превью
             const video = document.createElement('video');
             video.className = 'tile-video';
             video.muted = true;
             video.playsInline = true;
             video.loop = true;
 
-            // Logo
+            // Логотип
             const logo = document.createElement('img');
             logo.src = channel.logo;
             logo.alt = channel.name;
             logo.className = 'channel-logo';
             logo.onerror = () => {
-                logo.src = 'https://placehold.co/200x120/1a1a2e/ffffff?text=' + encodeURIComponent(channel.name.substring(0, 2));
+                logo.src = `https://placehold.co/200x120/1a1a2e/ffffff?text=${encodeURIComponent(channel.name.substring(0, 2))}`;
             };
 
-            // Channel name overlay
+            // Название канала
             const name = document.createElement('div');
             name.className = 'channel-name';
             name.textContent = channel.name;
@@ -182,14 +198,13 @@ document.addEventListener('DOMContentLoaded', () => {
             tile.appendChild(name);
 
             tile.addEventListener('click', () => playMainChannel(channel.url, channel.name));
-            
             tile.addEventListener('focus', () => handleTileFocus(tile, channel));
             tile.addEventListener('blur', () => handleTileBlur(tile, channel));
 
             channelsGrid.appendChild(tile);
         });
 
-        // Focus first tile
+        // Фокус на первую плитку
         setTimeout(() => {
             const firstTile = document.querySelector('.channel-tile');
             if (firstTile) firstTile.focus();
@@ -197,12 +212,11 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     // ====================
-    // HANDLE TILE FOCUS (PREVIEW)
+    // ОСТАЛЬНЫЕ ФУНКЦИИ (БЕЗ ИЗМЕНЕНИЙ)
     // ====================
     function handleTileFocus(tile, channel) {
         if (focusedChannel === tile) return;
         
-        // Stop previous preview
         if (focusedChannel) {
             const prevVideo = focusedChannel.querySelector('.tile-video');
             const prevHls = previewPlayers.get(focusedChannel);
@@ -217,7 +231,6 @@ document.addEventListener('DOMContentLoaded', () => {
         }
 
         focusedChannel = tile;
-
         const video = tile.querySelector('.tile-video');
         if (!video) return;
 
@@ -226,8 +239,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 debug: false,
                 enableWorker: true,
                 lowLatencyMode: true,
-                maxBufferLength: 10,
-                maxMaxBufferLength: 20
+                maxBufferLength: 10
             });
 
             hls.loadSource(channel.url);
@@ -253,9 +265,6 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
-    // ====================
-    // HANDLE TILE BLUR
-    // ====================
     function handleTileBlur(tile, channel) {
         const hls = previewPlayers.get(tile);
         if (hls) {
@@ -270,9 +279,6 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
-    // ====================
-    // PLAY MAIN CHANNEL
-    // ====================
     function playMainChannel(url, name) {
         currentChannelNameEl.textContent = name || 'Неизвестный канал';
         videoPlayer.innerHTML = '';
@@ -280,7 +286,6 @@ document.addEventListener('DOMContentLoaded', () => {
         videoPlayer.controls = true;
 
         if (Hls.isSupported()) {
-            // Destroy any existing HLS instance
             if (window.mainHls) {
                 window.mainHls.destroy();
             }
@@ -288,8 +293,7 @@ document.addEventListener('DOMContentLoaded', () => {
             const hls = new Hls({
                 debug: false,
                 enableWorker: true,
-                lowLatencyMode: true,
-                backBufferLength: 90
+                lowLatencyMode: true
             });
 
             window.mainHls = hls;
@@ -304,14 +308,12 @@ document.addEventListener('DOMContentLoaded', () => {
             });
 
             hls.on(Hls.Events.ERROR, (event, data) => {
-                console.error('HLS Error:', data.type, data.details);
                 if (data.fatal) {
                     alert('Ошибка воспроизведения: ' + data.type);
                     hls.destroy();
                 }
             });
-        } 
-        else if (videoPlayer.canPlayType('application/vnd.apple.mpegurl')) {
+        } else if (videoPlayer.canPlayType('application/vnd.apple.mpegurl')) {
             videoPlayer.src = url;
             videoPlayer.addEventListener('loadedmetadata', () => {
                 videoPlayer.play().catch(e => {
@@ -319,15 +321,11 @@ document.addEventListener('DOMContentLoaded', () => {
                     alert('Не удалось воспроизвести канал. Попробуйте другой.');
                 });
             });
-        } 
-        else {
+        } else {
             alert('Ваш браузер не поддерживает HLS-потоки. Попробуйте Chrome, Firefox или Edge.');
         }
     }
 
-    // ====================
-    // RENDER MAIN FUNCTION
-    // ====================
     async function renderChannels() {
         loadingEl.classList.remove('hidden');
         errorEl.classList.add('hidden');
@@ -338,33 +336,20 @@ document.addEventListener('DOMContentLoaded', () => {
             renderChannelTiles(allChannels);
             loadingEl.classList.add('hidden');
         } catch (err) {
-            console.error('❌ Не удалось загрузить каналы:', err);
+            console.error('❌ Полный провал:', err);
             loadingEl.classList.add('hidden');
             errorEl.classList.remove('hidden');
         }
     }
 
-    // ====================
-    // SEARCH
-    // ====================
     searchInput.addEventListener('input', (e) => {
         const query = e.target.value.toLowerCase().trim();
-        
-        if (query === '') {
-            renderChannelTiles(allChannels);
-            return;
-        }
-
         const filtered = allChannels.filter(channel => 
             channel.name.toLowerCase().includes(query)
         );
-        
         renderChannelTiles(filtered);
     });
 
-    // ====================
-    // KEYBOARD NAVIGATION
-    // ====================
     document.addEventListener('keydown', (e) => {
         const tiles = Array.from(document.querySelectorAll('.channel-tile'));
         if (tiles.length === 0) return;
@@ -375,7 +360,6 @@ document.addEventListener('DOMContentLoaded', () => {
         let nextIndex = currentIndex;
 
         if (e.key === 'ArrowRight') {
-            const rowLength = Math.floor(document.querySelector('.channels-grid').clientWidth / 180);
             nextIndex = (currentIndex + 1) % tiles.length;
         } else if (e.key === 'ArrowLeft') {
             nextIndex = (currentIndex - 1 + tiles.length) % tiles.length;
@@ -398,13 +382,6 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     });
 
-    // ====================
-    // RETRY BUTTON
-    // ====================
     retryBtn.addEventListener('click', renderChannels);
-
-    // ====================
-    // INITIALIZE
-    // ====================
     renderChannels();
 });

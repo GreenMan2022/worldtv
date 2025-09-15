@@ -118,14 +118,34 @@ document.addEventListener('DOMContentLoaded', () => {
     // Воспроизведение
     // ====================
     function playChannel(url, name) {
-        currentChannelNameEl.textContent = name || 'Неизвестный канал';
-        videoPlayer.src = url;
-        videoPlayer.load();
-        videoPlayer.play().catch(err => {
-            console.error("Ошибка воспроизведения:", err);
-            alert("Не удалось запустить канал. Возможно, ссылка недоступна.");
+    const currentChannelNameEl = document.getElementById('current-channel-name');
+    currentChannelNameEl.textContent = name || 'Неизвестный канал';
+
+    const video = document.getElementById('videoPlayer');
+    video.src = ''; // очищаем
+
+    if (Hls.isSupported()) {
+        const hls = new Hls();
+        hls.loadSource(url);
+        hls.attachMedia(video);
+        hls.on(Hls.Events.MANIFEST_PARSED, () => {
+            video.play().catch(e => console.error("Ошибка воспроизведения:", e));
         });
+        hls.on(Hls.Events.ERROR, (event, data) => {
+            if (data.fatal) {
+                alert("Ошибка потока: " + data.type);
+            }
+        });
+    } else if (video.canPlayType('application/vnd.apple.mpegurl')) {
+        // Для Safari
+        video.src = url;
+        video.addEventListener('loadedmetadata', () => {
+            video.play().catch(e => console.error("Ошибка воспроизведения:", e));
+        });
+    } else {
+        alert("Ваш браузер не поддерживает HLS-потоки.");
     }
+}
 
     // ====================
     // Поиск

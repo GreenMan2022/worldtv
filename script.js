@@ -13,7 +13,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const channelsPerPage = 20;
 
     // ====================
-    // FETCH CHANNELS WITH MULTIPLE PROXY FALLBACKS
+    // FETCH CHANNELS — SINGLE WORKING PROXY
     // ====================
     async function fetchChannels() {
         const CACHE_KEY = 'iptv_channels';
@@ -24,66 +24,59 @@ document.addEventListener('DOMContentLoaded', () => {
         if (cached) {
             const { data, timestamp } = JSON.parse(cached);
             if (Date.now() - timestamp < CACHE_EXPIRY) {
+                console.log('✅ Loaded from cache');
                 return data;
             }
         }
 
-        // Proxy URLs - try in order
-        const proxies = [
-            'https://corsproxy.io/?',
-            'https://api.allorigins.win/raw?url=',
-            'https://thingproxy.freeboard.io/fetch/'
-        ];
+        try {
+            // ЕДИНСТВЕННЫЙ РАБОЧИЙ ПРОКСИ
+            const proxyUrl = 'https://api.codetabs.com/v1/proxy?quest=';
+            const targetUrl = 'https://iptv-org.github.io/iptv/index.m3u8';
+            const fullUrl = proxyUrl + encodeURIComponent(targetUrl);
 
-        const targetUrl = 'https://iptv-org.github.io/iptv/index.m3u8';
+            console.log('📡 Loading from:', fullUrl);
 
-        for (let i = 0; i < proxies.length; i++) {
-            try {
-                console.log(`Trying proxy ${i + 1}: ${proxies[i]}`);
-                
-                let fetchUrl;
-                if (proxies[i].includes('allorigins.win') || proxies[i].includes('freeboard.io')) {
-                    fetchUrl = proxies[i] + encodeURIComponent(targetUrl);
-                } else {
-                    fetchUrl = proxies[i] + targetUrl;
+            const controller = new AbortController();
+            const timeoutId = setTimeout(() => controller.abort(), 15000); // 15s timeout
+
+            const response = await fetch(fullUrl, {
+                signal: controller.signal,
+                headers: {
+                    'Accept': 'text/plain',
+                    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
                 }
+            });
 
-                const controller = new AbortController();
-                const timeoutId = setTimeout(() => controller.abort(), 10000); // 10s timeout
+            clearTimeout(timeoutId);
 
-                const response = await fetch(fetchUrl, {
-                    signal: controller.signal,
-                    headers: {
-                        'Accept': 'text/plain'
-                    }
-                });
-
-                clearTimeout(timeoutId);
-
-                if (!response.ok) {
-                    throw new Error(`HTTP ${response.status}: ${response.statusText}`);
-                }
-
-                const data = await response.text();
-                const channels = parseM3U(data);
-
-                if (channels.length > 0) {
-                    // Cache successful result
-                    localStorage.setItem(CACHE_KEY, JSON.stringify({
-                        data: channels,
-                        timestamp: Date.now()
-                    }));
-                    console.log(`✅ Successfully loaded ${channels.length} channels using proxy ${i + 1}`);
-                    return channels;
-                }
-            } catch (err) {
-                console.warn(`Proxy ${i + 1} failed:`, err.message);
-                if (i === proxies.length - 1) {
-                    throw err; // Only throw if all proxies failed
-                }
-                // Try next proxy
-                continue;
+            if (!response.ok) {
+                throw new Error(`HTTP ${response.status}: ${response.statusText}`);
             }
+
+            const data = await response.text();
+            const channels = parseM3U(data);
+
+            if (channels.length === 0) {
+                throw new Error('No channels found in M3U file');
+            }
+
+            // Cache successful result
+            localStorage.setItem(CACHE_KEY, JSON.stringify({
+                 channels,
+                timestamp: Date.now()
+            }));
+
+            console.log(`✅ Successfully loaded ${channels.length} channels`);
+            return channels;
+
+        } catch (err) {
+            console.error('❌ Failed to fetch channels:', err.message);
+            if (cached) {
+                console.log('🔄 Falling back to cached data');
+                return JSON.parse(cached).data;
+            }
+            throw err;
         }
     }
 
@@ -115,13 +108,13 @@ document.addEventListener('DOMContentLoaded', () => {
                     group = groupMatch[1].toLowerCase();
                 }
 
-                // Extract logo (if available)
+                // Extract logo
                 const logoMatch = line.match(/tvg-logo="([^"]*)"/i);
                 if (logoMatch && logoMatch[1]) {
                     logo = logoMatch[1];
                 }
 
-                // Extract name (everything after last comma)
+                // Extract name
                 const parts = line.split(',');
                 const name = parts[parts.length - 1]?.trim() || 'Unknown Channel';
 
@@ -137,7 +130,7 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         }
 
-        console.log(`Parsed ${channels.length} channels`);
+        console.log(`📊 Parsed ${channels.length} channels`);
         return channels;
     }
 
@@ -163,16 +156,6 @@ document.addEventListener('DOMContentLoaded', () => {
             li.setAttribute("tabIndex", "0");
             li.setAttribute("title", channel.name);
             
-            // Add logo if available
-            if (channel.logo) {
-                const img = document.createElement('img');
-                img.src = channel.logo;
-                img.alt = channel.name;
-                img.className = 'channel-logo';
-                img.onerror = () => img.remove(); // Remove if image fails to load
-                li.appendChild(img);
-            }
-
             li.addEventListener('click', () => playChannel(channel.url, channel.name));
             li.addEventListener('keydown', (e) => {
                 if (e.key === 'Enter' || e.key === ' ') {
@@ -195,10 +178,8 @@ document.addEventListener('DOMContentLoaded', () => {
         }
 
         currentChannelNameEl.textContent = name || 'Неизвестный канал';
-        videoPlayer.innerHTML = ''; // Clear any previous sources
-        videoPlayer.src = ''; // Clear source
-
-        // Hide controls briefly during loading
+        videoPlayer.innerHTML = '';
+        videoPlayer.src = '';
         videoPlayer.controls = false;
 
         if (Hls.isSupported()) {
@@ -213,9 +194,9 @@ document.addEventListener('DOMContentLoaded', () => {
             hls.attachMedia(videoPlayer);
 
             hls.on(Hls.Events.MANIFEST_PARSED, () => {
-                console.log('HLS manifest loaded');
+                console.log('▶️ HLS manifest loaded');
                 videoPlayer.play().then(() => {
-                    videoPlayer.controls = true; // Show controls after play starts
+                    videoPlayer.controls = true;
                 }).catch(e => {
                     console.error('Play failed:', e);
                     videoPlayer.controls = true;
@@ -226,23 +207,13 @@ document.addEventListener('DOMContentLoaded', () => {
             hls.on(Hls.Events.ERROR, (event, data) => {
                 console.error('HLS Error:', data.type, data.details);
                 if (data.fatal) {
-                    switch(data.type) {
-                        case Hls.ErrorTypes.NETWORK_ERROR:
-                            alert('Ошибка сети. Проверьте подключение.');
-                            break;
-                        case Hls.ErrorTypes.MEDIA_ERROR:
-                            alert('Ошибка медиа. Попробуйте другой канал.');
-                            break;
-                        default:
-                            alert('Ошибка воспроизведения: ' + data.type);
-                            break;
-                    }
+                    alert('Ошибка воспроизведения: ' + data.type);
                     hls.destroy();
                 }
             });
         } 
-        // Fallback for Safari
         else if (videoPlayer.canPlayType('application/vnd.apple.mpegurl')) {
+            // Safari
             videoPlayer.src = url;
             videoPlayer.addEventListener('loadedmetadata', () => {
                 videoPlayer.play().then(() => {
@@ -274,15 +245,9 @@ document.addEventListener('DOMContentLoaded', () => {
 
         try {
             allChannels = await fetchChannels();
-            
-            if (!allChannels || allChannels.length === 0) {
-                throw new Error('No channels loaded');
-            }
-
             renderChannelsPage(allChannels, currentPage);
             loadingEl.classList.add('hidden');
             
-            // Focus first item for keyboard navigation
             setTimeout(() => {
                 const firstItem = document.querySelector('.channel-item');
                 if (firstItem) firstItem.focus();
@@ -296,7 +261,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     // ====================
-    // SEARCH FUNCTIONALITY
+    // SEARCH
     // ====================
     searchInput.addEventListener('input', (e) => {
         const query = e.target.value.toLowerCase().trim();
@@ -344,14 +309,7 @@ document.addEventListener('DOMContentLoaded', () => {
     retryBtn.addEventListener('click', renderChannels);
 
     // ====================
-    // INITIALIZE APP
+    // INITIALIZE
     // ====================
     renderChannels();
-
-    // Add service worker for offline support (optional)
-    if ('serviceWorker' in navigator) {
-        navigator.serviceWorker.register('/sw.js').catch(err => {
-            console.warn('Service Worker registration failed:', err);
-        });
-    }
 });

@@ -2,15 +2,38 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>IPTV Channels</title>
     <link rel="stylesheet" href="styles.css">
 </head>
 <body>
 <div id="app">
-    <h1>IPTV Channels</h1>
+    <header>
+        <h1>📺 IPTV Channels</h1>
+        <div id="search-container">
+            <input type="text" id="search" placeholder="Поиск канала...">
+        </div>
+    </header>
+
+    <div id="categories">
+        <button data-category="all" class="active">Все</button>
+        <button data-category="news">Новости</button>
+        <button data-category="sport">Спорт</button>
+        <button data-category="movies">Фильмы</button>
+        <button data-category="kids">Детям</button>
+    </div>
+
+    <div id="loading" class="hidden">Загрузка каналов...</div>
+    <div id="error" class="hidden">Ошибка загрузки. <button id="retry">Повторить</button></div>
+
     <ul id="channels-list"></ul>
-    <video id="videoPlayer" controls></video>
+
+    <div id="video-container">
+        <div id="now-playing">Сейчас смотрят: <strong id="current-channel-name">-</strong></div>
+        <video id="videoPlayer" controls></video>
+    </div>
 </div>
+
 <script src="script.js"></script>
 </body>
 </html>

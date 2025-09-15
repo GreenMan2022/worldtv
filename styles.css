@@ -5,7 +5,7 @@
 
 #app {
     display: flex;
-    justify-content: center;
+    flex-direction: column;
     align-items: center;
     height: 100vh;
     background-color: #1a1a1d;
@@ -17,6 +17,7 @@
     list-style-type: none;
     text-align: center;
     width: 80%;
+    margin-bottom: 20px;
 }
 
 .channel-item {
@@ -30,4 +31,9 @@
 .channel-item.active {
     transform: scale(1.1);
     box-shadow: 0 0 10px rgba(255, 255, 255, 0.5);
+}
+
+#videoPlayer {
+    width: 100%;
+    height: auto;
 }

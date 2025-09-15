@@ -29,7 +29,10 @@ document.addEventListener('DOMContentLoaded', () => {
             const proxyUrl = 'https://api.allorigins.win/raw?url=';
             const targetUrl = 'https://iptv-org.github.io/iptv/index.m3u8';
             const response = await fetch(proxyUrl + encodeURIComponent(targetUrl));
-            if (!response.ok) throw new Error(`Ошибка при получении данных (${response.status})`);
+
+            if (!response.ok) {
+                throw new Error(`HTTP error! status: ${response.status}`);
+            }
 
             const data = await response.text();
             const channels = parseM3U(data);
@@ -41,7 +44,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
             return channels;
         } catch (err) {
-            console.error(err.message);
+            console.error("Ошибка загрузки:", err.message);
             if (cached) return JSON.parse(cached).data;
             throw err;
         }
@@ -120,34 +123,37 @@ document.addEventListener('DOMContentLoaded', () => {
     // Воспроизведение
     // ====================
     function playChannel(url, name) {
-    const currentChannelNameEl = document.getElementById('current-channel-name');
-    currentChannelNameEl.textContent = name || 'Неизвестный канал';
+        currentChannelNameEl.textContent = name || 'Неизвестный канал';
+        videoPlayer.src = ''; // очищаем
 
-    const video = document.getElementById('videoPlayer');
-    video.src = ''; // очищаем
-
-    if (Hls.isSupported()) {
-        const hls = new Hls();
-        hls.loadSource(url);
-        hls.attachMedia(video);
-        hls.on(Hls.Events.MANIFEST_PARSED, () => {
-            video.play().catch(e => console.error("Ошибка воспроизведения:", e));
-        });
-        hls.on(Hls.Events.ERROR, (event, data) => {
-            if (data.fatal) {
-                alert("Ошибка потока: " + data.type);
-            }
-        });
-    } else if (video.canPlayType('application/vnd.apple.mpegurl')) {
-        // Для Safari
-        video.src = url;
-        video.addEventListener('loadedmetadata', () => {
-            video.play().catch(e => console.error("Ошибка воспроизведения:", e));
-        });
-    } else {
-        alert("Ваш браузер не поддерживает HLS-потоки.");
+        if (Hls.isSupported()) {
+            const hls = new Hls();
+            hls.loadSource(url);
+            hls.attachMedia(videoPlayer);
+            hls.on(Hls.Events.MANIFEST_PARSED, () => {
+                videoPlayer.play().catch(e => {
+                    console.error("Ошибка воспроизведения:", e);
+                    alert("Не удалось запустить канал. Попробуйте другой.");
+                });
+            });
+            hls.on(Hls.Events.ERROR, (event, data) => {
+                if (data.fatal) {
+                    alert("Ошибка потока: " + data.type);
+                }
+            });
+        } else if (videoPlayer.canPlayType('application/vnd.apple.mpegurl')) {
+            // Safari
+            videoPlayer.src = url;
+            videoPlayer.addEventListener('loadedmetadata', () => {
+                videoPlayer.play().catch(e => {
+                    console.error("Ошибка воспроизведения:", e);
+                    alert("Не удалось запустить канал. Попробуйте другой.");
+                });
+            });
+        } else {
+            alert("Ваш браузер не поддерживает HLS-потоки. Попробуйте Chrome, Firefox или Edge.");
+        }
     }
-}
 
     // ====================
     // Поиск

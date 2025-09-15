@@ -1,320 +1,303 @@
-document.addEventListener('DOMContentLoaded', () => {
-    // DOM Elements
-    const channelsList = document.getElementById('channels-list');
-    const videoPlayer = document.getElementById('videoPlayer');
-    const searchInput = document.getElementById('search');
-    const loadingEl = document.getElementById('loading');
-    const errorEl = document.getElementById('error');
-    const retryBtn = document.getElementById('retry');
-    const currentChannelNameEl = document.getElementById('current-channel-name');
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
 
-    let allChannels = [];
-    let currentPage = 1;
-    const channelsPerPage = 20;
+body {
+    background: #0a0a14;
+    color: #e0e0e0;
+    font-family: 'Segoe UI', system-ui, sans-serif;
+    line-height: 1.6;
+    overflow-x: hidden;
+}
 
-    // ====================
-    // FETCH CHANNELS — С ПРОКСИ + ЛОКАЛЬНЫЙ ФОЛЛБЭК
-    // ====================
-    async function fetchChannels() {
-        const CACHE_KEY = 'iptv_channels';
-        const CACHE_EXPIRY = 1000 * 60 * 60 * 24; // 24 часа
+#app {
+    display: flex;
+    flex-direction: column;
+    min-height: 100vh;
+    background: linear-gradient(135deg, #0f0f23, #1a1a3a);
+    padding: 20px;
+    position: relative;
+}
 
-        // Пробуем кэш
-        const cached = localStorage.getItem(CACHE_KEY);
-        if (cached) {
-            const { data, timestamp } = JSON.parse(cached);
-            if (Date.now() - timestamp < CACHE_EXPIRY) {
-                console.log('✅ Загружено из кэша');
-                return data;
-            }
-        }
+/* Заголовок */
+header h1 {
+    font-size: 2.4rem;
+    margin-bottom: 16px;
+    background: linear-gradient(90deg, #ff6b6b, #ffa500);
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+    font-weight: 800;
+    text-shadow: 0 2px 10px rgba(255, 107, 107, 0.2);
+    text-align: center;
+}
 
-        // Пробуем через прокси
-        try {
-            const proxyUrl = 'https://api.codetabs.com/v1/proxy?quest=';
-            const targetUrl = 'https://iptv-org.github.io/iptv/index.m3u8';
-            const fullUrl = proxyUrl + encodeURIComponent(targetUrl);
+/* Поиск */
+#search-container {
+    width: 100%;
+    max-width: 500px;
+    margin: 0 auto 24px;
+}
 
-            console.log('📡 Пробуем загрузить через прокси...');
+#search {
+    width: 100%;
+    padding: 14px 20px;
+    border: none;
+    border-radius: 16px;
+    background: rgba(255, 255, 255, 0.08);
+    backdrop-filter: blur(12px);
+    color: white;
+    font-size: 1.1rem;
+    transition: all 0.3s ease;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.2);
+}
 
-            const controller = new AbortController();
-            const timeoutId = setTimeout(() => controller.abort(), 10000);
+#search:focus {
+    outline: none;
+    background: rgba(255, 255, 255, 0.12);
+    box-shadow: 0 0 0 3px rgba(255, 107, 107, 0.4);
+}
 
-            const response = await fetch(fullUrl, {
-                signal: controller.signal,
-                headers: {
-                    'Accept': 'text/plain',
-                    'User-Agent': 'Mozilla/5.0 (compatible; IPTV App)'
-                }
-            });
+/* Категории */
+#categories {
+    display: flex;
+    gap: 10px;
+    flex-wrap: wrap;
+    justify-content: center;
+    margin-bottom: 30px;
+}
 
-            clearTimeout(timeoutId);
+#categories button {
+    padding: 10px 20px;
+    border: none;
+    border-radius: 24px;
+    background: rgba(255, 255, 255, 0.08);
+    color: #e0e0e0;
+    cursor: pointer;
+    font-size: 0.95rem;
+    transition: all 0.3s ease;
+    border: 1px solid transparent;
+    backdrop-filter: blur(8px);
+}
 
-            if (!response.ok) throw new Error(`HTTP ${response.status}`);
+#categories button.active,
+#categories button:hover {
+    background: rgba(255, 107, 107, 0.25);
+    color: white;
+    border-color: rgba(255, 107, 107, 0.5);
+    transform: translateY(-2px);
+    box-shadow: 0 4px 15px rgba(255, 107, 107, 0.3);
+}
 
-            const data = await response.text();
-            const channels = parseM3U(data);
+/* Состояния */
+#loading,
+#error {
+    text-align: center;
+    padding: 24px;
+    font-size: 1.2rem;
+    color: #aaa;
+    margin: 30px auto;
+    max-width: 600px;
+    background: rgba(30, 30, 40, 0.8);
+    border-radius: 16px;
+    border: 1px solid rgba(255, 255, 255, 0.05);
+}
 
-            if (channels.length === 0) throw new Error('Нет каналов');
+#error {
+    color: #ff6b6b;
+    background: rgba(255, 107, 107, 0.1);
+    border-color: rgba(255, 107, 107, 0.3);
+}
 
-            // Сохраняем в кэш
-            localStorage.setItem(CACHE_KEY, JSON.stringify({
-                 channels,
-                timestamp: Date.now()
-            }));
+#error button {
+    margin-top: 12px;
+    padding: 10px 24px;
+    background: #ff6b6b;
+    color: white;
+    border: none;
+    border-radius: 8px;
+    cursor: pointer;
+    font-size: 1rem;
+    transition: all 0.2s;
+}
 
-            console.log(`✅ Успешно загружено ${channels.length} каналов через прокси`);
-            return channels;
+#error button:hover {
+    background: #ff5252;
+    transform: scale(1.05);
+}
 
-        } catch (err) {
-            console.warn('⚠️ Прокси не сработал:', err.message);
-            console.log('🔄 Переключаемся на локальный файл channels.m3u8...');
+/* Сетка каналов — КЛЮЧЕВОЙ БЛОК */
+.channels-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+    gap: 20px;
+    padding: 20px;
+    max-width: 1400px;
+    margin: 0 auto;
+    min-height: 50vh;
+}
 
-            // Фоллбэк: локальный файл
-            try {
-                const response = await fetch('channels.m3u8');
-                if (!response.ok) throw new Error('Локальный файл не найден');
+.channel-tile {
+    position: relative;
+    aspect-ratio: 16/9;
+    border-radius: 16px;
+    overflow: hidden;
+    background: rgba(30, 30, 40, 0.8);
+    border: 2px solid transparent;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
+    cursor: pointer;
+}
 
-                const data = await response.text();
-                const channels = parseM3U(data);
+.channel-tile:focus,
+.channel-tile:hover {
+    outline: none;
+    transform: scale(1.03);
+    border-color: #ff6b6b;
+    box-shadow: 0 8px 25px rgba(255, 107, 107, 0.4);
+    z-index: 2;
+}
 
-                if (channels.length === 0) throw new Error('Нет каналов в локальном файле');
+/* Контейнер для видео или логотипа */
+.tile-content {
+    width: 100%;
+    height: 100%;
+    position: relative;
+}
 
-                // Сохраняем в кэш, даже если прокси не сработал
-                localStorage.setItem(CACHE_KEY, JSON.stringify({
-                     channels,
-                    timestamp: Date.now()
-                }));
+/* Логотип канала */
+.channel-logo {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    max-width: 80%;
+    max-height: 60%;
+    object-fit: contain;
+    filter: drop-shadow(0 2px 8px rgba(0, 0, 0, 0.8));
+    transition: all 0.3s ease;
+    opacity: 0.9;
+}
 
-                console.log(`✅ Загружено ${channels.length} каналов из локального файла`);
-                return channels;
+.channel-tile:focus .channel-logo,
+.channel-tile:hover .channel-logo {
+    opacity: 0;
+    transform: translate(-50%, -50%) scale(0.8);
+}
 
-            } catch (localErr) {
-                console.error('❌ Локальный файл тоже не доступен:', localErr.message);
-                throw new Error('Ни прокси, ни локальный файл не сработали');
-            }
-        }
+/* Видео в плитке */
+.tile-video {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    background: #000;
+    opacity: 0;
+    transition: opacity 0.3s ease;
+}
+
+.channel-tile:focus .tile-video,
+.channel-tile:hover .tile-video {
+    opacity: 1;
+}
+
+/* Название канала */
+.channel-name {
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    background: linear-gradient(transparent, rgba(0, 0, 0, 0.8));
+    color: white;
+    padding: 8px 12px;
+    font-size: 0.85rem;
+    font-weight: 500;
+    text-shadow: 0 1px 2px rgba(0, 0, 0, 0.8);
+    transform: translateY(100%);
+    transition: transform 0.3s ease;
+}
+
+.channel-tile:focus .channel-name,
+.channel-tile:hover .channel-name {
+    transform: translateY(0);
+}
+
+/* Сейчас играет */
+#now-playing {
+    text-align: center;
+    margin: 24px 0 12px;
+    font-size: 1.2rem;
+    color: #ff6b6b;
+    font-weight: 700;
+    text-shadow: 0 1px 3px rgba(0, 0, 0, 0.5);
+}
+
+#current-channel-name {
+    color: #fff;
+    font-weight: 500;
+}
+
+/* Основной видеоплеер */
+#video-container {
+    width: 100%;
+    max-width: 1000px;
+    margin: 30px auto 0;
+    border-radius: 20px;
+    overflow: hidden;
+    box-shadow: 0 20px 50px rgba(0, 0, 0, 0.6);
+    background: #000;
+    position: relative;
+}
+
+#videoPlayer {
+    width: 100%;
+    aspect-ratio: 16 / 9;
+    display: block;
+    background: #000;
+    border: none;
+}
+
+/* Адаптивность */
+@media (max-width: 768px) {
+    .channels-grid {
+        grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+        gap: 12px;
+        padding: 10px;
     }
 
-    // ====================
-    // PARSE M3U
-    // ====================
-    function parseM3U(data) {
-        if (!data || typeof data !== 'string') {
-            console.error('Некорректные данные M3U');
-            return [];
-        }
-
-        const lines = data.split('\n');
-        const channels = [];
-
-        for (let i = 0; i < lines.length; i++) {
-            if (lines[i].startsWith('#EXTINF')) {
-                const line = lines[i];
-                const url = lines[i + 1]?.trim();
-
-                if (!url || url.startsWith('#') || !url) continue;
-
-                let group = 'unknown';
-                const groupMatch = line.match(/group-title="([^"]*)"/i);
-                if (groupMatch && groupMatch[1]) {
-                    group = groupMatch[1].toLowerCase();
-                }
-
-                const parts = line.split(',');
-                const name = parts[parts.length - 1]?.trim() || 'Неизвестный канал';
-
-                if (name !== 'Неизвестный канал') {
-                    channels.push({ 
-                        name, 
-                        url, 
-                        group
-                    });
-                }
-                i++;
-            }
-        }
-
-        console.log(`📊 Распарсено ${channels.length} каналов`);
-        return channels;
+    header h1 {
+        font-size: 1.8rem;
     }
 
-    // ====================
-    // RENDER CHANNELS
-    // ====================
-    function renderChannelsPage(channels, page) {
-        channelsList.innerHTML = '';
-        
-        if (!channels || channels.length === 0) {
-            channelsList.innerHTML = '<li class="no-results">Каналы не найдены</li>';
-            return;
-        }
-
-        const start = (page - 1) * channelsPerPage;
-        const end = start + channelsPerPage;
-        const pageChannels = channels.slice(start, end);
-
-        pageChannels.forEach(channel => {
-            const li = document.createElement('li');
-            li.className = 'channel-item';
-            li.textContent = channel.name;
-            li.setAttribute("tabIndex", "0");
-            li.setAttribute("title", channel.name);
-            
-            li.addEventListener('click', () => playChannel(channel.url, channel.name));
-            li.addEventListener('keydown', (e) => {
-                if (e.key === 'Enter' || e.key === ' ') {
-                    e.preventDefault();
-                    playChannel(channel.url, channel.name);
-                }
-            });
-
-            channelsList.appendChild(li);
-        });
+    #search {
+        font-size: 1rem;
+        padding: 12px 16px;
     }
 
-    // ====================
-    // PLAY CHANNEL
-    // ====================
-    function playChannel(url, name) {
-        if (!url) {
-            alert('URL канала не указан');
-            return;
-        }
+    .channel-name {
+        font-size: 0.8rem;
+        padding: 6px 10px;
+    }
+}
 
-        currentChannelNameEl.textContent = name || 'Неизвестный канал';
-        videoPlayer.innerHTML = '';
-        videoPlayer.src = '';
-        videoPlayer.controls = false;
-
-        if (Hls.isSupported()) {
-            const hls = new Hls({
-                debug: false,
-                enableWorker: true,
-                lowLatencyMode: true,
-                backBufferLength: 90
-            });
-
-            hls.loadSource(url);
-            hls.attachMedia(videoPlayer);
-
-            hls.on(Hls.Events.MANIFEST_PARSED, () => {
-                console.log('▶️ HLS manifest загружен');
-                videoPlayer.play().then(() => {
-                    videoPlayer.controls = true;
-                }).catch(e => {
-                    console.error('Ошибка воспроизведения:', e);
-                    videoPlayer.controls = true;
-                    alert('Не удалось воспроизвести канал. Попробуйте другой.');
-                });
-            });
-
-            hls.on(Hls.Events.ERROR, (event, data) => {
-                console.error('HLS Ошибка:', data.type, data.details);
-                if (data.fatal) {
-                    alert('Ошибка воспроизведения: ' + data.type);
-                    hls.destroy();
-                }
-            });
-        } 
-        else if (videoPlayer.canPlayType('application/vnd.apple.mpegurl')) {
-            // Safari
-            videoPlayer.src = url;
-            videoPlayer.addEventListener('loadedmetadata', () => {
-                videoPlayer.play().then(() => {
-                    videoPlayer.controls = true;
-                }).catch(e => {
-                    console.error('Ошибка воспроизведения:', e);
-                    videoPlayer.controls = true;
-                    alert('Не удалось воспроизвести канал. Попробуйте другой.');
-                });
-            });
-            videoPlayer.addEventListener('error', () => {
-                videoPlayer.controls = true;
-                alert('Ошибка воспроизведения. Попробуйте другой канал.');
-            });
-        } 
-        else {
-            alert('Ваш браузер не поддерживает HLS-потоки. Попробуйте Chrome, Firefox или Edge.');
-            videoPlayer.controls = true;
-        }
+@media (max-width: 480px) {
+    .channels-grid {
+        grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+        gap: 10px;
     }
 
-    // ====================
-    // RENDER MAIN
-    // ====================
-    async function renderChannels() {
-        loadingEl.classList.remove('hidden');
-        errorEl.classList.add('hidden');
-        channelsList.innerHTML = '';
-
-        try {
-            allChannels = await fetchChannels();
-            renderChannelsPage(allChannels, currentPage);
-            loadingEl.classList.add('hidden');
-            
-            setTimeout(() => {
-                const firstItem = document.querySelector('.channel-item');
-                if (firstItem) firstItem.focus();
-            }, 100);
-
-        } catch (err) {
-            console.error('❌ Не удалось загрузить каналы:', err.message);
-            loadingEl.classList.add('hidden');
-            errorEl.classList.remove('hidden');
-        }
+    header h1 {
+        font-size: 1.5rem;
     }
 
-    // ====================
-    // SEARCH
-    // ====================
-    searchInput.addEventListener('input', (e) => {
-        const query = e.target.value.toLowerCase().trim();
-        
-        if (query === '') {
-            renderChannelsPage(allChannels, 1);
-            currentPage = 1;
-            return;
-        }
+    #search {
+        font-size: 0.95rem;
+        padding: 10px 14px;
+    }
+}
 
-        const filtered = allChannels.filter(channel => 
-            channel.name.toLowerCase().includes(query)
-        );
-        
-        currentPage = 1;
-        renderChannelsPage(filtered, currentPage);
-    });
-
-    // ====================
-    // KEYBOARD NAVIGATION
-    // ====================
-    document.addEventListener('keydown', (e) => {
-        const items = Array.from(document.querySelectorAll('.channel-item'));
-        if (items.length === 0) return;
-
-        const currentIndex = items.findIndex(item => item === document.activeElement);
-
-        if (e.key === 'ArrowDown') {
-            e.preventDefault();
-            const nextIndex = (currentIndex + 1) % items.length;
-            items[nextIndex].focus();
-        } else if (e.key === 'ArrowUp') {
-            e.preventDefault();
-            const prevIndex = (currentIndex - 1 + items.length) % items.length;
-            items[prevIndex].focus();
-        } else if ((e.key === 'Enter' || e.key === ' ') && document.activeElement.classList.contains('channel-item')) {
-            e.preventDefault();
-            document.activeElement.click();
-        }
-    });
-
-    // ====================
-    // RETRY BUTTON
-    // ====================
-    retryBtn.addEventListener('click', renderChannels);
-
-    // ====================
-    // INITIALIZE
-    // ====================
-    renderChannels();
-});
+.hidden {
+    display: none !important;
+}

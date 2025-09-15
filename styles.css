@@ -1,39 +1,288 @@
 * {
     margin: 0;
     padding: 0;
+    box-sizing: border-box;
+}
+
+body {
+    background: #0f0f13;
+    color: #e0e0e0;
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    line-height: 1.6;
+    overflow-x: hidden;
 }
 
 #app {
     display: flex;
     flex-direction: column;
-    align-items: center;
-    height: 100vh;
-    background-color: #1a1a1d;
-    color: white;
-    font-family: Arial, sans-serif;
+    min-height: 100vh;
+    background: linear-gradient(135deg, #1a1a2e, #16213e);
+    padding: 20px;
+    position: relative;
 }
 
+/* Заголовок */
+header h1 {
+    font-size: 2.2rem;
+    margin-bottom: 16px;
+    background: linear-gradient(90deg, #ff7e5f, #feb47b);
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+    font-weight: 800;
+    text-shadow: 0 2px 10px rgba(255, 126, 95, 0.2);
+}
+
+/* Поиск */
+#search-container {
+    width: 100%;
+    max-width: 500px;
+    margin: 0 auto 20px;
+}
+
+#search {
+    width: 100%;
+    padding: 12px 16px;
+    border: none;
+    border-radius: 12px;
+    background: rgba(255, 255, 255, 0.1);
+    backdrop-filter: blur(10px);
+    color: white;
+    font-size: 1rem;
+    transition: all 0.3s ease;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+#search:focus {
+    outline: none;
+    background: rgba(255, 255, 255, 0.15);
+    box-shadow: 0 0 0 2px rgba(255, 126, 95, 0.5);
+}
+
+/* Категории */
+#categories {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+    justify-content: center;
+    margin-bottom: 24px;
+}
+
+#categories button {
+    padding: 8px 16px;
+    border: none;
+    border-radius: 20px;
+    background: rgba(255, 255, 255, 0.1);
+    color: #e0e0e0;
+    cursor: pointer;
+    font-size: 0.9rem;
+    transition: all 0.3s ease;
+    border: 1px solid transparent;
+}
+
+#categories button.active,
+#categories button:hover {
+    background: rgba(255, 126, 95, 0.3);
+    color: white;
+    border-color: rgba(255, 126, 95, 0.6);
+    transform: translateY(-2px);
+}
+
+/* Состояния загрузки и ошибки */
+#loading,
+#error {
+    text-align: center;
+    padding: 20px;
+    font-size: 1.1rem;
+    color: #aaa;
+    margin: 20px auto;
+    max-width: 500px;
+}
+
+#error {
+    color: #ff6b6b;
+    background: rgba(255, 107, 107, 0.1);
+    border-radius: 10px;
+    border: 1px solid rgba(255, 107, 107, 0.3);
+}
+
+#error button {
+    margin-top: 10px;
+    padding: 8px 16px;
+    background: #ff6b6b;
+    color: white;
+    border: none;
+    border-radius: 6px;
+    cursor: pointer;
+}
+
+/* Список каналов */
 #channels-list {
     list-style-type: none;
-    text-align: center;
-    width: 80%;
-    margin-bottom: 20px;
+    width: 100%;
+    max-width: 600px;
+    margin: 0 auto 24px;
+    background: rgba(30, 30, 40, 0.7);
+    border-radius: 16px;
+    padding: 16px 8px;
+    backdrop-filter: blur(10px);
+    border: 1px solid rgba(255, 255, 255, 0.05);
+    max-height: 40vh;
+    overflow-y: auto;
 }
 
 .channel-item {
     cursor: pointer;
-    border-bottom: 1px solid rgba(255, 255, 255, 0.2);
-    padding: 10px;
-    transition: all 0.3s ease-in-out;
+    padding: 14px 20px;
+    margin: 4px 0;
+    border-radius: 10px;
+    transition: all 0.25s ease;
+    position: relative;
+    overflow: hidden;
+    display: flex;
+    align-items: center;
 }
 
-.channel-item:focus,
-.channel-item.active {
-    transform: scale(1.1);
-    box-shadow: 0 0 10px rgba(255, 255, 255, 0.5);
+.channel-item::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 4px;
+    height: 100%;
+    background: transparent;
+    transition: all 0.3s ease;
+}
+
+.channel-item:hover,
+.channel-item:focus {
+    background: rgba(255, 126, 95, 0.15);
+    transform: translateX(4px);
+    outline: none;
+}
+
+.channel-item:hover::before,
+.channel-item:focus::before {
+    background: #ff7e5f;
+}
+
+.channel-item:focus {
+    box-shadow: 0 0 0 2px rgba(255, 126, 95, 0.5);
+}
+
+/* Сейчас играет */
+#now-playing {
+    text-align: center;
+    margin: 16px 0 8px;
+    font-size: 1.1rem;
+    color: #ff7e5f;
+    font-weight: 600;
+}
+
+#current-channel-name {
+    color: #fff;
+    font-weight: 500;
+}
+
+/* Видеоплеер */
+#video-container {
+    width: 100%;
+    max-width: 800px;
+    margin: 0 auto;
+    border-radius: 16px;
+    overflow: hidden;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+    background: #000;
 }
 
 #videoPlayer {
     width: 100%;
-    height: auto;
+    aspect-ratio: 16 / 9;
+    display: block;
+    background: #000;
+    border: none;
+}
+
+/* Скроллбар */
+#channels-list::-webkit-scrollbar {
+    width: 6px;
+}
+
+#channels-list::-webkit-scrollbar-track {
+    background: rgba(255, 255, 255, 0.05);
+    border-radius: 10px;
+}
+
+#channels-list::-webkit-scrollbar-thumb {
+    background: rgba(255, 126, 95, 0.6);
+    border-radius: 10px;
+}
+
+#channels-list::-webkit-scrollbar-thumb:hover {
+    background: rgba(255, 126, 95, 0.8);
+}
+
+/* Анимации */
+@keyframes fadeIn {
+    from { opacity: 0; transform: translateY(10px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+.channel-item {
+    animation: fadeIn 0.3s ease-out;
+}
+
+/* Адаптивность */
+@media (max-width: 768px) {
+    #app {
+        padding: 12px;
+    }
+
+    header h1 {
+        font-size: 1.8rem;
+    }
+
+    #channels-list {
+        max-height: 30vh;
+        padding: 12px 6px;
+    }
+
+    .channel-item {
+        padding: 12px 16px;
+        font-size: 0.95rem;
+    }
+
+    #categories {
+        gap: 6px;
+    }
+
+    #categories button {
+        padding: 6px 12px;
+        font-size: 0.85rem;
+    }
+}
+
+@media (max-width: 480px) {
+    header h1 {
+        font-size: 1.5rem;
+    }
+
+    #search {
+        font-size: 0.95rem;
+        padding: 10px 12px;
+    }
+
+    #channels-list {
+        max-height: 25vh;
+    }
+
+    .channel-item {
+        padding: 10px 14px;
+        font-size: 0.9rem;
+    }
+}
+
+/* Состояние "hidden" */
+.hidden {
+    display: none !important;
 }

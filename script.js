@@ -13,7 +13,7 @@ document.addEventListener('DOMContentLoaded', () => {
     let previewPlayers = new Map();
 
     // ====================
-    // FETCH CHANNELS — С УЛУЧШЕННЫМ ФОЛЛБЭКОМ
+    // FETCH CHANNELS — С ФОЛЛБЭКОМ
     // ====================
     async function fetchChannels() {
         console.log('🔍 Начинаем загрузку каналов...');
@@ -81,7 +81,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     // ====================
-    // PARSE M3U — БОЛЕЕ УСТОЙЧИВЫЙ ПАРСЕР
+    // PARSE M3U — УСТОЙЧИВЫЙ ПАРСЕР
     // ====================
     function parseM3U(data) {
         if (!data || typeof data !== 'string') {
@@ -145,7 +145,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     // ====================
-    // RENDER CHANNELS
+    // RENDER CHANNELS — ПЛИТКИ
     // ====================
     function renderChannelTiles(channels) {
         channelsGrid.innerHTML = '';
@@ -212,7 +212,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     // ====================
-    // ОСТАЛЬНЫЕ ФУНКЦИИ (БЕЗ ИЗМЕНЕНИЙ)
+    // PREVIEW ON FOCUS
     // ====================
     function handleTileFocus(tile, channel) {
         if (focusedChannel === tile) return;
@@ -279,6 +279,9 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
+    // ====================
+    // PLAY MAIN CHANNEL
+    // ====================
     function playMainChannel(url, name) {
         currentChannelNameEl.textContent = name || 'Неизвестный канал';
         videoPlayer.innerHTML = '';
@@ -326,6 +329,9 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
+    // ====================
+    // MAIN RENDER FUNCTION
+    // ====================
     async function renderChannels() {
         loadingEl.classList.remove('hidden');
         errorEl.classList.add('hidden');
@@ -342,6 +348,9 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
+    // ====================
+    // SEARCH
+    // ====================
     searchInput.addEventListener('input', (e) => {
         const query = e.target.value.toLowerCase().trim();
         const filtered = allChannels.filter(channel => 
@@ -350,6 +359,9 @@ document.addEventListener('DOMContentLoaded', () => {
         renderChannelTiles(filtered);
     });
 
+    // ====================
+    // KEYBOARD NAVIGATION
+    // ====================
     document.addEventListener('keydown', (e) => {
         const tiles = Array.from(document.querySelectorAll('.channel-tile'));
         if (tiles.length === 0) return;
@@ -382,6 +394,13 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     });
 
+    // ====================
+    // RETRY BUTTON
+    // ====================
     retryBtn.addEventListener('click', renderChannels);
+
+    // ====================
+    // INITIALIZE
+    // ====================
     renderChannels();
 });

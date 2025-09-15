@@ -8,34 +8,36 @@
     <script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
 </head>
 <body>
-<div id="app">
-    <header>
-        <h1>📺 IPTV Channels</h1>
-        <div id="search-container">
-            <input type="text" id="search" placeholder="Поиск канала...">
+    <div id="app">
+        <header>
+            <h1>📺 IPTV Channels</h1>
+            <div id="search-container">
+                <input type="text" id="search" placeholder="Поиск канала...">
+            </div>
+        </header>
+
+        <div id="categories">
+            <button data-category="all" class="active">Все</button>
+            <button data-category="news">Новости</button>
+            <button data-category="sport">Спорт</button>
+            <button data-category="movies">Фильмы</button>
+            <button data-category="kids">Детям</button>
         </div>
-    </header>
 
-    <div id="categories">
-        <button data-category="all" class="active">Все</button>
-        <button data-category="news">Новости</button>
-        <button data-category="sport">Спорт</button>
-        <button data-category="movies">Фильмы</button>
-        <button data-category="kids">Детям</button>
+        <div id="loading" class="hidden">Загрузка каналов...</div>
+        <div id="error" class="hidden">Ошибка загрузки. <button id="retry">Повторить</button></div>
+
+        <!-- Сетка плиток каналов -->
+        <div id="channels-grid" class="channels-grid"></div>
+
+        <!-- Полноэкранный плеер (изначально скрыт через CSS) -->
+        <div id="video-container">
+            <button id="close-player" title="Закрыть">✕</button>
+            <div id="now-playing">Сейчас смотрят: <strong id="current-channel-name">-</strong></div>
+            <video id="videoPlayer" controls></video>
+        </div>
     </div>
 
-    <div id="loading" class="hidden">Загрузка каналов...</div>
-    <div id="error" class="hidden">Ошибка загрузки. <button id="retry">Повторить</button></div>
-
-    <!-- ✅ Ключевой элемент — именно он используется в JS -->
-    <div id="channels-grid" class="channels-grid"></div>
-
-    <div id="video-container">
-        <div id="now-playing">Сейчас смотрят: <strong id="current-channel-name">-</strong></div>
-        <video id="videoPlayer" controls></video>
-    </div>
-</div>
-
-<script src="script.js"></script>
+    <script src="script.js"></script>
 </body>
 </html>

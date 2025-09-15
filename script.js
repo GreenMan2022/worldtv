@@ -13,7 +13,7 @@ document.addEventListener('DOMContentLoaded', () => {
     let allChannels = [];
     let displayedChannels = [];
     let startIndex = 0;
-    const batchSize = 24; // Сколько каналов подгружать за раз
+    const batchSize = 24;
     let isLoading = false;
     let hasMore = true;
 
@@ -22,10 +22,43 @@ document.addEventListener('DOMContentLoaded', () => {
     let mainPlayer = null;
 
     // ====================
+    // BLACKLIST MANAGEMENT
+    // ====================
+    const BLACKLIST_KEY = 'iptv_blacklist';
+
+    function getBlacklist() {
+        try {
+            const data = localStorage.getItem(BLACKLIST_KEY);
+            return data ? new Set(JSON.parse(data)) : new Set();
+        } catch (e) {
+            console.warn('⚠️ Ошибка чтения чёрного списка:', e);
+            return new Set();
+        }
+    }
+
+    function addToBlacklist(url) {
+        if (!url) return;
+        const blacklist = getBlacklist();
+        blacklist.add(url);
+        try {
+            localStorage.setItem(BLACKLIST_KEY, JSON.stringify([...blacklist]));
+            console.log('🚫 Добавлено в чёрный список:', url);
+        } catch (e) {
+            console.warn('⚠️ Не удалось сохранить чёрный список:', e);
+        }
+    }
+
+    function isBlacklisted(url) {
+        return getBlacklist().has(url);
+    }
+
+    // ====================
     // FETCH CHANNELS
     // ====================
     async function fetchChannels() {
         console.log('🔍 Начинаем загрузку каналов...');
+
+        let data = '';
 
         // Пробуем прокси 1
         try {
@@ -39,34 +72,34 @@ document.addEventListener('DOMContentLoaded', () => {
 
             if (!response.ok) throw new Error(`HTTP ${response.status}`);
 
-            const data = await response.text();
-            const channels = parseM3U(data);
-
-            if (channels.length > 0) {
-                console.log(`✅ Успешно загружено ${channels.length} каналов`);
-                return channels;
-            }
+            data = await response.text();
         } catch (err) {
             console.warn('⚠️ Прокси не сработал:', err.message);
         }
 
         // Пробуем локальный файл
-        try {
-            const response = await fetch('channels.m3u8');
-            if (!response.ok) throw new Error(`HTTP ${response.status}`);
-
-            const data = await response.text();
-            const channels = parseM3U(data);
-
-            if (channels.length > 0) {
-                console.log(`✅ Успешно загружено ${channels.length} каналов из локального файла`);
-                return channels;
+        if (!data) {
+            try {
+                const response = await fetch('channels.m3u8');
+                if (!response.ok) throw new Error(`HTTP ${response.status}`);
+                data = await response.text();
+            } catch (err) {
+                console.error('❌ Локальный файл не сработал:', err.message);
             }
-        } catch (err) {
-            console.error('❌ Локальный файл не сработал:', err.message);
         }
 
-        throw new Error('Не удалось загрузить каналы');
+        if (!data) {
+            throw new Error('Не удалось загрузить каналы');
+        }
+
+        const parsed = parseM3U(data);
+        const blacklist = getBlacklist();
+
+        // Фильтруем по чёрному списку
+        const filtered = parsed.filter(channel => !isBlacklisted(channel.url));
+
+        console.log(`✅ Загружено ${parsed.length} каналов, после фильтрации: ${filtered.length}`);
+        return filtered;
     }
 
     // ====================
@@ -113,7 +146,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     // ====================
-    // RENDER CHANNEL BATCH — Рендерим пачку каналов
+    // RENDER CHANNEL BATCH
     // ====================
     function renderChannelBatch() {
         if (isLoading || !hasMore) return;
@@ -176,18 +209,17 @@ document.addEventListener('DOMContentLoaded', () => {
             isLoading = false;
             loadingEl.classList.add('hidden');
 
-            // Если это первая пачка — фокусируемся на первой плитке
             if (endIndex === batchSize) {
                 setTimeout(() => {
                     const firstTile = document.querySelector('.channel-tile');
                     if (firstTile) firstTile.focus();
                 }, 100);
             }
-        }, 300); // Имитируем загрузку для UX
+        }, 300);
     }
 
     // ====================
-    // LOAD MORE ON SCROLL
+    // INFINITE SCROLL
     // ====================
     function setupInfiniteScroll() {
         const observer = new IntersectionObserver((entries) => {
@@ -196,17 +228,15 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         });
 
-        // Создаём элемент-триггер в конце сетки
         const trigger = document.createElement('div');
         trigger.id = 'load-trigger';
         trigger.style.height = '50px';
         channelsGrid.appendChild(trigger);
-
         observer.observe(trigger);
     }
 
     // ====================
-    // PLAY IN MAIN PLAYER
+    // PLAY IN MAIN PLAYER — С ОБРАБОТКОЙ ОШИБОК
     // ====================
     function playInMainPlayer(channel) {
         videoContainer.classList.add('fullscreen-player');
@@ -239,10 +269,18 @@ document.addEventListener('DOMContentLoaded', () => {
             });
 
             hls.on(Hls.Events.ERROR, (event, data) => {
+                console.error('❌ HLS Error:', data.type, data.details);
                 if (data.fatal) {
-                    alert('Ошибка воспроизведения: ' + data.type);
+                    // Добавляем в чёрный список при фатальной ошибке
+                    if (data.type === Hls.ErrorTypes.NETWORK_ERROR) {
+                        addToBlacklist(channel.url);
+                        alert('Канал недоступен и добавлен в чёрный список.');
+                    } else {
+                        alert('Ошибка воспроизведения: ' + data.type);
+                    }
                     hls.destroy();
                     mainPlayer = null;
+                    closePlayer();
                 }
             });
         } else if (videoPlayer.canPlayType('application/vnd.apple.mpegurl')) {
@@ -255,11 +293,18 @@ document.addEventListener('DOMContentLoaded', () => {
                     videoContainer.appendChild(playButton);
                 });
             });
+            videoPlayer.addEventListener('error', () => {
+                addToBlacklist(channel.url);
+                alert('Канал недоступен и добавлен в чёрный список.');
+                closePlayer();
+            });
+        } else {
+            alert('Ваш браузер не поддерживает HLS-потоки.');
         }
     }
 
     // ====================
-    // PREVIEW ON FOCUS
+    // PREVIEW ON FOCUS — С ОБРАБОТКОЙ ОШИБОК
     // ====================
     function handleTileFocus(tile, channel) {
         if (focusedChannel === tile) return;
@@ -302,6 +347,8 @@ document.addEventListener('DOMContentLoaded', () => {
                 if (data.fatal) {
                     hls.destroy();
                     previewPlayers.delete(tile);
+                    // Не добавляем в чёрный список при превью — только при основном воспроизведении
+                    console.warn('🔇 Превью канала недоступно');
                 }
             });
 
@@ -375,12 +422,11 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     // ====================
-    // SEARCH — Фильтруем, но не перезагружаем всё
+    // SEARCH
     // ====================
     searchInput.addEventListener('input', (e) => {
         const query = e.target.value.toLowerCase().trim();
         
-        // Сбрасываем пагинацию
         startIndex = 0;
         hasMore = true;
         displayedChannels = [];
@@ -395,13 +441,10 @@ document.addEventListener('DOMContentLoaded', () => {
             channel.name.toLowerCase().includes(query)
         );
 
-        // Временно заменяем allChannels на отфильтрованные
         const originalChannels = allChannels;
         allChannels = filtered;
-
         renderChannelBatch();
 
-        // Восстанавливаем после отмены поиска
         if (query === '') {
             allChannels = originalChannels;
         }
@@ -447,7 +490,6 @@ document.addEventListener('DOMContentLoaded', () => {
             e.preventDefault();
             tiles[nextIndex].focus();
 
-            // Подгружаем ещё, если фокус близко к концу
             if (nextIndex > tiles.length - 5 && hasMore && !isLoading) {
                 renderChannelBatch();
             }

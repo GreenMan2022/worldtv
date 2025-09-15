@@ -1,7 +1,9 @@
 document.addEventListener('DOMContentLoaded', () => {
     // DOM Elements
     const channelsGrid = document.getElementById('channels-grid');
-    const mainVideoContainer = document.getElementById('video-container');
+    const videoPlayer = document.getElementById('videoPlayer');
+    const videoContainer = document.getElementById('video-container');
+    const closePlayerBtn = document.getElementById('close-player');
     const searchInput = document.getElementById('search');
     const loadingEl = document.getElementById('loading');
     const errorEl = document.getElementById('error');
@@ -10,9 +12,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
     let allChannels = [];
     let focusedChannel = null;
-    let activePlayerTile = null; // Плитка, в которой сейчас играет видео
     let previewPlayers = new Map();
-    let mainPlayer = null; // HLS-инстанс для активного плеера
+    let mainPlayer = null;
 
     // ====================
     // FETCH CHANNELS
@@ -131,12 +132,12 @@ document.addEventListener('DOMContentLoaded', () => {
             const content = document.createElement('div');
             content.className = 'tile-content';
 
-            // Видео для превью и основного воспроизведения
+            // Видео для превью
             const video = document.createElement('video');
             video.className = 'tile-video';
-            video.muted = true;
+            video.muted = true; // 🔇 Превью всегда без звука
             video.playsInline = true;
-            video.controls = false; // Убираем контролы по умолчанию
+            video.loop = true;
 
             // Логотип
             const logo = document.createElement('img');
@@ -157,7 +158,7 @@ document.addEventListener('DOMContentLoaded', () => {
             tile.appendChild(content);
             tile.appendChild(name);
 
-            tile.addEventListener('click', () => playInTile(tile, channel));
+            tile.addEventListener('click', () => playInMainPlayer(channel));
             tile.addEventListener('focus', () => handleTileFocus(tile, channel));
             tile.addEventListener('blur', () => handleTileBlur(tile, channel));
 
@@ -171,33 +172,22 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     // ====================
-    // PLAY VIDEO IN TILE — ГЛАВНАЯ ФУНКЦИЯ
+    // PLAY IN MAIN PLAYER — ГЛАВНАЯ ФУНКЦИЯ
     // ====================
-    function playInTile(tile, channel) {
-        // Останавливаем предыдущее воспроизведение
-        if (activePlayerTile && activePlayerTile !== tile) {
-            stopTilePlayback(activePlayerTile);
-        }
+    function playInMainPlayer(channel) {
+        // Показываем полноэкранный плеер
+        videoContainer.classList.add('fullscreen-player');
+        document.body.classList.add('player-active');
 
-        activePlayerTile = tile;
-        const video = tile.querySelector('.tile-video');
-        const logo = tile.querySelector('.channel-logo');
-        const name = tile.querySelector('.channel-name');
-
-        // Скрываем логотип и название
-        logo.style.opacity = '0';
-        name.style.transform = 'translateY(100%)';
-
-        // Показываем видео на весь экран плитки
-        video.style.opacity = '1';
-        video.controls = true; // Показываем контролы при активном воспроизведении
+        // Обновляем название
         currentChannelNameEl.textContent = channel.name;
 
-        if (Hls.isSupported()) {
-            if (mainPlayer) {
-                mainPlayer.destroy();
-            }
+        // Очищаем предыдущий HLS
+        if (mainPlayer) {
+            mainPlayer.destroy();
+        }
 
+        if (Hls.isSupported()) {
             const hls = new Hls({
                 debug: false,
                 enableWorker: true,
@@ -207,17 +197,17 @@ document.addEventListener('DOMContentLoaded', () => {
 
             mainPlayer = hls;
             hls.loadSource(channel.url);
-            hls.attachMedia(video);
+            hls.attachMedia(videoPlayer);
 
             hls.on(Hls.Events.MANIFEST_PARSED, () => {
-                video.play().catch(e => {
+                videoPlayer.play().catch(e => {
                     console.warn('🔇 Автовоспроизведение заблокировано — показываем кнопку');
 
                     const playButton = createPlayButton(() => {
-                        video.play().then(() => playButton.remove());
+                        videoPlayer.play().then(() => playButton.remove());
                     });
 
-                    tile.appendChild(playButton);
+                    videoContainer.appendChild(playButton);
                 });
             });
 
@@ -229,49 +219,23 @@ document.addEventListener('DOMContentLoaded', () => {
                 }
             });
 
-        } else if (video.canPlayType('application/vnd.apple.mpegurl')) {
-            video.src = channel.url;
-            video.addEventListener('loadedmetadata', () => {
-                video.play().catch(e => {
+        } else if (videoPlayer.canPlayType('application/vnd.apple.mpegurl')) {
+            videoPlayer.src = channel.url;
+            videoPlayer.addEventListener('loadedmetadata', () => {
+                videoPlayer.play().catch(e => {
                     const playButton = createPlayButton(() => {
-                        video.play().then(() => playButton.remove());
+                        videoPlayer.play().then(() => playButton.remove());
                     });
-                    tile.appendChild(playButton);
+                    videoContainer.appendChild(playButton);
                 });
             });
         }
     }
 
     // ====================
-    // STOP PLAYBACK IN TILE
-    // ====================
-    function stopTilePlayback(tile) {
-        const video = tile.querySelector('.tile-video');
-        const logo = tile.querySelector('.channel-logo');
-        const name = tile.querySelector('.channel-name');
-
-        // Восстанавливаем логотип и название
-        logo.style.opacity = '0.9';
-        name.style.transform = 'translateY(0)';
-
-        // Скрываем видео
-        video.style.opacity = '0';
-        video.controls = false;
-
-        // Очищаем источник
-        if (mainPlayer) {
-            mainPlayer.destroy();
-            mainPlayer = null;
-        }
-        video.src = '';
-        video.load();
-    }
-
-    // ====================
-    // PREVIEW ON FOCUS (только если не активный плеер)
+    // PREVIEW ON FOCUS
     // ====================
     function handleTileFocus(tile, channel) {
-        if (activePlayerTile === tile) return; // Не запускаем превью, если это активный плеер
         if (focusedChannel === tile) return;
 
         if (focusedChannel) {
@@ -327,8 +291,6 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     function handleTileBlur(tile, channel) {
-        if (activePlayerTile === tile) return; // Не останавливаем, если это активный плеер
-
         const hls = previewPlayers.get(tile);
         if (hls) {
             hls.destroy();
@@ -347,6 +309,7 @@ document.addEventListener('DOMContentLoaded', () => {
     // ====================
     function createPlayButton(onClick) {
         const playButton = document.createElement('div');
+        playButton.className = 'play-button';
         playButton.style.cssText = `
             position: absolute;
             top: 50%;
@@ -370,6 +333,22 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     // ====================
+    // CLOSE PLAYER
+    // ====================
+    function closePlayer() {
+        if (mainPlayer) {
+            mainPlayer.destroy();
+            mainPlayer = null;
+        }
+        videoPlayer.pause();
+        videoPlayer.src = '';
+        videoPlayer.load();
+
+        videoContainer.classList.remove('fullscreen-player');
+        document.body.classList.remove('player-active');
+    }
+
+    // ====================
     // MAIN RENDER FUNCTION
     // ====================
     async function renderChannels() {
@@ -381,9 +360,6 @@ document.addEventListener('DOMContentLoaded', () => {
             allChannels = await fetchChannels();
             renderChannelTiles(allChannels);
             loadingEl.classList.add('hidden');
-            
-            // Скрываем основной плеер — теперь всё играет в плитках
-            mainVideoContainer.style.display = 'none';
         } catch (err) {
             console.error('❌ Не удалось загрузить каналы:', err);
             loadingEl.classList.add('hidden');
@@ -406,6 +382,13 @@ document.addEventListener('DOMContentLoaded', () => {
     // KEYBOARD NAVIGATION
     // ====================
     document.addEventListener('keydown', (e) => {
+        if (document.body.classList.contains('player-active')) {
+            if (e.key === 'Escape') {
+                closePlayer();
+            }
+            return;
+        }
+
         const tiles = Array.from(document.querySelectorAll('.channel-tile'));
         if (tiles.length === 0) return;
 
@@ -438,9 +421,10 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 
     // ====================
-    // RETRY BUTTON
+    // EVENT LISTENERS
     // ====================
     retryBtn.addEventListener('click', renderChannels);
+    closePlayerBtn.addEventListener('click', closePlayer);
 
     // ====================
     // INITIALIZE

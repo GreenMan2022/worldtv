@@ -119,6 +119,7 @@ header h1 {
     border-color: rgba(255, 107, 107, 0.3);
 }
 
+
 #error button {
     margin-top: 12px;
     padding: 10px 24px;
@@ -182,3 +183,16 @@ header h1 {
     top: 50%;
     left: 50%;
     transform: translate(-50%, -50%)
+}
+#load-trigger {
+    height: 50px;
+    width: 100%;
+}
+
+#loading {
+    text-align: center;
+    padding: 20px;
+    font-size: 1.1rem;
+    color: #aaa;
+    grid-column: 1 / -1;
+}

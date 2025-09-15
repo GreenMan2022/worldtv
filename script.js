@@ -1,63 +1,53 @@
 document.addEventListener('DOMContentLoaded', () => {
     const channelsList = document.getElementById('channels-list');
-    
-    // Функция для загрузки данных с GitHub
+    const videoPlayer = document.getElementById('videoPlayer');
+
     async function fetchChannels() {
         try {
-            const response = await fetch('https://api.github.com/repos/your_username/your_repo_name/contents/channels.json');
+            const response = await fetch('https://iptv-org.github.io/iptv/index.m3u8');
             if (!response.ok) throw new Error(`Ошибка при получении данных (${response.status})`);
-            
-            const data = await response.json();
-            return JSON.parse(atob(data.content));
+
+            const data = await response.text();
+            return parseM3U(data);
         } catch (err) {
             console.error(err.message);
         }
     }
 
-    // Отображение каналов
+    function parseM3U(data) {
+        const lines = data.split('\n');
+        const channels = [];
+
+        for (let i = 0; i < lines.length; i++) {
+            if (lines[i].startsWith('#EXTINF')) {
+                const info = lines[i].split(',');
+                const name = info[info.length - 1].trim();
+                const url = lines[i + 1].trim();
+                channels.push({ name, url });
+                i++;
+            }
+        }
+
+        return channels;
+    }
+
     async function renderChannels() {
         const channelsData = await fetchChannels();
-        
-        for (const channel of channelsData.channels) {
+
+        for (const channel of channelsData) {
             let li = document.createElement('li');
             li.className = 'channel-item';
             li.textContent = channel.name;
             li.setAttribute("tabIndex", "0");
+            li.addEventListener('click', () => playChannel(channel.url));
             channelsList.appendChild(li);
         }
     }
 
-    // Обработка клавиш клавиатуры / пульта
-    window.addEventListener('keydown', event => {
-        switch(event.keyCode || event.which) {
-            case 38: // вверх
-                focusPreviousItem();
-                break;
-            case 40: // вниз
-                focusNextItem();
-                break;
-            default:
-                break;
-        }
-    });
-
-    // Навигация по списку каналов
-    function focusNextItem() {
-        const currentFocus = document.querySelector('.active');
-        if(currentFocus && currentFocus.nextSibling) {
-            currentFocus.classList.remove('active');
-            currentFocus.nextSibling.focus();
-            currentFocus.nextSibling.classList.add('active');
-        }
-    }
-
-    function focusPreviousItem() {
-        const currentFocus = document.querySelector('.active');
-        if(currentFocus && currentFocus.previousSibling) {
-            currentFocus.classList.remove('active');
-            currentFocus.previousSibling.focus();
-            currentFocus.previousSibling.classList.add('active');
-        }
+    function playChannel(url) {
+        videoPlayer.src = url;
+        videoPlayer.load();
+        videoPlayer.play();
     }
 
     renderChannels();

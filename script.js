@@ -11,6 +11,12 @@ document.addEventListener('DOMContentLoaded', () => {
     const currentChannelNameEl = document.getElementById('current-channel-name');
 
     let allChannels = [];
+    let displayedChannels = [];
+    let startIndex = 0;
+    const batchSize = 24; // Сколько каналов подгружать за раз
+    let isLoading = false;
+    let hasMore = true;
+
     let focusedChannel = null;
     let previewPlayers = new Map();
     let mainPlayer = null;
@@ -107,82 +113,106 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     // ====================
-    // RENDER CHANNELS — ПЛИТКИ
+    // RENDER CHANNEL BATCH — Рендерим пачку каналов
     // ====================
-    function renderChannelTiles(channels) {
-        channelsGrid.innerHTML = '';
+    function renderChannelBatch() {
+        if (isLoading || !hasMore) return;
 
-        if (!channels || channels.length === 0) {
-            channelsGrid.innerHTML = `
-                <div class="no-results">
-                    <h3>📺 Каналы не найдены</h3>
-                    <p>Проверьте файл <code>channels.m3u8</code></p>
-                </div>`;
-            return;
-        }
-
-        channels.forEach(channel => {
-            const tile = document.createElement('div');
-            tile.className = 'channel-tile';
-            tile.setAttribute('tabIndex', '0');
-            tile.setAttribute('title', channel.name);
-            tile.dataset.url = channel.url;
-            tile.dataset.name = channel.name;
-
-            const content = document.createElement('div');
-            content.className = 'tile-content';
-
-            // Видео для превью
-            const video = document.createElement('video');
-            video.className = 'tile-video';
-            video.muted = true; // 🔇 Превью всегда без звука
-            video.playsInline = true;
-            video.loop = true;
-
-            // Логотип
-            const logo = document.createElement('img');
-            logo.src = channel.logo;
-            logo.alt = channel.name;
-            logo.className = 'channel-logo';
-            logo.onerror = () => {
-                logo.src = `https://placehold.co/200x120/1a1a2e/ffffff?text=${encodeURIComponent(channel.name.substring(0, 2))}`;
-            };
-
-            // Название канала
-            const name = document.createElement('div');
-            name.className = 'channel-name';
-            name.textContent = channel.name;
-
-            content.appendChild(video);
-            content.appendChild(logo);
-            tile.appendChild(content);
-            tile.appendChild(name);
-
-            tile.addEventListener('click', () => playInMainPlayer(channel));
-            tile.addEventListener('focus', () => handleTileFocus(tile, channel));
-            tile.addEventListener('blur', () => handleTileBlur(tile, channel));
-
-            channelsGrid.appendChild(tile);
-        });
+        isLoading = true;
+        loadingEl.classList.remove('hidden');
 
         setTimeout(() => {
-            const firstTile = document.querySelector('.channel-tile');
-            if (firstTile) firstTile.focus();
-        }, 100);
+            const endIndex = Math.min(startIndex + batchSize, allChannels.length);
+            const batch = allChannels.slice(startIndex, endIndex);
+
+            batch.forEach(channel => {
+                const tile = document.createElement('div');
+                tile.className = 'channel-tile';
+                tile.setAttribute('tabIndex', '0');
+                tile.setAttribute('title', channel.name);
+                tile.dataset.url = channel.url;
+                tile.dataset.name = channel.name;
+
+                const content = document.createElement('div');
+                content.className = 'tile-content';
+
+                // Видео для превью
+                const video = document.createElement('video');
+                video.className = 'tile-video';
+                video.muted = true;
+                video.playsInline = true;
+                video.loop = true;
+
+                // Логотип
+                const logo = document.createElement('img');
+                logo.src = channel.logo;
+                logo.alt = channel.name;
+                logo.className = 'channel-logo';
+                logo.onerror = () => {
+                    logo.src = `https://placehold.co/200x120/1a1a2e/ffffff?text=${encodeURIComponent(channel.name.substring(0, 2))}`;
+                };
+
+                // Название канала
+                const name = document.createElement('div');
+                name.className = 'channel-name';
+                name.textContent = channel.name;
+
+                content.appendChild(video);
+                content.appendChild(logo);
+                tile.appendChild(content);
+                tile.appendChild(name);
+
+                tile.addEventListener('click', () => playInMainPlayer(channel));
+                tile.addEventListener('focus', () => handleTileFocus(tile, channel));
+                tile.addEventListener('blur', () => handleTileBlur(tile, channel));
+
+                channelsGrid.appendChild(tile);
+                displayedChannels.push(channel);
+            });
+
+            startIndex = endIndex;
+            hasMore = endIndex < allChannels.length;
+
+            isLoading = false;
+            loadingEl.classList.add('hidden');
+
+            // Если это первая пачка — фокусируемся на первой плитке
+            if (endIndex === batchSize) {
+                setTimeout(() => {
+                    const firstTile = document.querySelector('.channel-tile');
+                    if (firstTile) firstTile.focus();
+                }, 100);
+            }
+        }, 300); // Имитируем загрузку для UX
     }
 
     // ====================
-    // PLAY IN MAIN PLAYER — ГЛАВНАЯ ФУНКЦИЯ
+    // LOAD MORE ON SCROLL
+    // ====================
+    function setupInfiniteScroll() {
+        const observer = new IntersectionObserver((entries) => {
+            if (entries[0].isIntersecting && hasMore && !isLoading) {
+                renderChannelBatch();
+            }
+        });
+
+        // Создаём элемент-триггер в конце сетки
+        const trigger = document.createElement('div');
+        trigger.id = 'load-trigger';
+        trigger.style.height = '50px';
+        channelsGrid.appendChild(trigger);
+
+        observer.observe(trigger);
+    }
+
+    // ====================
+    // PLAY IN MAIN PLAYER
     // ====================
     function playInMainPlayer(channel) {
-        // Показываем полноэкранный плеер
         videoContainer.classList.add('fullscreen-player');
         document.body.classList.add('player-active');
-
-        // Обновляем название
         currentChannelNameEl.textContent = channel.name;
 
-        // Очищаем предыдущий HLS
         if (mainPlayer) {
             mainPlayer.destroy();
         }
@@ -201,12 +231,9 @@ document.addEventListener('DOMContentLoaded', () => {
 
             hls.on(Hls.Events.MANIFEST_PARSED, () => {
                 videoPlayer.play().catch(e => {
-                    console.warn('🔇 Автовоспроизведение заблокировано — показываем кнопку');
-
                     const playButton = createPlayButton(() => {
                         videoPlayer.play().then(() => playButton.remove());
                     });
-
                     videoContainer.appendChild(playButton);
                 });
             });
@@ -218,7 +245,6 @@ document.addEventListener('DOMContentLoaded', () => {
                     mainPlayer = null;
                 }
             });
-
         } else if (videoPlayer.canPlayType('application/vnd.apple.mpegurl')) {
             videoPlayer.src = channel.url;
             videoPlayer.addEventListener('loadedmetadata', () => {
@@ -349,33 +375,36 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     // ====================
-    // MAIN RENDER FUNCTION
-    // ====================
-    async function renderChannels() {
-        loadingEl.classList.remove('hidden');
-        errorEl.classList.add('hidden');
-        channelsGrid.innerHTML = '';
-
-        try {
-            allChannels = await fetchChannels();
-            renderChannelTiles(allChannels);
-            loadingEl.classList.add('hidden');
-        } catch (err) {
-            console.error('❌ Не удалось загрузить каналы:', err);
-            loadingEl.classList.add('hidden');
-            errorEl.classList.remove('hidden');
-        }
-    }
-
-    // ====================
-    // SEARCH
+    // SEARCH — Фильтруем, но не перезагружаем всё
     // ====================
     searchInput.addEventListener('input', (e) => {
         const query = e.target.value.toLowerCase().trim();
+        
+        // Сбрасываем пагинацию
+        startIndex = 0;
+        hasMore = true;
+        displayedChannels = [];
+        channelsGrid.innerHTML = '';
+
+        if (query === '') {
+            renderChannelBatch();
+            return;
+        }
+
         const filtered = allChannels.filter(channel => 
             channel.name.toLowerCase().includes(query)
         );
-        renderChannelTiles(filtered);
+
+        // Временно заменяем allChannels на отфильтрованные
+        const originalChannels = allChannels;
+        allChannels = filtered;
+
+        renderChannelBatch();
+
+        // Восстанавливаем после отмены поиска
+        if (query === '') {
+            allChannels = originalChannels;
+        }
     });
 
     // ====================
@@ -417,8 +446,35 @@ document.addEventListener('DOMContentLoaded', () => {
         if (nextIndex !== currentIndex) {
             e.preventDefault();
             tiles[nextIndex].focus();
+
+            // Подгружаем ещё, если фокус близко к концу
+            if (nextIndex > tiles.length - 5 && hasMore && !isLoading) {
+                renderChannelBatch();
+            }
         }
     });
+
+    // ====================
+    // MAIN RENDER FUNCTION
+    // ====================
+    async function renderChannels() {
+        loadingEl.classList.remove('hidden');
+        errorEl.classList.add('hidden');
+        channelsGrid.innerHTML = '';
+
+        try {
+            allChannels = await fetchChannels();
+            startIndex = 0;
+            hasMore = true;
+            displayedChannels = [];
+            renderChannelBatch();
+            setupInfiniteScroll();
+        } catch (err) {
+            console.error('❌ Не удалось загрузить каналы:', err);
+            loadingEl.classList.add('hidden');
+            errorEl.classList.remove('hidden');
+        }
+    }
 
     // ====================
     // EVENT LISTENERS

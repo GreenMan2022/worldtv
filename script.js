@@ -26,7 +26,9 @@ document.addEventListener('DOMContentLoaded', () => {
         }
 
         try {
-            const response = await fetch('https://iptv-org.github.io/iptv/index.m3u8');
+            const proxyUrl = 'https://api.allorigins.win/raw?url=';
+            const targetUrl = 'https://iptv-org.github.io/iptv/index.m3u8';
+            const response = await fetch(proxyUrl + encodeURIComponent(targetUrl));
             if (!response.ok) throw new Error(`Ошибка при получении данных (${response.status})`);
 
             const data = await response.text();

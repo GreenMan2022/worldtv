@@ -5,6 +5,8 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>World TV Channels | M3U Loader</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Подключаем hls.js для воспроизведения HLS-потоков -->
+    <script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
     <style>
         * {
             margin: 0;
@@ -478,18 +480,13 @@
         
         .video-player {
             width: 100%;
-            height: 0;
-            padding-bottom: 56.25%; /* 16:9 aspect ratio */
+            background: #000;
             position: relative;
         }
-        
-        .video-player iframe {
-            position: absolute;
-            top: 0;
-            left: 0;
+
+        #videoPlayerElement {
             width: 100%;
-            height: 100%;
-            border: none;
+            background: #000;
         }
         
         .loading {
@@ -678,6 +675,7 @@
         </div>
     </main>
 
+    <!-- Модальное окно с плеером -->
     <div class="modal" id="playerModal">
         <div class="modal-content">
             <div class="modal-header">
@@ -685,9 +683,7 @@
                 <button class="close-btn" id="closeModal">&times;</button>
             </div>
             <div class="modal-body">
-                <div class="video-player" id="videoPlayer">
-                    <iframe id="playerFrame" src="" allowfullscreen></iframe>
-                </div>
+                <video id="videoPlayerElement" controls></video>
             </div>
         </div>
     </div>
@@ -750,7 +746,7 @@
         const loadingIndicator = document.getElementById('loadingIndicator');
         const playerModal = document.getElementById('playerModal');
         const modalTitle = document.getElementById('modalTitle');
-        const playerFrame = document.getElementById('playerFrame');
+        const videoPlayerElement = document.getElementById('videoPlayerElement');
         const closeModal = document.getElementById('closeModal');
         
         // Данные приложения
@@ -820,7 +816,8 @@
         // Модальное окно
         closeModal.addEventListener('click', function() {
             playerModal.style.display = 'none';
-            playerFrame.src = '';
+            videoPlayerElement.pause();
+            videoPlayerElement.src = '';
         });
         
         // Функция загрузки M3U файла
@@ -968,8 +965,34 @@
         // Функция открытия плеера
         function openPlayer(name, url) {
             modalTitle.textContent = name;
-            playerFrame.src = `https://player.infomaniak.com/?channel=${encodeURIComponent(url)}`;
             playerModal.style.display = 'flex';
+
+            // Очистка предыдущего источника
+            videoPlayerElement.src = '';
+            videoPlayerElement.load();
+
+            if (Hls.isSupported()) {
+                const hls = new Hls();
+                hls.loadSource(url);
+                hls.attachMedia(videoPlayerElement);
+                hls.on(Hls.Events.MANIFEST_PARSED, function() {
+                    videoPlayerElement.play().catch(e => console.log("Autoplay blocked:", e));
+                });
+                hls.on(Hls.Events.ERROR, function(event, data) {
+                    if (data.fatal) {
+                        console.error("HLS fatal error:", data);
+                        alert("Ошибка воспроизведения потока: " + data.type);
+                    }
+                });
+            } else if (videoPlayerElement.canPlayType('application/vnd.apple.mpegurl')) {
+                // Для Safari
+                videoPlayerElement.src = url;
+                videoPlayerElement.addEventListener('loadedmetadata', function() {
+                    videoPlayerElement.play().catch(e => console.log("Autoplay blocked:", e));
+                });
+            } else {
+                alert('Ваш браузер не поддерживает воспроизведение HLS-потоков.');
+            }
         }
         
         // Функция получения иконки для группы
@@ -986,25 +1009,25 @@
             return 'fa-tv';
         }
         
-        // Демо-данные для примера (в реальном приложении будут загружаться из M3U)
+        // Демо-данные с РЕАЛЬНЫМИ HLS-потоками
         const demoM3UContent = `#EXTM3U
-#EXTINF:-1 tvg-id="1" tvg-name="BBC World News" tvg-logo="https://i.imgur.com/8aJcCxW.png" group-title="News" tvg-country="UK",BBC World News
-https://example.com/stream1
-#EXTINF:-1 tvg-id="2" tvg-name="HBO" tvg-logo="https://i.imgur.com/9Q7Wz4q.png" group-title="Movies" tvg-country="USA",HBO
-https://example.com/stream2
-#EXTINF:-1 tvg-id="3" tvg-name="Eurosport" tvg-logo="https://i.imgur.com/5XwW6bq.png" group-title="Sports" tvg-country="Europe",Eurosport
-https://example.com/stream3
-#EXTINF:-1 tvg-id="4" tvg-name="France 24" tvg-logo="https://i.imgur.com/3QjY7rR.png" group-title="News" tvg-country="France",France 24
-https://example.com/stream4
-#EXTINF:-1 tvg-id="5" tvg-name="NHK World" tvg-logo="https://i.imgur.com/2QwW1xR.png" group-title="News" tvg-country="Japan",NHK World
-https://example.com/stream5
-#EXTINF:-1 tvg-id="6" tvg-name="MTV" tvg-logo="https://i.imgur.com/7aJbWcX.png" group-title="Music" tvg-country="International",MTV
-https://example.com/stream6
-#EXTINF:-1 tvg-id="7" tvg-name="Cartoon Network" tvg-logo="https://i.imgur.com/4XxW3bR.png" group-title="Kids" tvg-country="USA",Cartoon Network
-https://example.com/stream7
-#EXTINF:-1 tvg-id="8" tvg-name="Discovery" tvg-logo="https://i.imgur.com/6YyW5cZ.png" group-title="Documentary" tvg-country="USA",Discovery
-https://example.com/stream8`;
-        
+#EXTINF:-1 tvg-id="1" tvg-name="BBC News (Test)" tvg-logo="https://i.imgur.com/8aJcCxW.png" group-title="News" tvg-country="UK",BBC News
+https://cph-p2p-msl.akamaized.net/hls/live/2000341/test/master.m3u8
+#EXTINF:-1 tvg-id="2" tvg-name="Télé-Québec (Test)" tvg-logo="https://i.imgur.com/9Q7Wz4q.png" group-title="Movies" tvg-country="Canada",Télé-Québec
+https://mnmedias.api.telequebec.tv/m3u8/29880.m3u8
+#EXTINF:-1 tvg-id="3" tvg-name="Big Buck Bunny (Test)" tvg-logo="https://i.imgur.com/5XwW6bq.png" group-title="Sports" tvg-country="Global",Big Buck Bunny
+https://test-streams.mux.dev/x36xhzz/x36xhzz.m3u8
+#EXTINF:-1 tvg-id="4" tvg-name="France 24 (Test)" tvg-logo="https://i.imgur.com/3QjY7rR.png" group-title="News" tvg-country="France",France 24
+https://static.france24.com/live/F24_EN_LO_HLS/live_web.m3u8
+#EXTINF:-1 tvg-id="5" tvg-name="NASA TV (Test)" tvg-logo="https://i.imgur.com/2QwW1xR.png" group-title="Documentary" tvg-country="USA",NASA TV
+https://ntv1.akamaized.net/hls/live/2014559/NTV1/master_2000.m3u8
+#EXTINF:-1 tvg-id="6" tvg-name="MTV Classic (Test)" tvg-logo="https://i.imgur.com/7aJbWcX.png" group-title="Music" tvg-country="International",MTV Classic
+https://stream.mtv.fi/mtv_classic/playlist.m3u8
+#EXTINF:-1 tvg-id="7" tvg-name="Cartoon Network (Test)" tvg-logo="https://i.imgur.com/4XxW3bR.png" group-title="Kids" tvg-country="USA",Cartoon Network
+https://cph-p2p-msl.akamaized.net/hls/live/2000341/test/master.m3u8
+#EXTINF:-1 tvg-id="8" tvg-name="Discovery Test" tvg-logo="https://i.imgur.com/6YyW5cZ.png" group-title="Documentary" tvg-country="USA",Discovery Test
+https://test-streams.mux.dev/x36xhzz/x36xhzz.m3u8`;
+
         // Для демонстрации загружаем демо-данные
         setTimeout(() => {
             parseM3UContent(demoM3UContent);

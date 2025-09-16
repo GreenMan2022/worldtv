@@ -53,16 +53,18 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     // ====================
-    // FETCH CHANNELS
+    // FETCH CHANNELS — С ФОЛЛБЭКОМ
     // ====================
     async function fetchChannels() {
         console.log('🔍 Начинаем загрузку каналов...');
 
-        // Пробуем прокси 1
+        // Пробуем прокси 1: corsproxy.io
         try {
             const proxyUrl = 'https://corsproxy.io/?';
             const targetUrl = 'https://iptv-org.github.io/iptv/index.m3u8';
             const fullUrl = proxyUrl + encodeURIComponent(targetUrl);
+
+            console.log('📡 Пробуем прокси 1 (corsproxy.io):', fullUrl);
 
             const response = await fetch(fullUrl, {
                 headers: { 'Accept': 'text/plain' }
@@ -72,14 +74,40 @@ document.addEventListener('DOMContentLoaded', () => {
 
             const data = await response.text();
             const channels = parseM3U(data);
-            const blacklist = getBlacklist();
             const filtered = channels.filter(channel => !isBlacklisted(channel.url));
 
-            console.log(`✅ Успешно загружено ${channels.length} каналов, после фильтрации: ${filtered.length}`);
-            return filtered;
-
+            if (filtered.length > 0) {
+                console.log(`✅ Успешно загружено ${channels.length} каналов, после фильтрации: ${filtered.length}`);
+                return filtered;
+            }
         } catch (err) {
-            console.warn('⚠️ Прокси не сработал:', err.message);
+            console.warn('⚠️ Прокси 1 не сработал:', err.message);
+        }
+
+        // Пробуем прокси 2: api.codetabs.com
+        try {
+            const proxyUrl = 'https://api.codetabs.com/v1/proxy?quest=';
+            const targetUrl = 'https://iptv-org.github.io/iptv/index.m3u8';
+            const fullUrl = proxyUrl + encodeURIComponent(targetUrl);
+
+            console.log('📡 Пробуем прокси 2 (codetabs):', fullUrl);
+
+            const response = await fetch(fullUrl, {
+                headers: { 'Accept': 'text/plain' }
+            });
+
+            if (!response.ok) throw new Error(`HTTP ${response.status}`);
+
+            const data = await response.text();
+            const channels = parseM3U(data);
+            const filtered = channels.filter(channel => !isBlacklisted(channel.url));
+
+            if (filtered.length > 0) {
+                console.log(`✅ Успешно загружено ${channels.length} каналов через codetabs`);
+                return filtered;
+            }
+        } catch (err) {
+            console.warn('⚠️ Прокси 2 не сработал:', err.message);
         }
 
         // Пробуем локальный файл
@@ -101,15 +129,18 @@ document.addEventListener('DOMContentLoaded', () => {
             }
 
             const channels = parseM3U(data);
-            const blacklist = getBlacklist();
             const filtered = channels.filter(channel => !isBlacklisted(channel.url));
 
-            console.log(`✅ Успешно загружено ${channels.length} каналов из локального файла, после фильтрации: ${filtered.length}`);
-            return filtered;
+            if (filtered.length > 0) {
+                console.log(`✅ Успешно загружено ${channels.length} каналов из локального файла`);
+                return filtered;
+            } else {
+                throw new Error('После фильтрации не осталось каналов');
+            }
 
         } catch (err) {
             console.error('❌ Локальный файл не сработал:', err.message);
-            throw new Error('Ни прокси, ни локальный файл не вернули каналы. Проверьте файл channels.m3u8.');
+            throw new Error('Ни один источник не вернул каналы. Проверьте файл channels.m3u8.');
         }
     }
 
@@ -454,7 +485,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     // ====================
-    // CLOSE PLAYER — ВЫХОД ИЗ ПОЛНОЭКРАННОГО РЕЖИМА
+    // CLOSE PLAYER — ТОЛЬКО ПО ESC
     // ====================
     function closePlayer() {
         // Выходим из полноэкранного режима
@@ -470,7 +501,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
         videoContainer.classList.remove('fullscreen-player');
         document.body.classList.remove('player-active');
-        videoContainer.style.display = 'none'; // Скрываем плеер полностью
+        videoContainer.style.display = 'none';
     }
 
     // ====================
@@ -549,13 +580,20 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 
     // ====================
-    // EVENT LISTENERS
+    // FULLSCREEN CHANGE HANDLER
     // ====================
-    retryBtn.addEventListener('click', renderChannels);
-    closePlayerBtn.addEventListener('click', closePlayer);
+    document.addEventListener('fullscreenchange', handleFullscreenChange);
+    document.addEventListener('webkitfullscreenchange', handleFullscreenChange);
+    document.addEventListener('msfullscreenchange', handleFullscreenChange);
+
+    function handleFullscreenChange() {
+        if (!document.fullscreenElement && !document.webkitFullscreenElement && !document.msFullscreenElement) {
+            closePlayer();
+        }
+    }
 
     // ====================
-    // INITIALIZE
+    // MAIN RENDER FUNCTION
     // ====================
     async function renderChannels() {
         loadingEl.classList.remove('hidden');
@@ -576,5 +614,14 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
+    // ====================
+    // EVENT LISTENERS
+    // ====================
+    retryBtn.addEventListener('click', renderChannels);
+    // ❌ Убрали: closePlayerBtn.addEventListener('click', closePlayer);
+
+    // ====================
+    // INITIALIZE
+    // ====================
     renderChannels();
 });

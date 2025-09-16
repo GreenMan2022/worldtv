@@ -1,41 +1,757 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="ru">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>IPTV Channels</title>
-    <link rel="stylesheet" href="styles.css">
-    <script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
+    <title>📺 IPTV Player</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        :root {
+            --primary-color: #3498db;
+            --secondary-color: #2c3e50;
+            --accent-color: #e74c3c;
+            --background-dark: #1a1a1a;
+            --background-light: #2d2d2d;
+            --text-color: #f5f5f5;
+            --text-muted: #aaa;
+            --success-color: #2ecc71;
+            --warning-color: #f39c12;
+            --border-radius: 8px;
+            --transition: all 0.3s ease;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+
+        body {
+            background-color: var(--background-dark);
+            color: var(--text-color);
+            line-height: 1.6;
+            overflow-x: hidden;
+        }
+
+        #app {
+            max-width: 1600px;
+            margin: 0 auto;
+            padding: 0 15px;
+        }
+
+        /* Header Styles */
+        header {
+            background: linear-gradient(to right, var(--secondary-color), var(--background-light));
+            padding: 20px;
+            border-bottom: 1px solid #333;
+            border-radius: 0 0 var(--border-radius) var(--border-radius);
+            margin-bottom: 20px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: space-between;
+            align-items: center;
+            gap: 15px;
+        }
+
+        .header-left {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+
+        h1 {
+            font-size: 28px;
+            color: var(--primary-color);
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        h1 i {
+            color: var(--accent-color);
+        }
+
+        /* Search Container */
+        #search-container {
+            position: relative;
+            flex: 1;
+            min-width: 250px;
+            max-width: 500px;
+        }
+
+        #search {
+            width: 100%;
+            padding: 12px 15px 12px 45px;
+            border: none;
+            border-radius: 30px;
+            background-color: rgba(255, 255, 255, 0.1);
+            color: var(--text-color);
+            font-size: 16px;
+            transition: var(--transition);
+            backdrop-filter: blur(10px);
+        }
+
+        #search:focus {
+            outline: none;
+            background-color: rgba(255, 255, 255, 0.15);
+            box-shadow: 0 0 0 2px var(--primary-color);
+        }
+
+        #search-container i {
+            position: absolute;
+            left: 15px;
+            top: 50%;
+            transform: translateY(-50%);
+            color: var(--text-muted);
+        }
+
+        /* Categories */
+        #categories {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            margin-bottom: 25px;
+            justify-content: center;
+            padding: 0 10px;
+        }
+
+        #categories button {
+            padding: 10px 20px;
+            border: none;
+            border-radius: 30px;
+            background-color: var(--background-light);
+            color: var(--text-color);
+            cursor: pointer;
+            transition: var(--transition);
+            font-weight: 500;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        #categories button:hover {
+            background-color: var(--primary-color);
+            transform: translateY(-2px);
+        }
+
+        #categories button.active {
+            background-color: var(--primary-color);
+            box-shadow: 0 4px 8px rgba(52, 152, 219, 0.3);
+        }
+
+        #categories button i {
+            font-size: 14px;
+        }
+
+        /* Channels Grid */
+        .channels-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+            gap: 20px;
+            margin-bottom: 30px;
+        }
+
+        .channel-card {
+            background-color: var(--background-light);
+            border-radius: var(--border-radius);
+            overflow: hidden;
+            transition: var(--transition);
+            cursor: pointer;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+            position: relative;
+        }
+
+        .channel-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 8px 16px rgba(0, 0, 0, 0.2);
+        }
+
+        .channel-thumb {
+            width: 100%;
+            height: 160px;
+            background-color: #333;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            position: relative;
+        }
+
+        .channel-thumb i {
+            font-size: 50px;
+            color: var(--text-muted);
+        }
+
+        .channel-thumb img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+
+        .channel-info {
+            padding: 15px;
+        }
+
+        .channel-name {
+            font-weight: 600;
+            font-size: 16px;
+            margin-bottom: 5px;
+            display: -webkit-box;
+            -webkit-line-clamp: 1;
+            -webkit-box-orient: vertical;
+            overflow: hidden;
+        }
+
+        .channel-category {
+            color: var(--text-muted);
+            font-size: 14px;
+            display: flex;
+            align-items: center;
+            gap: 5px;
+        }
+
+        .channel-actions {
+            display: flex;
+            justify-content: space-between;
+            margin-top: 12px;
+            padding-top: 12px;
+            border-top: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .channel-actions button {
+            background: none;
+            border: none;
+            color: var(--text-muted);
+            cursor: pointer;
+            transition: var(--transition);
+            padding: 5px;
+            border-radius: 50%;
+        }
+
+        .channel-actions button:hover {
+            color: var(--primary-color);
+            background-color: rgba(52, 152, 219, 0.1);
+        }
+
+        .favorite-btn.active {
+            color: var(--accent-color);
+        }
+
+        /* Video Container */
+        #video-container {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.9);
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            z-index: 1000;
+            opacity: 0;
+            visibility: hidden;
+            transition: var(--transition);
+        }
+
+        #video-container.active {
+            opacity: 1;
+            visibility: visible;
+        }
+
+        #close-player {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            background: var(--accent-color);
+            border: none;
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            color: white;
+            font-size: 20px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: var(--transition);
+            z-index: 1001;
+        }
+
+        #close-player:hover {
+            transform: rotate(90deg);
+            background: #ff6b6b;
+        }
+
+        #now-playing {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            background: rgba(0, 0, 0, 0.7);
+            padding: 8px 15px;
+            border-radius: var(--border-radius);
+            font-size: 16px;
+            z-index: 1001;
+        }
+
+        #current-channel-name {
+            color: var(--primary-color);
+        }
+
+        #videoPlayer {
+            width: 80%;
+            max-width: 1200px;
+            max-height: 80vh;
+            border-radius: var(--border-radius);
+            overflow: hidden;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+        }
+
+        /* Loading and Error States */
+        #loading, #error {
+            text-align: center;
+            padding: 40px;
+            font-size: 18px;
+        }
+
+        #loading {
+            color: var(--primary-color);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 20px;
+        }
+
+        .spinner {
+            width: 50px;
+            height: 50px;
+            border: 5px solid rgba(52, 152, 219, 0.2);
+            border-radius: 50%;
+            border-top-color: var(--primary-color);
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+            to {
+                transform: rotate(360deg);
+            }
+        }
+
+        #error {
+            color: var(--accent-color);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 20px;
+        }
+
+        #retry {
+            background-color: var(--accent-color);
+            color: white;
+            border: none;
+            padding: 10px 25px;
+            border-radius: 30px;
+            cursor: pointer;
+            font-weight: 500;
+            transition: var(--transition);
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        #retry:hover {
+            background-color: #ff6b6b;
+            transform: translateY(-2px);
+        }
+
+        .hidden {
+            display: none;
+        }
+
+        /* Responsive Design */
+        @media (max-width: 768px) {
+            header {
+                flex-direction: column;
+                text-align: center;
+            }
+            
+            #search-container {
+                width: 100%;
+                max-width: 100%;
+            }
+            
+            .channels-grid {
+                grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+            }
+            
+            #videoPlayer {
+                width: 95%;
+            }
+            
+            #categories {
+                overflow-x: auto;
+                padding-bottom: 10px;
+                justify-content: flex-start;
+            }
+            
+            #categories button {
+                flex-shrink: 0;
+            }
+        }
+
+        @media (max-width: 480px) {
+            h1 {
+                font-size: 24px;
+            }
+            
+            .channels-grid {
+                grid-template-columns: 1fr;
+            }
+            
+            .channel-thumb {
+                height: 140px;
+            }
+        }
+
+        /* Favorites indicator */
+        .favorites-indicator {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            background: var(--accent-color);
+            width: 60px;
+            height: 60px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-size: 24px;
+            cursor: pointer;
+            box-shadow: 0 4px 12px rgba(231, 76, 60, 0.3);
+            transition: var(--transition);
+            z-index: 100;
+        }
+
+        .favorites-indicator:hover {
+            transform: scale(1.1);
+        }
+
+        .favorites-count {
+            position: absolute;
+            top: -5px;
+            right: -5px;
+            background: var(--primary-color);
+            color: white;
+            width: 24px;
+            height: 24px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 12px;
+            font-weight: bold;
+        }
+    </style>
 </head>
 <body>
     <div id="app">
         <header>
-            <h1>📺 IPTV Channels</h1>
+            <div class="header-left">
+                <h1><i class="fas fa-tv"></i> IPTV Player</h1>
+            </div>
             <div id="search-container">
+                <i class="fas fa-search"></i>
                 <input type="text" id="search" placeholder="Поиск канала...">
             </div>
         </header>
 
         <div id="categories">
-            <button data-category="all" class="active">Все</button>
-            <button data-category="news">Новости</button>
-            <button data-category="sport">Спорт</button>
-            <button data-category="movies">Фильмы</button>
-            <button data-category="kids">Детям</button>
+            <button data-category="all" class="active">
+                <i class="fas fa-globe"></i> Все
+            </button>
+            <button data-category="news">
+                <i class="fas fa-newspaper"></i> Новости
+            </button>
+            <button data-category="sport">
+                <i class="fas fa-basketball-ball"></i> Спорт
+            </button>
+            <button data-category="movies">
+                <i class="fas fa-film"></i> Фильмы
+            </button>
+            <button data-category="kids">
+                <i class="fas fa-child"></i> Детям
+            </button>
         </div>
 
-        <div id="loading" class="hidden">Загрузка каналов...</div>
-        <div id="error" class="hidden">Ошибка загрузки. <button id="retry">Повторить</button></div>
+        <div id="loading">
+            <div class="spinner"></div>
+            <div>Загрузка каналов...</div>
+        </div>
+        
+        <div id="error" class="hidden">
+            <i class="fas fa-exclamation-circle" style="font-size: 48px;"></i>
+            <div>Ошибка загрузки. Проверьте подключение к интернету.</div>
+            <button id="retry"><i class="fas fa-redo"></i> Повторить</button>
+        </div>
 
         <div id="channels-grid" class="channels-grid"></div>
 
         <div id="video-container">
-            <button id="close-player" title="Закрыть">✕</button>
+            <button id="close-player" title="Закрыть"><i class="fas fa-times"></i></button>
             <div id="now-playing">Сейчас смотрят: <strong id="current-channel-name">-</strong></div>
             <video id="videoPlayer" controls></video>
         </div>
+
+        <div class="favorites-indicator">
+            <i class="fas fa-star"></i>
+            <span class="favorites-count">0</span>
+        </div>
     </div>
 
-    <script src="script.js"></script>
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            // Элементы DOM
+            const categoriesEl = document.getElementById('categories');
+            const channelsGridEl = document.getElementById('channels-grid');
+            const searchInput = document.getElementById('search');
+            const videoContainer = document.getElementById('video-container');
+            const videoPlayer = document.getElementById('videoPlayer');
+            const closePlayerBtn = document.getElementById('close-player');
+            const currentChannelName = document.getElementById('current-channel-name');
+            const loadingEl = document.getElementById('loading');
+            const errorEl = document.getElementById('error');
+            const retryBtn = document.getElementById('retry');
+            const favoritesIndicator = document.querySelector('.favorites-indicator');
+            const favoritesCount = document.querySelector('.favorites-count');
+
+            // Состояние приложения
+            let channels = [];
+            let favorites = JSON.parse(localStorage.getItem('favorites')) || [];
+            let currentCategory = 'all';
+            let searchQuery = '';
+
+            // Инициализация
+            updateFavoritesCount();
+            loadChannels();
+
+            // Загрузка каналов
+            function loadChannels() {
+                loadingEl.classList.remove('hidden');
+                errorEl.classList.add('hidden');
+                channelsGridEl.innerHTML = '';
+
+                // В реальном приложении здесь был бы fetch запрос к API
+                setTimeout(() => {
+                    // Имитация загрузки данных
+                    channels = generateMockChannels();
+                    renderChannels();
+                    loadingEl.classList.add('hidden');
+                }, 1500);
+            }
+
+            // Генерация тестовых данных
+            function generateMockChannels() {
+                const categories = ['news', 'sport', 'movies', 'kids'];
+                const names = [
+                    'Первый канал', 'Россия 1', 'Матч ТВ', 'НТВ', 'Пятый канал',
+                    'РЕН ТВ', 'ТВ Центр', 'Карусель', 'СТС', 'ТНТ', 'РБК', 'Дисней',
+                    'Eurosport 1', 'National Geographic', 'Discovery Channel'
+                ];
+                
+                return Array.from({ length: 25 }, (_, i) => {
+                    const category = categories[Math.floor(Math.random() * categories.length)];
+                    return {
+                        id: i + 1,
+                        name: `${names[i % names.length]} ${Math.floor(i / names.length) + 1 || ''}`.trim(),
+                        category: category,
+                        url: `https://example.com/stream${i + 1}.m3u8`,
+                        logo: Math.random() > 0.3 ? `https://picsum.photos/200/120?random=${i + 1}` : null,
+                        isFavorite: favorites.includes(i + 1)
+                    };
+                });
+            }
+
+            // Отображение каналов
+            function renderChannels() {
+                channelsGridEl.innerHTML = '';
+                
+                const filteredChannels = channels.filter(channel => {
+                    const matchesCategory = currentCategory === 'all' || channel.category === currentCategory;
+                    const matchesSearch = channel.name.toLowerCase().includes(searchQuery.toLowerCase());
+                    return matchesCategory && matchesSearch;
+                });
+                
+                if (filteredChannels.length === 0) {
+                    channelsGridEl.innerHTML = `
+                        <div class="no-channels">
+                            <i class="fas fa-tv" style="font-size: 64px; opacity: 0.5; margin-bottom: 20px;"></i>
+                            <h2>Каналы не найдены</h2>
+                            <p>Попробуйте изменить параметры поиска или выбрать другую категорию</p>
+                        </div>
+                    `;
+                    return;
+                }
+                
+                filteredChannels.forEach(channel => {
+                    const channelCard = document.createElement('div');
+                    channelCard.className = 'channel-card';
+                    channelCard.innerHTML = `
+                        <div class="channel-thumb">
+                            ${channel.logo ? 
+                                `<img src="${channel.logo}" alt="${channel.name}">` : 
+                                `<i class="fas fa-tv"></i>`
+                            }
+                        </div>
+                        <div class="channel-info">
+                            <div class="channel-name">${channel.name}</div>
+                            <div class="channel-category">
+                                <i class="fas fa-tag"></i> 
+                                ${getCategoryName(channel.category)}
+                            </div>
+                            <div class="channel-actions">
+                                <button class="favorite-btn ${channel.isFavorite ? 'active' : ''}" data-id="${channel.id}">
+                                    <i class="fas fa-star"></i>
+                                </button>
+                                <button class="play-btn" data-id="${channel.id}">
+                                    <i class="fas fa-play"></i>
+                                </button>
+                            </div>
+                        </div>
+                    `;
+                    channelsGridEl.appendChild(channelCard);
+                });
+                
+                // Добавляем обработчики событий
+                document.querySelectorAll('.play-btn').forEach(btn => {
+                    btn.addEventListener('click', function() {
+                        const channelId = parseInt(this.getAttribute('data-id'));
+                        playChannel(channelId);
+                    });
+                });
+                
+                document.querySelectorAll('.favorite-btn').forEach(btn => {
+                    btn.addEventListener('click', function() {
+                        const channelId = parseInt(this.getAttribute('data-id'));
+                        toggleFavorite(channelId);
+                    });
+                });
+            }
+
+            // Получение имени категории
+            function getCategoryName(categoryKey) {
+                const categories = {
+                    'all': 'Все',
+                    'news': 'Новости',
+                    'sport': 'Спорт',
+                    'movies': 'Фильмы',
+                    'kids': 'Детям'
+                };
+                return categories[categoryKey] || categoryKey;
+            }
+
+            // Воспроизведение канала
+            function playChannel(channelId) {
+                const channel = channels.find(c => c.id === channelId);
+                if (!channel) return;
+                
+                currentChannelName.textContent = channel.name;
+                videoContainer.classList.add('active');
+                
+                if (Hls.isSupported()) {
+                    const hls = new Hls();
+                    hls.loadSource(channel.url);
+                    hls.attachMedia(videoPlayer);
+                    hls.on(Hls.Events.MANIFEST_PARSED, function() {
+                        videoPlayer.play();
+                    });
+                } else if (videoPlayer.canPlayType('application/vnd.apple.mpegurl')) {
+                    videoPlayer.src = channel.url;
+                    videoPlayer.addEventListener('loadedmetadata', function() {
+                        videoPlayer.play();
+                    });
+                }
+            }
+
+            // Закрытие видеоплеера
+            closePlayerBtn.addEventListener('click', function() {
+                videoContainer.classList.remove('active');
+                videoPlayer.pause();
+                videoPlayer.src = '';
+            });
+
+            // Добавление/удаление из избранного
+            function toggleFavorite(channelId) {
+                const index = favorites.indexOf(channelId);
+                
+                if (index === -1) {
+                    favorites.push(channelId);
+                } else {
+                    favorites.splice(index, 1);
+                }
+                
+                // Сохраняем в localStorage
+                localStorage.setItem('favorites', JSON.stringify(favorites));
+                
+                // Обновляем состояние в channels
+                const channelIndex = channels.findIndex(c => c.id === channelId);
+                if (channelIndex !== -1) {
+                    channels[channelIndex].isFavorite = index === -1;
+                }
+                
+                // Обновляем UI
+                updateFavoritesCount();
+                renderChannels();
+            }
+
+            // Обновление счетчика избранного
+            function updateFavoritesCount() {
+                favoritesCount.textContent = favorites.length;
+            }
+
+            // Обработчики событий для категорий
+            categoriesEl.addEventListener('click', function(e) {
+                if (e.target.tagName === 'BUTTON' || e.target.parentElement.tagName === 'BUTTON') {
+                    const button = e.target.tagName === 'BUTTON' ? e.target : e.target.parentElement;
+                    const category = button.getAttribute('data-category');
+                    
+                    if (category) {
+                        currentCategory = category;
+                        document.querySelectorAll('#categories button').forEach(btn => {
+                            btn.classList.remove('active');
+                        });
+                        button.classList.add('active');
+                        renderChannels();
+                    }
+                }
+            });
+
+            // Поиск
+            searchInput.addEventListener('input', function() {
+                searchQuery = this.value;
+                renderChannels();
+            });
+
+            // Повторная попытка загрузки
+            retryBtn.addEventListener('click', loadChannels);
+
+            // Показать избранное
+            favoritesIndicator.addEventListener('click', function() {
+                currentCategory = 'all';
+                searchQuery = '';
+                searchInput.value = '';
+                
+                document.querySelectorAll('#categories button').forEach(btn => {
+                    btn.classList.remove('active');
+                });
+                document.querySelector('[data-category="all"]').classList.add('active');
+                
+                renderChannels();
+            });
+        });
+    </script>
+    <script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
 </body>
 </html>

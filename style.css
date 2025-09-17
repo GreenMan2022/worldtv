@@ -1,371 +1,241 @@
-// DOM элементы
-const channelsContainer = document.getElementById('channelsContainer');
-const playerModal = document.getElementById('playerModal');
-const videoPlayerElement = document.getElementById('videoPlayerElement');
-const closeModal = document.getElementById('closeModal');
-const initialLoader = document.getElementById('initialLoader');
-const toastContainer = document.getElementById('toastContainer');
-
-// Глобальные переменные
-let channels = [];
-let currentMiniPlayer = null; // Текущий активный мини-плеер
-let miniPlayers = new Map();  // Кэш мини-плееров по URL
-
-// Закрытие модального окна
-closeModal.addEventListener('click', function() {
-    playerModal.style.display = 'none';
-    videoPlayerElement.pause();
-    videoPlayerElement.src = '';
-});
-
-// Показать уведомление
-function showToast(message) {
-    const toast = document.createElement('div');
-    toast.className = 'toast';
-    toast.textContent = message;
-    toastContainer.appendChild(toast);
-    
-    setTimeout(() => {
-        toast.remove();
-    }, 3000);
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
 }
 
-// Загрузка плейлиста
-function loadM3UFromUrl(url) {
-    fetch(url)
-        .then(response => {
-            if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
-            return response.text();
-        })
-        .then(data => {
-            parseM3UContent(data);
-            initialLoader.style.display = 'none';
-        })
-        .catch(error => {
-            console.error('Ошибка загрузки:', error);
-            showToast('Ошибка загрузки каналов');
-        });
+body {
+    background: #000;
+    color: #fff;
+    font-family: Arial, sans-serif;
+    overflow-x: hidden;
 }
 
-// Парсинг M3U
-function parseM3UContent(content) {
-    channels = [];
-    const lines = content.split('\n');
-    
-    for (let i = 0; i < lines.length; i++) {
-        if (lines[i].startsWith('#EXTINF:')) {
-            const infoLine = lines[i];
-            const urlLine = lines[i + 1];
-            
-            if (urlLine && !urlLine.startsWith('#')) {
-                let name = infoLine.split(',')[1] || 'Канал';
-                name = name.trim();
-                
-                const groupMatch = infoLine.match(/group-title="([^"]*)"/);
-                const group = groupMatch ? groupMatch[1] : 'Other';
-                
-                const logoMatch = infoLine.match(/tvg-logo="([^"]*)"/);
-                const logo = logoMatch ? logoMatch[1] : '';
-                
-                channels.push({
-                    name,
-                    url: urlLine.trim(),
-                    group,
-                    logo
-                });
-            }
-        }
-    }
-    
-    filterBlacklistedChannels();
-    renderChannels(channels);
+/* Загрузочный экран */
+.loader {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: #000;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 9999;
 }
 
-// Фильтрация по чёрному списку
-function filterBlacklistedChannels() {
-    const blacklist = JSON.parse(localStorage.getItem('blacklist') || '[]');
-    const before = channels.length;
-    channels = channels.filter(channel => !blacklist.includes(channel.url));
-    console.log(`Отфильтровано ${before - channels.length} каналов по чёрному списку`);
+.loader-content {
+    text-align: center;
 }
 
-// Создание мини-плеера для канала
-function createMiniPlayer(url) {
-    if (miniPlayers.has(url)) {
-        return miniPlayers.get(url);
-    }
-
-    const container = document.createElement('div');
-    container.className = 'mini-player';
-    
-    const video = document.createElement('video');
-    video.muted = true; // Мини-плеер без звука
-    video.playsInline = true;
-    video.loop = true;
-
-    container.appendChild(video);
-    miniPlayers.set(url, container);
-
-    // Инициализация HLS
-    if (Hls.isSupported()) {
-        const hls = new Hls();
-        hls.loadSource(url);
-        hls.attachMedia(video);
-        hls.on(Hls.Events.ERROR, function(event, data) {
-            if (data.fatal) {
-                handleStreamError(url, container);
-            }
-        });
-    } else if (video.canPlayType('application/vnd.apple.mpegurl')) {
-        video.src = url;
-        video.addEventListener('error', () => {
-            handleStreamError(url, container);
-        });
-    }
-
-    return container;
+.loader-content i {
+    font-size: 48px;
+    color: #ff375f;
+    margin-bottom: 20px;
 }
 
-// Обработка ошибки потока
-function handleStreamError(url, container) {
-    showToast('Канал недоступен');
-    addToBlacklist(url);
-    
-    // Удаляем из всех карточек
-    document.querySelectorAll('.channel-card').forEach(card => {
-        const miniPlayer = card.querySelector('.mini-player');
-        if (miniPlayer && miniPlayer.contains(container.querySelector('video'))) {
-            miniPlayer.style.display = 'none';
-            const icon = card.querySelector('.channel-media i');
-            if (icon) icon.style.display = 'block';
-        }
-    });
+.loader-content p {
+    font-size: 18px;
+    color: #aaa;
 }
 
-// Добавление в чёрный список
-function addToBlacklist(url) {
-    let blacklist = JSON.parse(localStorage.getItem('blacklist') || '[]');
-    if (!blacklist.includes(url)) {
-        blacklist.push(url);
-        localStorage.setItem('blacklist', JSON.stringify(blacklist));
-        console.log(`Канал добавлен в чёрный список:`, url);
-    }
+/* Сетка каналов */
+.channels-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+    gap: 20px;
+    padding: 20px;
 }
 
-// Отрисовка каналов
-function renderChannels(channelsToRender) {
-    channelsContainer.innerHTML = '';
-    
-    channelsToRender.forEach(channel => {
-        const groupIcon = getGroupIcon(channel.group);
-        
-        const channelCard = document.createElement('div');
-        channelCard.className = 'channel-card';
-        channelCard.setAttribute('tabindex', '0');
-        
-        // Медиа-контейнер (логотип или мини-плеер)
-        const mediaContainer = document.createElement('div');
-        mediaContainer.className = 'channel-media';
-        
-        if (channel.logo) {
-            const img = document.createElement('img');
-            img.src = channel.logo;
-            img.alt = channel.name;
-            img.onerror = () => { img.style.display = 'none'; };
-            mediaContainer.appendChild(img);
-        }
-        
-        const icon = document.createElement('i');
-        icon.className = `fas ${groupIcon}`;
-        mediaContainer.appendChild(icon);
-        
-        // Мини-плеер (изначально скрыт)
-        const miniPlayer = createMiniPlayer(channel.url);
-        mediaContainer.appendChild(miniPlayer);
-        
-        // Информация о канале
-        const infoContainer = document.createElement('div');
-        infoContainer.className = 'channel-info';
-        infoContainer.innerHTML = `
-            <h3>${channel.name}</h3>
-            <p>${channel.group}</p>
-        `;
-        
-        channelCard.appendChild(mediaContainer);
-        channelCard.appendChild(infoContainer);
-        
-        // Фокус — показываем мини-плеер
-        channelCard.addEventListener('focus', function() {
-            // Скрываем предыдущий мини-плеер
-            if (currentMiniPlayer) {
-                currentMiniPlayer.style.display = 'none';
-                const prevIcon = currentMiniPlayer.parentElement.querySelector('i');
-                if (prevIcon) prevIcon.style.display = 'block';
-            }
-            
-            // Показываем текущий
-            miniPlayer.style.display = 'block';
-            icon.style.display = 'none';
-            currentMiniPlayer = miniPlayer;
-            
-            // Запускаем воспроизведение
-            const video = miniPlayer.querySelector('video');
-            if (video && video.paused) {
-                video.play().catch(e => console.log("Autoplay blocked in mini player:", e));
-            }
-        });
-        
-        // Блюр — скрываем мини-плеер
-        channelCard.addEventListener('blur', function() {
-            setTimeout(() => {
-                // Проверяем, что фокус не внутри этой же карточки
-                if (!channelCard.contains(document.activeElement)) {
-                    miniPlayer.style.display = 'none';
-                    icon.style.display = 'block';
-                    const video = miniPlayer.querySelector('video');
-                    if (video) video.pause();
-                }
-            }, 100);
-        });
-        
-        // Клик — открываем полноэкранный плеер
-        channelCard.addEventListener('click', function() {
-            openFullScreenPlayer(channel.name, channel.url);
-        });
-        
-        // Enter — открываем полноэкранный плеер
-        channelCard.addEventListener('keydown', function(e) {
-            if (e.key === 'Enter') {
-                e.preventDefault();
-                openFullScreenPlayer(channel.name, channel.url);
-            }
-        });
-        
-        channelsContainer.appendChild(channelCard);
-    });
-
-    // Фокус на первый канал
-    setTimeout(() => {
-        const firstCard = document.querySelector('.channel-card');
-        if (firstCard) firstCard.focus();
-    }, 500);
+/* Карточка канала */
+.channel-card {
+    background: rgba(255, 255, 255, 0.05);
+    border-radius: 12px;
+    overflow: hidden;
+    position: relative;
+    cursor: pointer;
+    transition: transform 0.2s;
+    outline: none;
+    /* Для пульта */
+    tabindex: 0;
+    height: 300px; /* Фиксированная высота для стабильного превью */
 }
 
-// Открытие полноэкранного плеера
-function openFullScreenPlayer(name, url) {
-    playerModal.style.display = 'flex';
-    videoPlayerElement.src = '';
-    videoPlayerElement.load();
-    videoPlayerElement.muted = false; // Включаем звук
+.channel-card:hover,
+.channel-card:focus {
+    transform: scale(1.03);
+    outline: 3px solid #ff375f;
+    outline-offset: 2px;
+}
 
-    if (Hls.isSupported()) {
-        const hls = new Hls();
-        hls.loadSource(url);
-        hls.attachMedia(videoPlayerElement);
-        hls.on(Hls.Events.MANIFEST_PARSED, () => {
-            videoPlayerElement.play().catch(e => console.log("Autoplay blocked:", e));
-        });
-        hls.on(Hls.Events.ERROR, function(event, data) {
-            if (data.fatal) {
-                showToast('Канал недоступен');
-                addToBlacklist(url);
-                playerModal.style.display = 'none';
-            }
-        });
-    } else if (videoPlayerElement.canPlayType('application/vnd.apple.mpegurl')) {
-        videoPlayerElement.src = url;
-        videoPlayerElement.addEventListener('loadedmetadata', () => {
-            videoPlayerElement.play().catch(e => console.log("Autoplay blocked:", e));
-        });
-        videoPlayerElement.addEventListener('error', () => {
-            showToast('Канал недоступен');
-            addToBlacklist(url);
-            playerModal.style.display = 'none';
-        });
+/* Контейнер для изображения или превью-плеера */
+.channel-media {
+    height: 170px;
+    position: relative;
+    background: linear-gradient(135deg, #333, #111);
+    overflow: hidden;
+}
+
+.channel-media img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.channel-media i {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    font-size: 60px;
+    color: #ff375f;
+}
+
+/* Мини-плеер внутри плитки */
+.mini-player {
+    width: 100%;
+    height: 100%;
+    background: #000;
+    position: absolute;
+    top: 0;
+    left: 0;
+    display: none;
+}
+
+.mini-player video {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+/* Информация о канале */
+.channel-info {
+    padding: 15px;
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    background: rgba(0, 0, 0, 0.7);
+    backdrop-filter: blur(5px);
+}
+
+.channel-info h3 {
+    font-size: 18px;
+    font-weight: 500;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    margin-bottom: 5px;
+    color: white;
+}
+
+.channel-info p {
+    font-size: 14px;
+    color: #aaa;
+    margin: 0;
+}
+
+/* Модальное окно плеера — ПОЛНЫЙ ЭКРАН */
+.modal {
+    display: none;
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: #000;
+    z-index: 1000;
+    align-items: center;
+    justify-content: center;
+    padding: 0;
+}
+
+.modal-content {
+    position: relative;
+    width: 100%;
+    height: 100%;
+    max-width: none;
+    margin: 0;
+}
+
+.close-btn {
+    position: absolute;
+    top: 20px;
+    right: 20px;
+    background: rgba(0, 0, 0, 0.7);
+    color: white;
+    border: none;
+    border-radius: 50%;
+    width: 50px;
+    height: 50px;
+    font-size: 24px;
+    cursor: pointer;
+    z-index: 10;
+    outline: none;
+    backdrop-filter: blur(5px);
+}
+
+.close-btn:focus {
+    outline: 3px solid #ff375f;
+}
+
+#videoPlayerElement {
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+    background: #000;
+}
+
+/* Уведомления (toast) */
+.toast-container {
+    position: fixed;
+    top: 20px;
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: 2000;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    pointer-events: none;
+}
+
+.toast {
+    background: rgba(0, 0, 0, 0.8);
+    color: white;
+    padding: 15px 25px;
+    border-radius: 8px;
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
+    backdrop-filter: blur(5px);
+    animation: fadeInOut 3s ease-in-out;
+    text-align: center;
+    font-size: 16px;
+    min-width: 280px;
+    pointer-events: auto;
+}
+
+@keyframes fadeInOut {
+    0% { opacity: 0; transform: translateY(-10px); }
+    10% { opacity: 1; transform: translateY(0); }
+    90% { opacity: 1; transform: translateY(0); }
+    100% { opacity: 0; transform: translateY(-10px); }
+}
+
+/* Адаптивность */
+@media (max-width: 600px) {
+    .channels-grid {
+        grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+        padding: 10px;
     }
 }
 
-// Иконка по группе
-function getGroupIcon(group) {
-    group = group.toLowerCase();
-    if (group.includes('news')) return 'fa-newspaper';
-    if (group.includes('sport')) return 'fa-futbol';
-    if (group.includes('movie')) return 'fa-film';
-    if (group.includes('music')) return 'fa-music';
-    if (group.includes('kid')) return 'fa-child';
-    if (group.includes('doc')) return 'fa-video';
-    return 'fa-tv';
-}
-
-// Навигация с пульта
-let currentFocusIndex = 0;
-
-function updateFocusableElements() {
-    return Array.from(document.querySelectorAll('.channel-card'));
-}
-
-function moveFocus(direction) {
-    const focusableElements = updateFocusableElements();
-    if (focusableElements.length === 0) return;
-
-    if (focusableElements[currentFocusIndex]) {
-        focusableElements[currentFocusIndex].blur();
+/* Улучшение для TV */
+@media (pointer: coarse) {
+    .channel-card {
+        min-height: 300px;
     }
 
-    switch(direction) {
-        case 'down':
-        case 'right':
-            currentFocusIndex = (currentFocusIndex + 1) % focusableElements.length;
-            break;
-        case 'up':
-        case 'left':
-            currentFocusIndex = (currentFocusIndex - 1 + focusableElements.length) % focusableElements.length;
-            break;
-    }
-
-    if (focusableElements[currentFocusIndex]) {
-        focusableElements[currentFocusIndex].focus();
-        focusableElements[currentFocusIndex].scrollIntoView({
-            behavior: 'smooth',
-            block: 'nearest'
-        });
+    .channel-info h3 {
+        font-size: 20px;
     }
 }
-
-document.addEventListener('keydown', function(e) {
-    if (playerModal.style.display === 'flex') {
-        if (e.key === 'Escape') {
-            closeModal.click();
-        }
-        return;
-    }
-
-    switch(e.key) {
-        case 'ArrowDown':
-        case 'ArrowRight':
-            e.preventDefault();
-            moveFocus('down');
-            break;
-        case 'ArrowUp':
-        case 'ArrowLeft':
-            e.preventDefault();
-            moveFocus('up');
-            break;
-        case 'Enter':
-            e.preventDefault();
-            if (document.activeElement.classList.contains('channel-card')) {
-                const card = document.activeElement;
-                const index = Array.from(channelsContainer.children).indexOf(card);
-                if (index >= 0 && index < channels.length) {
-                    const channel = channels[index];
-                    openFullScreenPlayer(channel.name, channel.url);
-                }
-            }
-            break;
-    }
-});
-
-// Загрузка при старте
-document.addEventListener('DOMContentLoaded', () => {
-    loadM3UFromUrl('https://iptv-org.github.io/iptv/index.m3u');
-});

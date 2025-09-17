@@ -40,38 +40,80 @@ body {
     color: #aaa;
 }
 
-/* Сетка каналов */
-.channels-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
-    gap: 20px;
-    padding: 20px;
+/* Контейнер категорий */
+.categories-container {
+    display: flex;
+    gap: 15px;
+    padding: 20px 20px 10px;
+    overflow-x: auto;
+    background: rgba(0, 0, 0, 0.3);
+    scrollbar-width: none;
 }
 
-/* Карточка канала */
+.categories-container::-webkit-scrollbar {
+    display: none;
+}
+
+.category-btn {
+    background: rgba(255, 255, 255, 0.1);
+    color: #fff;
+    border: none;
+    padding: 12px 24px;
+    border-radius: 50px;
+    cursor: pointer;
+    white-space: nowrap;
+    font-size: 16px;
+    min-width: 120px;
+    text-align: center;
+    outline: none;
+    transition: all 0.2s;
+}
+
+.category-btn:hover,
+.category-btn.active,
+.category-btn:focus {
+    background: linear-gradient(90deg, #ff375f, #ff5e41);
+    color: white;
+}
+
+.category-btn:focus {
+    outline: 3px solid #ff375f;
+    outline-offset: 2px;
+}
+
+/* Сетка каналов — компактные прямоугольные плитки */
+.channels-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+    gap: 15px;
+    padding: 15px 20px 20px;
+}
+
+/* Карточка канала — прямоугольная, компактная */
 .channel-card {
     background: rgba(255, 255, 255, 0.05);
-    border-radius: 12px;
+    border-radius: 10px;
     overflow: hidden;
     position: relative;
     cursor: pointer;
     transition: transform 0.2s;
     outline: none;
-    /* Для пульта */
+    height: 220px; /* Фиксированная высота для прямоугольной формы */
+    display: flex;
+    flex-direction: column;
     tabindex: 0;
-    height: 300px; /* Фиксированная высота для стабильного превью */
 }
 
 .channel-card:hover,
 .channel-card:focus {
-    transform: scale(1.03);
+    transform: scale(1.02);
     outline: 3px solid #ff375f;
     outline-offset: 2px;
 }
 
-/* Контейнер для изображения или превью-плеера */
+/* Медиа-контейнер — 70% высоты карточки */
 .channel-media {
-    height: 170px;
+    height: 70%;
     position: relative;
     background: linear-gradient(135deg, #333, #111);
     overflow: hidden;
@@ -88,7 +130,7 @@ body {
     top: 50%;
     left: 50%;
     transform: translate(-50%, -50%);
-    font-size: 60px;
+    font-size: 40px;
     color: #ff375f;
 }
 
@@ -109,31 +151,33 @@ body {
     object-fit: cover;
 }
 
-/* Информация о канале */
+/* Информация о канале — занимает 30% высоты */
 .channel-info {
-    padding: 15px;
-    position: absolute;
-    bottom: 0;
-    left: 0;
-    right: 0;
+    padding: 10px;
     background: rgba(0, 0, 0, 0.7);
-    backdrop-filter: blur(5px);
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
 }
 
 .channel-info h3 {
-    font-size: 18px;
+    font-size: 16px;
     font-weight: 500;
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
-    margin-bottom: 5px;
+    margin-bottom: 3px;
     color: white;
 }
 
 .channel-info p {
-    font-size: 14px;
+    font-size: 13px;
     color: #aaa;
     margin: 0;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
 }
 
 /* Модальное окно плеера — ПОЛНЫЙ ЭКРАН */
@@ -224,18 +268,19 @@ body {
 /* Адаптивность */
 @media (max-width: 600px) {
     .channels-grid {
-        grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+        grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
         padding: 10px;
     }
-}
-
-/* Улучшение для TV */
-@media (pointer: coarse) {
+    
     .channel-card {
-        min-height: 300px;
+        height: 200px;
     }
-
+    
     .channel-info h3 {
-        font-size: 20px;
+        font-size: 15px;
+    }
+    
+    .channel-info p {
+        font-size: 12px;
     }
 }

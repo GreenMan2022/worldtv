@@ -14,7 +14,7 @@ let currentCategoryIndex = 0;
 let currentChannelIndex = 0;
 let currentMiniPlayer = null;
 let miniPlayers = new Map();
-let focusTimer = null; // Таймер для задержки инициализации
+let focusTimer = null;
 
 // Закрытие модального окна
 closeModal.addEventListener('click', function() {
@@ -32,7 +32,7 @@ function showToast(message) {
     
     setTimeout(() => {
         toast.remove();
-    }, 3000000000);
+    }, 3000);
 }
 
 // Загрузка реального плейлиста
@@ -52,7 +52,7 @@ function loadM3UFromUrl(url) {
         });
 }
 
-// Парсинг M3U
+// Парсинг M3U + РАЗДЕЛЕНИЕ СПАРЕННЫХ КАТЕГОРИЙ
 function parseM3UContent(content) {
     channels = [];
     const lines = content.split('\n');
@@ -68,19 +68,24 @@ function parseM3UContent(content) {
                 name = name.trim();
                 
                 const groupMatch = infoLine.match(/group-title="([^"]*)"/);
-                const group = groupMatch ? groupMatch[1] : 'Другое';
+                let group = groupMatch ? groupMatch[1] : 'Другое';
                 
                 const logoMatch = infoLine.match(/tvg-logo="([^"]*)"/);
                 const logo = logoMatch ? logoMatch[1] : '';
                 
-                channels.push({
-                    name,
-                    url: urlLine.trim(),
-                    group,
-                    logo
-                });
+                // Разделяем спаренные категории: "Entertainment;Family" → ["Entertainment", "Family"]
+                const groupList = group.split(';').map(g => g.trim()).filter(g => g.length > 0);
                 
-                categorySet.add(group);
+                // Добавляем канал в каждую категорию
+                groupList.forEach(g => {
+                    categorySet.add(g);
+                    channels.push({
+                        name,
+                        url: urlLine.trim(),
+                        group: g, // ← Каждая запись — отдельная категория
+                        logo
+                    });
+                });
             }
         }
     }
@@ -118,14 +123,25 @@ function renderCategories() {
     });
 }
 
-// Установка активной категории
+// Установка активной категории + АВТОПРОКРУТКА
 function setActiveCategory(index) {
     currentCategoryIndex = index;
     currentChannelIndex = 0;
     
-    document.querySelectorAll('.category-btn').forEach((btn, i) => {
+    const categoryButtons = document.querySelectorAll('.category-btn');
+    categoryButtons.forEach((btn, i) => {
         btn.classList.toggle('active', i === index);
     });
+
+    // Прокручиваем к активной кнопке
+    const activeBtn = categoryButtons[index];
+    if (activeBtn) {
+        activeBtn.scrollIntoView({
+            behavior: 'smooth',
+            block: 'nearest',
+            inline: 'center' // ← Центрируем кнопку по горизонтали
+        });
+    }
 }
 
 // Отображение каналов по категории
@@ -212,7 +228,7 @@ function renderChannelsByCategory(categoryName) {
                 } else if (video.paused) {
                     video.play().catch(e => console.log("Autoplay blocked:", e));
                 }
-            }, 1000); // ← ЗАДЕРЖКА 3 СЕКУНДЫ
+            }, 3000);
         });
         
         // Блюр — отменяем таймер и не инициализируем

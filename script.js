@@ -1,6 +1,7 @@
 // DOM элементы
 const channelsContainer = document.getElementById('channelsContainer');
 const categoriesContainer = document.getElementById('categoriesContainer');
+const subcategoriesContainer = document.getElementById('subcategoriesContainer');
 const playerModal = document.getElementById('playerModal');
 const videoPlayerElement = document.getElementById('videoPlayerElement');
 const closeModal = document.getElementById('closeModal');
@@ -119,16 +120,7 @@ function renderMainCategories() {
 
 // Отображение подкатегорий
 function renderSubcategories() {
-    const subcategoriesContainer = document.getElementById('subcategoriesContainer');
-    if (!subcategoriesContainer) {
-        const container = document.createElement('div');
-        container.id = 'subcategoriesContainer';
-        container.className = 'subcategories-container';
-        categoriesContainer.parentNode.insertBefore(container, channelsContainer);
-    }
-    
-    const container = document.getElementById('subcategoriesContainer');
-    container.innerHTML = '';
+    subcategoriesContainer.innerHTML = '';
     
     const subcategories = Object.keys(categoryTree[currentMainCategory]);
     subcategories.forEach((subcategory, index) => {
@@ -141,7 +133,7 @@ function renderSubcategories() {
             selectSubcategory(subcategory);
         });
         
-        container.appendChild(btn);
+        subcategoriesContainer.appendChild(btn);
     });
 }
 
@@ -159,15 +151,25 @@ function selectMainCategory(categoryName) {
 function selectSubcategory(subcategoryName) {
     currentSubcategory = subcategoryName;
     renderSubcategories();
-    loadAndRenderPlaylist(currentMainCategory, currentSubcategory);
+    
+    // После загрузки плейлиста — фокус на первый канал
+    loadAndRenderPlaylist(currentMainCategory, currentSubcategory, () => {
+        setTimeout(() => {
+            const firstChannel = document.querySelector('.channel-card');
+            if (firstChannel) {
+                firstChannel.focus();
+            }
+        }, 100);
+    });
 }
 
 // Загрузка и отображение плейлиста
-async function loadAndRenderPlaylist(mainCategory, subcategory) {
+async function loadAndRenderPlaylist(mainCategory, subcategory, callback = null) {
     const url = categoryTree[mainCategory][subcategory];
     
     if (!url) {
         renderChannels([]);
+        if (callback) callback();
         return;
     }
     
@@ -191,6 +193,7 @@ async function loadAndRenderPlaylist(mainCategory, subcategory) {
         renderChannels([]);
     } finally {
         initialLoader.style.display = 'none';
+        if (callback) callback();
     }
 }
 
@@ -344,10 +347,7 @@ function renderChannels(channelsToRender) {
         channelsContainer.appendChild(channelCard);
     });
 
-    setTimeout(() => {
-        const firstCard = channelsContainer.querySelector('.channel-card');
-        if (firstCard) firstCard.focus();
-    }, 100);
+    // Не фокусируем здесь — фокус устанавливается в selectSubcategory
 }
 
 // Создание контейнера мини-плеера
@@ -521,13 +521,13 @@ function requestNativeFullscreen() {
 // Иконка по группе
 function getGroupIcon(group) {
     group = group.toLowerCase();
-    if (group.includes('новости') || group.includes('news')) return 'fa-newspaper';
-    if (group.includes('спорт') || group.includes('sport')) return 'fa-futbol';
-    if (group.includes('кино') || group.includes('movie')) return 'fa-film';
-    if (group.includes('музыка') || group.includes('music')) return 'fa-music';
-    if (group.includes('детск') || group.includes('kids')) return 'fa-child';
-    if (group.includes('документ') || group.includes('doc')) return 'fa-video';
-    if (group.includes('развлеч') || group.includes('entertainment')) return 'fa-theater-masks';
+    if (group.includes('новости')) return 'fa-newspaper';
+    if (group.includes('спорт')) return 'fa-futbol';
+    if (group.includes('кино')) return 'fa-film';
+    if (group.includes('музыка')) return 'fa-music';
+    if (group.includes('детск')) return 'fa-child';
+    if (group.includes('документ')) return 'fa-video';
+    if (group.includes('развлеч')) return 'fa-theater-masks';
     return 'fa-tv';
 }
 
@@ -561,20 +561,36 @@ document.addEventListener('keydown', function(e) {
             
         case 'ArrowRight':
             e.preventDefault();
-            // Переключаем подкатегории вперед
-            const subcategories = Object.keys(categoryTree[currentMainCategory]);
-            const subIndex = subcategories.indexOf(currentSubcategory);
-            const nextSubIndex = (subIndex + 1) % subcategories.length;
-            selectSubcategory(subcategories[nextSubIndex]);
+            // Если фокус на канале — переключаем каналы
+            if (document.activeElement.classList.contains('channel-card')) {
+                if (channelCards.length > 0) {
+                    currentChannelIndex = (currentChannelIndex + 1) % channelCards.length;
+                    channelCards[currentChannelIndex].focus();
+                }
+            } else {
+                // Иначе — переключаем подкатегории вперед
+                const subcategories = Object.keys(categoryTree[currentMainCategory]);
+                const subIndex = subcategories.indexOf(currentSubcategory);
+                const nextSubIndex = (subIndex + 1) % subcategories.length;
+                selectSubcategory(subcategories[nextSubIndex]);
+            }
             break;
             
         case 'ArrowLeft':
             e.preventDefault();
-            // Переключаем подкатегории назад
-            const currentSubs = Object.keys(categoryTree[currentMainCategory]);
-            const currSubIndex = currentSubs.indexOf(currentSubcategory);
-            const prevSubIndex = (currSubIndex - 1 + currentSubs.length) % currentSubs.length;
-            selectSubcategory(currentSubs[prevSubIndex]);
+            // Если фокус на канале — переключаем каналы
+            if (document.activeElement.classList.contains('channel-card')) {
+                if (channelCards.length > 0) {
+                    currentChannelIndex = (currentChannelIndex - 1 + channelCards.length) % channelCards.length;
+                    channelCards[currentChannelIndex].focus();
+                }
+            } else {
+                // Иначе — переключаем подкатегории назад
+                const currentSubs = Object.keys(categoryTree[currentMainCategory]);
+                const currSubIndex = currentSubs.indexOf(currentSubcategory);
+                const prevSubIndex = (currSubIndex - 1 + currentSubs.length) % currentSubs.length;
+                selectSubcategory(currentSubs[prevSubIndex]);
+            }
             break;
             
         case 'Enter':
@@ -589,52 +605,13 @@ document.addEventListener('keydown', function(e) {
                     const channel = channels[index];
                     openFullScreenPlayer(channel.name, channel.url);
                 }
+            } else if (document.activeElement.classList.contains('subcategory-btn')) {
+                const subcategoryName = document.activeElement.textContent;
+                selectSubcategory(subcategoryName);
             }
             break;
     }
 });
-
-// Добавим стили для подкатегорий
-const style = document.createElement('style');
-style.textContent = `
-.subcategories-container {
-    display: flex;
-    gap: 10px;
-    padding: 10px 20px;
-    overflow-x: auto;
-    background: rgba(0, 0, 0, 0.2);
-    margin: 10px 0;
-    scrollbar-width: none;
-}
-.subcategories-container::-webkit-scrollbar {
-    display: none;
-}
-.subcategory-btn {
-    background: rgba(255, 255, 255, 0.1);
-    color: #fff;
-    border: none;
-    padding: 8px 16px;
-    border-radius: 20px;
-    cursor: pointer;
-    white-space: nowrap;
-    font-size: 14px;
-    min-width: 100px;
-    text-align: center;
-    outline: none;
-    transition: all 0.2s;
-}
-.subcategory-btn:hover,
-.subcategory-btn.active,
-.subcategory-btn:focus {
-    background: linear-gradient(90deg, #ff375f, #ff5e41);
-    color: white;
-}
-.subcategory-btn:focus {
-    outline: 3px solid #ff375f;
-    outline-offset: 2px;
-}
-`;
-document.head.appendChild(style);
 
 // Запуск приложения
 document.addEventListener('DOMContentLoaded', () => {

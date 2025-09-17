@@ -114,8 +114,8 @@ function createMiniPlayer(url) {
     return container;
 }
 
-// Обработка ошибки потока — БЕЗ добавления в чёрный список (только для превью)
-function handleStreamError(url, container) {
+// Обработка ошибки потока — с добавлением в чёрный список при реальной недоступности
+function handleStreamError(url, container, isPreview = true) {
     showToast('Канал недоступен');
     console.error("Ошибка воспроизведения:", url);
 
@@ -130,7 +130,7 @@ function handleStreamError(url, container) {
     });
 }
 
-// Добавление в чёрный список — ТОЛЬКО для полноэкранного режима
+// Добавление в чёрный список — для превью и полноэкранного режима
 function addToBlacklist(url) {
     let blacklist = JSON.parse(localStorage.getItem('blacklist') || '[]');
     if (!blacklist.includes(url)) {
@@ -208,33 +208,82 @@ function renderChannels(channelsToRender) {
                 video.dataset.initialized = 'true';
                 const url = miniPlayer.dataset.url;
                 
+                let manifestLoaded = false;
+                let networkErrorOccurred = false;
+                let isBlacklisted = false;
+
+                // Таймаут 30 секунд
+                const timeoutId = setTimeout(() => {
+                    if (!manifestLoaded && !networkErrorOccurred) {
+                        console.warn("Таймаут загрузки манифеста (превью):", url);
+                        showToast('Канал не отвечает');
+                        addToBlacklist(url);
+                        isBlacklisted = true;
+                        miniPlayer.style.display = 'none';
+                        icon.style.display = 'block';
+                    }
+                }, 30000); // ← 30 СЕКУНД
+
                 if (Hls.isSupported()) {
                     const hls = new Hls();
                     hls.loadSource(url);
                     hls.attachMedia(video);
+                    
                     hls.on(Hls.Events.MANIFEST_PARSED, () => {
-                        console.log("Мини-плеер: поток загружен", url);
+                        clearTimeout(timeoutId);
+                        manifestLoaded = true;
                         video.play().catch(e => {
-                            console.log("Autoplay blocked:", e);
+                            console.log("Autoplay blocked in mini player:", e);
                         });
                     });
+                    
                     hls.on(Hls.Events.ERROR, function(event, data) {
                         if (data.fatal) {
-                            handleStreamError(url, miniPlayer);
+                            if (data.type === Hls.ErrorTypes.NETWORK_ERROR) {
+                                networkErrorOccurred = true;
+                                clearTimeout(timeoutId);
+                                
+                                if (data.details === 'manifestLoadError' || 
+                                    data.details === 'manifestLoadTimeOut' ||
+                                    (data.response && (data.response.code >= 400 || data.response.code === 0))) {
+                                    
+                                    handleStreamError(url, miniPlayer, true);
+                                    addToBlacklist(url);
+                                    isBlacklisted = true;
+                                    miniPlayer.style.display = 'none';
+                                    icon.style.display = 'block';
+                                }
+                            }
                         }
                     });
                 } else if (video.canPlayType('application/vnd.apple.mpegurl')) {
                     video.src = url;
+                    
                     video.addEventListener('loadedmetadata', () => {
+                        clearTimeout(timeoutId);
+                        manifestLoaded = true;
                         video.play().catch(e => {
-                            console.log("Autoplay blocked:", e);
+                            console.log("Autoplay blocked in mini player:", e);
                         });
                     });
+                    
                     video.addEventListener('error', () => {
-                        handleStreamError(url, miniPlayer);
+                        clearTimeout(timeoutId);
+                        const error = video.error;
+                        if (error && (error.code === error.MEDIA_ERR_SRC_NOT_SUPPORTED || error.code === error.MEDIA_ERR_NETWORK)) {
+                            handleStreamError(url, miniPlayer, true);
+                            addToBlacklist(url);
+                            isBlacklisted = true;
+                            miniPlayer.style.display = 'none';
+                            icon.style.display = 'block';
+                        }
                     });
                 } else {
-                    handleStreamError(url, miniPlayer);
+                    clearTimeout(timeoutId);
+                    handleStreamError(url, miniPlayer, true);
+                    // Не добавляем в чёрный список — проблема в браузере
+                    miniPlayer.style.display = 'none';
+                    icon.style.display = 'block';
                 }
             } else {
                 // Если уже инициализировано — просто играем
@@ -282,44 +331,84 @@ function renderChannels(channelsToRender) {
     }, 500);
 }
 
-// Открытие полноэкранного плеера
+// Открытие полноэкранного плеера с умной обработкой ошибок
 function openFullScreenPlayer(name, url) {
     playerModal.style.display = 'flex';
     videoPlayerElement.src = '';
     videoPlayerElement.load();
     videoPlayerElement.muted = false; // Включаем звук
 
+    let isBlacklisted = false;
+    let manifestLoaded = false;
+    let networkErrorOccurred = false;
+
+    // Таймаут 30 секунд
+    const timeoutId = setTimeout(() => {
+        if (!manifestLoaded && !networkErrorOccurred) {
+            console.warn("Таймаут загрузки манифеста (полный экран):", url);
+            showToast('Канал не отвечает');
+            addToBlacklist(url);
+            isBlacklisted = true;
+            playerModal.style.display = 'none';
+        }
+    }, 30000); // ← 30 СЕКУНД
+
     if (Hls.isSupported()) {
         const hls = new Hls();
         hls.loadSource(url);
         hls.attachMedia(videoPlayerElement);
+        
         hls.on(Hls.Events.MANIFEST_PARSED, () => {
+            clearTimeout(timeoutId);
+            manifestLoaded = true;
             videoPlayerElement.play().catch(e => {
                 console.log("Autoplay blocked in fullscreen:", e);
             });
         });
+        
         hls.on(Hls.Events.ERROR, function(event, data) {
             if (data.fatal) {
-                showToast('Канал недоступен');
-                addToBlacklist(url); // ← ДОБАВЛЯЕМ В ЧЁРНЫЙ СПИСОК
-                playerModal.style.display = 'none';
+                if (data.type === Hls.ErrorTypes.NETWORK_ERROR) {
+                    networkErrorOccurred = true;
+                    clearTimeout(timeoutId);
+                    
+                    if (data.details === 'manifestLoadError' || 
+                        data.details === 'manifestLoadTimeOut' ||
+                        (data.response && (data.response.code >= 400 || data.response.code === 0))) {
+                        
+                        showToast('Канал недоступен');
+                        addToBlacklist(url);
+                        isBlacklisted = true;
+                        playerModal.style.display = 'none';
+                    }
+                }
             }
         });
     } else if (videoPlayerElement.canPlayType('application/vnd.apple.mpegurl')) {
         videoPlayerElement.src = url;
+        
         videoPlayerElement.addEventListener('loadedmetadata', () => {
+            clearTimeout(timeoutId);
+            manifestLoaded = true;
             videoPlayerElement.play().catch(e => {
                 console.log("Autoplay blocked in fullscreen:", e);
             });
         });
+        
         videoPlayerElement.addEventListener('error', () => {
-            showToast('Канал недоступен');
-            addToBlacklist(url); // ← ДОБАВЛЯЕМ В ЧЁРНЫЙ СПИСОК
-            playerModal.style.display = 'none';
+            clearTimeout(timeoutId);
+            const error = videoPlayerElement.error;
+            if (error && (error.code === error.MEDIA_ERR_SRC_NOT_SUPPORTED || error.code === error.MEDIA_ERR_NETWORK)) {
+                showToast('Канал недоступен');
+                addToBlacklist(url);
+                isBlacklisted = true;
+                playerModal.style.display = 'none';
+            }
         });
     } else {
-        showToast('Браузер не поддерживает воспроизведение этого формата');
-        addToBlacklist(url); // ← ДОБАВЛЯЕМ В ЧЁРНЫЙ СПИСОК
+        clearTimeout(timeoutId);
+        showToast('Формат не поддерживается');
+        // Не добавляем в чёрный список — проблема в браузере
         playerModal.style.display = 'none';
     }
 }

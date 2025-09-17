@@ -14,6 +14,7 @@ let currentCategoryIndex = 0;
 let currentChannelIndex = 0;
 let currentMiniPlayer = null;
 let miniPlayers = new Map();
+let focusTimer = null; // Таймер для задержки инициализации
 
 // Закрытие модального окна
 closeModal.addEventListener('click', function() {
@@ -31,7 +32,7 @@ function showToast(message) {
     
     setTimeout(() => {
         toast.remove();
-    }, 3000000);
+    }, 3000000000);
 }
 
 // Загрузка реального плейлиста
@@ -180,10 +181,16 @@ function renderChannelsByCategory(categoryName) {
         channelCard.appendChild(mediaContainer);
         channelCard.appendChild(infoContainer);
         
-        // Фокус
+        // Фокус — запускаем таймер на 3 секунды
         channelCard.addEventListener('focus', function() {
             currentChannelIndex = parseInt(this.dataset.index);
             
+            // Сбрасываем предыдущий таймер
+            if (focusTimer) {
+                clearTimeout(focusTimer);
+            }
+            
+            // Скрываем предыдущий мини-плеер
             if (currentMiniPlayer && currentMiniPlayer !== miniPlayer) {
                 currentMiniPlayer.style.display = 'none';
                 const prevIcon = currentMiniPlayer.parentElement.querySelector('i');
@@ -192,20 +199,29 @@ function renderChannelsByCategory(categoryName) {
                 if (prevVideo) prevVideo.pause();
             }
             
+            // Показываем текущий
             miniPlayer.style.display = 'block';
             icon.style.display = 'none';
             currentMiniPlayer = miniPlayer;
             
-            const video = miniPlayer.querySelector('video');
-            if (!video.dataset.initialized) {
-                initializeMiniPlayer(video, channel.url, miniPlayer, icon);
-            } else if (video.paused) {
-                video.play().catch(e => console.log("Autoplay blocked:", e));
-            }
+            // Запускаем таймер — инициализируем ТОЛЬКО через 3 секунды фокуса
+            focusTimer = setTimeout(() => {
+                const video = miniPlayer.querySelector('video');
+                if (!video.dataset.initialized) {
+                    initializeMiniPlayer(video, channel.url, miniPlayer, icon);
+                } else if (video.paused) {
+                    video.play().catch(e => console.log("Autoplay blocked:", e));
+                }
+            }, 1000); // ← ЗАДЕРЖКА 3 СЕКУНДЫ
         });
         
-        // Блюр
+        // Блюр — отменяем таймер и не инициализируем
         channelCard.addEventListener('blur', function() {
+            if (focusTimer) {
+                clearTimeout(focusTimer);
+                focusTimer = null;
+            }
+            
             setTimeout(() => {
                 if (!channelCard.contains(document.activeElement)) {
                     miniPlayer.style.display = 'none';
@@ -216,7 +232,7 @@ function renderChannelsByCategory(categoryName) {
             }, 100);
         });
         
-        // Клик и Enter
+        // Клик и Enter — игнорируем задержку, открываем сразу
         channelCard.addEventListener('click', () => openFullScreenPlayer(channel.name, channel.url));
         channelCard.addEventListener('keydown', (e) => {
             if (e.key === 'Enter') {

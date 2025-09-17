@@ -62,7 +62,17 @@ function parseM3UContent(content) {
         }
     }
     
+    // Фильтруем по чёрному списку
+    filterBlacklistedChannels();
     renderChannels(channels);
+}
+
+// Фильтрация по чёрному списку
+function filterBlacklistedChannels() {
+    const blacklist = JSON.parse(localStorage.getItem('blacklist') || '[]');
+    const before = channels.length;
+    channels = channels.filter(channel => !blacklist.includes(channel.url));
+    console.log(`Отфильтровано ${before - channels.length} каналов по чёрному списку`);
 }
 
 // Отрисовка каналов
@@ -122,11 +132,36 @@ function openPlayer(name, url) {
         hls.on(Hls.Events.MANIFEST_PARSED, () => {
             videoPlayerElement.play().catch(e => console.log("Autoplay blocked:", e));
         });
+        hls.on(Hls.Events.ERROR, function(event, data) {
+            if (data.fatal) {
+                addToBlacklist(url);
+                playerModal.style.display = 'none';
+                console.error("Ошибка воспроизведения:", data);
+            }
+        });
     } else if (videoPlayerElement.canPlayType('application/vnd.apple.mpegurl')) {
         videoPlayerElement.src = url;
         videoPlayerElement.addEventListener('loadedmetadata', () => {
             videoPlayerElement.play().catch(e => console.log("Autoplay blocked:", e));
         });
+        videoPlayerElement.addEventListener('error', () => {
+            addToBlacklist(url);
+            playerModal.style.display = 'none';
+        });
+    } else {
+        // Браузер не поддерживает HLS — тоже в чёрный список
+        addToBlacklist(url);
+        playerModal.style.display = 'none';
+    }
+}
+
+// Добавление в чёрный список
+function addToBlacklist(url) {
+    let blacklist = JSON.parse(localStorage.getItem('blacklist') || '[]');
+    if (!blacklist.includes(url)) {
+        blacklist.push(url);
+        localStorage.setItem('blacklist', JSON.stringify(blacklist));
+        console.log(`Канал добавлен в чёрный список:`, url);
     }
 }
 
@@ -201,9 +236,11 @@ document.addEventListener('keydown', function(e) {
             e.preventDefault();
             if (document.activeElement.classList.contains('channel-card')) {
                 const card = document.activeElement;
-                const name = card.querySelector('h3').textContent;
-                const url = channels[Array.from(channelsContainer.children).indexOf(card)].url;
-                openPlayer(name, url);
+                const index = Array.from(channelsContainer.children).indexOf(card);
+                if (index >= 0 && index < channels.length) {
+                    const channel = channels[index];
+                    openPlayer(channel.name, channel.url);
+                }
             }
             break;
     }

@@ -6,152 +6,35 @@
     <meta name="format-detection" content="telephone=no">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="mobile-web-app-capable" content="yes">
-    <meta name="webos-app-name" content="World TV Channels">
-    <meta name="webos-app-version" content="1.0">
-    <meta name="tizen-app-name" content="World TV Channels">
-    <title>World TV Channels | M3U Loader</title>
+    <title>TV Channels</title>
     <link rel="stylesheet" href="/style.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
 </head>
 <body>
-    <header>
-        <div class="container">
-            <div class="header-content">
-                <div class="logo">
-                    <i class="fas fa-tv"></i>
-                    <h1>World TV Channels</h1>
-                </div>
-                <nav class="nav-links">
-                    <a href="#">Главная</a>
-                    <a href="#">Каналы</a>
-                    <a href="#">Категории</a>
-                    <a href="#">Популярное</a>
-                    <a href="#">Новинки</a>
-                </nav>
-                <div class="user-actions">
-                    <button class="search-btn"><i class="fas fa-search"></i></button>
-                    <button class="user-btn"><i class="fas fa-user-circle"></i></button>
-                </div>
-            </div>
+    <!-- Загрузочный экран -->
+    <div class="loader" id="initialLoader">
+        <div class="loader-content">
+            <i class="fas fa-spinner fa-spin"></i>
+            <p>Загрузка каналов...</p>
         </div>
-    </header>
+    </div>
 
-    <main class="container">
-        <section class="hero">
-            <h2>Телеканалы из M3U плейлистов</h2>
-            <p>Загрузите свой M3U файл или укажите URL для доступа к тысячам телеканалов со всего мира</p>
-            
-            <div class="m3u-upload" id="dropZone">
-                <i class="fas fa-cloud-upload-alt"></i>
-                <h3>Загрузите M3U плейлист</h3>
-                <p>Перетащите файл сюда или нажмите кнопку ниже</p>
-                <label for="m3uFile" class="m3u-label">Выбрать файл</label>
-                <input type="file" id="m3uFile" class="m3u-input" accept=".m3u,.m3u8">
-            </div>
-            
-            <div class="url-load">
-                <input type="text" class="url-input" id="playlistUrl" placeholder="Введите URL M3U плейлиста">
-                <button class="load-btn" id="loadUrlBtn">Загрузить</button>
-            </div>
-        </section>
-
-        <div class="categories">
-            <button class="category-btn active" data-group="all">Все каналы</button>
-            <button class="category-btn" data-group="news">Новости</button>
-            <button class="category-btn" data-group="sports">Спорт</button>
-            <button class="category-btn" data-group="movies">Кино</button>
-            <button class="category-btn" data-group="entertainment">Развлечения</button>
-            <button class="category-btn" data-group="documentary">Документальные</button>
-            <button class="category-btn" data-group="kids">Детские</button>
-            <button class="category-btn" data-group="music">Музыка</button>
-        </div>
-
-        <div class="search-container">
-            <input type="text" class="search-input" id="searchInput" placeholder="Поиск каналов...">
-            <select class="filter-select" id="countryFilter">
-                <option value="all">Все страны</option>
-                <option value="Россия">Россия</option>
-                <option value="США">США</option>
-                <option value="Великобритания">Великобритания</option>
-                <option value="Германия">Германия</option>
-                <option value="Франция">Франция</option>
-                <option value="Италия">Италия</option>
-            </select>
-        </div>
-
-        <div class="stats" id="statsInfo">
-            Загрузка плейлиста...
-        </div>
-
-        <div class="channels-grid" id="channelsContainer">
-            <div class="loading" id="loadingIndicator">
-                <i class="fas fa-spinner fa-spin"></i>
-                <p>Загрузка каналов...</p>
-            </div>
-        </div>
+    <!-- Основной контент: сетка каналов -->
+    <main class="channels-grid" id="channelsContainer">
+        <!-- Каналы будут добавлены сюда скриптом -->
     </main>
 
     <!-- Модальное окно с плеером -->
     <div class="modal" id="playerModal">
         <div class="modal-content">
-            <div class="modal-header">
-                <h3 id="modalTitle">Просмотр канала</h3>
-                <button class="close-btn" id="closeModal">&times;</button>
-            </div>
-            <div class="modal-body">
-                <video id="videoPlayerElement" controls></video>
-            </div>
+            <button class="close-btn" id="closeModal">&times;</button>
+            <video id="videoPlayerElement" controls></video>
         </div>
     </div>
-
-    <footer>
-        <div class="container">
-            <div class="footer-content">
-                <div class="footer-column">
-                    <h3>World TV Channels</h3>
-                    <ul>
-                        <li><a href="#">О нас</a></li>
-                        <li><a href="#">Контакты</a></li>
-                        <li><a href="#">Партнерство</a></li>
-                        <li><a href="#">Реклама</a></li>
-                    </ul>
-                </div>
-                <div class="footer-column">
-                    <h3>Помощь</h3>
-                    <ul>
-                        <li><a href="#">Поддержка</a></li>
-                        <li><a href="#">Частые вопросы</a></li>
-                        <li><a href="#">Системные требования</a></li>
-                        <li><a href="#">Способы оплаты</a></li>
-                    </ul>
-                </div>
-                <div class="footer-column">
-                    <h3>Правовая информация</h3>
-                    <ul>
-                        <li><a href="#">Условия использования</a></li>
-                        <li><a href="#">Политика конфиденциальности</a></li>
-                        <li><a href="#">Политика cookies</a></li>
-                    </ul>
-                </div>
-                <div class="footer-column">
-                    <h3>Скачайте наше приложение</h3>
-                    <ul>
-                        <li><a href="#">App Store</a></li>
-                        <li><a href="#">Google Play</a></li>
-                        <li><a href="#">Smart TV</a></li>
-                        <li><a href="#">Game Consoles</a></li>
-                    </ul>
-                </div>
-            </div>
-            <div class="copyright">
-                <p>&copy; 2025 World TV Channels. Все права защищены.</p>
-            </div>
-        </div>
-    </footer>
 
     <!-- Подключаем hls.js -->
     <script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
     <!-- Наш скрипт -->
-    <script src="script.js"></script>
+    <script src="/script.js"></script>
 </body>
 </html>

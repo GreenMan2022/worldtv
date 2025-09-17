@@ -381,6 +381,7 @@ function addToBlacklist(url) {
 }
 
 // Открытие полноэкранного плеера
+// Открытие полноэкранного плеера + автоматический переход в системный fullscreen через 1 сек
 function openFullScreenPlayer(name, url) {
     playerModal.style.display = 'flex';
     videoPlayerElement.src = '';
@@ -409,7 +410,16 @@ function openFullScreenPlayer(name, url) {
         hls.on(Hls.Events.MANIFEST_PARSED, () => {
             clearTimeout(timeoutId);
             manifestLoaded = true;
-            videoPlayerElement.play().catch(e => console.log("Autoplay blocked:", e));
+            
+            // Запускаем воспроизведение
+            videoPlayerElement.play().catch(e => {
+                console.log("Autoplay blocked in fullscreen:", e);
+            });
+            
+            // Через 1 секунду — разворачиваем в полноэкранный режим
+            setTimeout(() => {
+                requestNativeFullscreen();
+            }, 1000);
         });
         
         hls.on(Hls.Events.ERROR, (event, data) => {
@@ -428,11 +438,21 @@ function openFullScreenPlayer(name, url) {
         });
     } else if (videoPlayerElement.canPlayType('application/vnd.apple.mpegurl')) {
         videoPlayerElement.src = url;
+        
         videoPlayerElement.addEventListener('loadedmetadata', () => {
             clearTimeout(timeoutId);
             manifestLoaded = true;
-            videoPlayerElement.play().catch(e => console.log("Autoplay blocked:", e));
+            
+            videoPlayerElement.play().catch(e => {
+                console.log("Autoplay blocked in fullscreen:", e);
+            });
+            
+            // Через 1 секунду — разворачиваем в полноэкранный режим
+            setTimeout(() => {
+                requestNativeFullscreen();
+            }, 1000);
         });
+        
         videoPlayerElement.addEventListener('error', () => {
             clearTimeout(timeoutId);
             const error = videoPlayerElement.error;
@@ -447,6 +467,25 @@ function openFullScreenPlayer(name, url) {
         clearTimeout(timeoutId);
         showToast('Формат не поддерживается');
         playerModal.style.display = 'none';
+    }
+}
+
+// Функция для запроса нативного полноэкранного режима
+function requestNativeFullscreen() {
+    const elem = videoPlayerElement;
+    
+    if (elem.requestFullscreen) {
+        elem.requestFullscreen().catch(err => {
+            console.log("Fullscreen request failed:", err);
+        });
+    } else if (elem.webkitRequestFullscreen) { // Safari
+        elem.webkitRequestFullscreen().catch(err => {
+            console.log("Fullscreen request failed:", err);
+        });
+    } else if (elem.msRequestFullscreen) { // IE11
+        elem.msRequestFullscreen().catch(err => {
+            console.log("Fullscreen request failed:", err);
+        });
     }
 }
 

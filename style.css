@@ -110,7 +110,7 @@ body {
     margin: 0;
 }
 
-/* Модальное окно плеера */
+/* Модальное окно плеера — РАСТЯГИВАЕМ НА ВЕСЬ ЭКРАН */
 .modal {
     display: none;
     position: fixed;
@@ -118,32 +118,36 @@ body {
     left: 0;
     width: 100%;
     height: 100%;
-    background: rgba(0, 0, 0, 0.95);
+    background: #000;
     z-index: 1000;
     align-items: center;
     justify-content: center;
+    padding: 0;
 }
 
 .modal-content {
     position: relative;
-    width: 95%;
-    max-width: 1000px;
+    width: 100%;
+    height: 100%;
+    max-width: none;
+    margin: 0;
 }
 
 .close-btn {
     position: absolute;
-    top: 15px;
-    right: 15px;
+    top: 20px;
+    right: 20px;
     background: rgba(0, 0, 0, 0.7);
     color: white;
     border: none;
     border-radius: 50%;
-    width: 40px;
-    height: 40px;
-    font-size: 20px;
+    width: 50px;
+    height: 50px;
+    font-size: 24px;
     cursor: pointer;
     z-index: 10;
     outline: none;
+    backdrop-filter: blur(5px);
 }
 
 .close-btn:focus {
@@ -152,7 +156,8 @@ body {
 
 #videoPlayerElement {
     width: 100%;
-    aspect-ratio: 16 / 9;
+    height: 100%;
+    object-fit: contain;
     background: #000;
 }
 

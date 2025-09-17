@@ -11,7 +11,7 @@ let channels = [];
 let currentMiniPlayer = null; // Текущий активный мини-плеер
 let miniPlayers = new Map();  // Кэш мини-плееров по URL
 
-// Закрытие модального окна
+// Закрытие модального окна (на всякий случай)
 closeModal.addEventListener('click', function() {
     playerModal.style.display = 'none';
     videoPlayerElement.pause();
@@ -30,21 +30,24 @@ function showToast(message) {
     }, 3000);
 }
 
-// Загрузка плейлиста
+// Загрузка плейлиста — с ТЕСТОВЫМИ РАБОЧИМИ КАНАЛАМИ
 function loadM3UFromUrl(url) {
-    fetch(url)
-        .then(response => {
-            if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
-            return response.text();
-        })
-        .then(data => {
-            parseM3UContent(data);
-            initialLoader.style.display = 'none';
-        })
-        .catch(error => {
-            console.error('Ошибка загрузки:', error);
-            showToast('Ошибка загрузки каналов');
-        });
+    const testPlaylist = `#EXTM3U
+#EXTINF:-1 tvg-name="Test Channel 1" group-title="Test",Test Channel 1
+https://cph-p2p-msl.akamaized.net/hls/live/2000341/test/master.m3u8
+#EXTINF:-1 tvg-name="Télé-Québec" group-title="News",Télé-Québec
+https://mnmedias.api.telequebec.tv/m3u8/29880.m3u8
+#EXTINF:-1 tvg-name="Big Buck Bunny" group-title="Movies",Big Buck Bunny
+https://test-streams.mux.dev/x36xhzz/x36xhzz.m3u8
+#EXTINF:-1 tvg-name="NASA TV" group-title="Documentary",NASA TV
+https://ntv1.akamaized.net/hls/live/2014559/NTV1/master_2000.m3u8
+#EXTINF:-1 tvg-name="France 24" group-title="News",France 24
+https://static.france24.com/live/F24_EN_LO_HLS/live_web.m3u8
+#EXTINF:-1 tvg-name="MTV Classic" group-title="Music",MTV Classic
+https://stream.mtv.fi/mtv_classic/playlist.m3u8`;
+
+    parseM3UContent(testPlaylist);
+    initialLoader.style.display = 'none';
 }
 
 // Парсинг M3U
@@ -77,16 +80,9 @@ function parseM3UContent(content) {
         }
     }
     
-    filterBlacklistedChannels();
+    // Временно отключаем фильтрацию по чёрному списку для тестов
+    // filterBlacklistedChannels();
     renderChannels(channels);
-}
-
-// Фильтрация по чёрному списку
-function filterBlacklistedChannels() {
-    const blacklist = JSON.parse(localStorage.getItem('blacklist') || '[]');
-    const before = channels.length;
-    channels = channels.filter(channel => !blacklist.includes(channel.url));
-    console.log(`Отфильтровано ${before - channels.length} каналов по чёрному списку`);
 }
 
 // Создание мини-плеера для канала
@@ -111,6 +107,9 @@ function createMiniPlayer(url) {
         const hls = new Hls();
         hls.loadSource(url);
         hls.attachMedia(video);
+        hls.on(Hls.Events.MANIFEST_PARSED, () => {
+            console.log("Мини-плеер: поток загружен", url);
+        });
         hls.on(Hls.Events.ERROR, function(event, data) {
             if (data.fatal) {
                 handleStreamError(url, container);
@@ -118,19 +117,24 @@ function createMiniPlayer(url) {
         });
     } else if (video.canPlayType('application/vnd.apple.mpegurl')) {
         video.src = url;
+        video.addEventListener('loadedmetadata', () => {
+            console.log("Мини-плеер: поток загружен (Safari)", url);
+        });
         video.addEventListener('error', () => {
             handleStreamError(url, container);
         });
+    } else {
+        handleStreamError(url, container);
     }
 
     return container;
 }
 
-// Обработка ошибки потока
+// Обработка ошибки потока — БЕЗ добавления в чёрный список
 function handleStreamError(url, container) {
     showToast('Канал недоступен');
-    addToBlacklist(url);
-    
+    console.error("Ошибка воспроизведения:", url);
+
     // Удаляем из всех карточек
     document.querySelectorAll('.channel-card').forEach(card => {
         const miniPlayer = card.querySelector('.mini-player');
@@ -140,16 +144,6 @@ function handleStreamError(url, container) {
             if (icon) icon.style.display = 'block';
         }
     });
-}
-
-// Добавление в чёрный список
-function addToBlacklist(url) {
-    let blacklist = JSON.parse(localStorage.getItem('blacklist') || '[]');
-    if (!blacklist.includes(url)) {
-        blacklist.push(url);
-        localStorage.setItem('blacklist', JSON.stringify(blacklist));
-        console.log(`Канал добавлен в чёрный список:`, url);
-    }
 }
 
 // Отрисовка каналов
@@ -211,7 +205,10 @@ function renderChannels(channelsToRender) {
             // Запускаем воспроизведение
             const video = miniPlayer.querySelector('video');
             if (video && video.paused) {
-                video.play().catch(e => console.log("Autoplay blocked in mini player:", e));
+                video.play().catch(e => {
+                    console.log("Autoplay blocked in mini player:", e);
+                    showToast('Браузер заблокировал автовоспроизведение');
+                });
             }
         });
         
@@ -228,19 +225,18 @@ function renderChannels(channelsToRender) {
             }, 100);
         });
         
-        // Клик — открываем полноэкранный плеер
-        channelCard.addEventListener('click', function() {
-            openFullScreenPlayer(channel.name, channel.url);
-        });
-        
-        // Enter — открываем полноэкранный плеер
-        channelCard.addEventListener('keydown', function(e) {
-            if (e.key === 'Enter') {
-                e.preventDefault();
-                openFullScreenPlayer(channel.name, channel.url);
-            }
-        });
-        
+        // ВРЕМЕННО ОТКЛЮЧАЕМ ОТКРЫТИЕ ПО КЛИКУ И ENTER
+        // channelCard.addEventListener('click', function() {
+        //     openFullScreenPlayer(channel.name, channel.url);
+        // });
+        // 
+        // channelCard.addEventListener('keydown', function(e) {
+        //     if (e.key === 'Enter') {
+        //         e.preventDefault();
+        //         openFullScreenPlayer(channel.name, channel.url);
+        //     }
+        // });
+
         channelsContainer.appendChild(channelCard);
     });
 
@@ -249,40 +245,6 @@ function renderChannels(channelsToRender) {
         const firstCard = document.querySelector('.channel-card');
         if (firstCard) firstCard.focus();
     }, 500);
-}
-
-// Открытие полноэкранного плеера
-function openFullScreenPlayer(name, url) {
-    playerModal.style.display = 'flex';
-    videoPlayerElement.src = '';
-    videoPlayerElement.load();
-    videoPlayerElement.muted = false; // Включаем звук
-
-    if (Hls.isSupported()) {
-        const hls = new Hls();
-        hls.loadSource(url);
-        hls.attachMedia(videoPlayerElement);
-        hls.on(Hls.Events.MANIFEST_PARSED, () => {
-            videoPlayerElement.play().catch(e => console.log("Autoplay blocked:", e));
-        });
-        hls.on(Hls.Events.ERROR, function(event, data) {
-            if (data.fatal) {
-                showToast('Канал недоступен');
-                addToBlacklist(url);
-                playerModal.style.display = 'none';
-            }
-        });
-    } else if (videoPlayerElement.canPlayType('application/vnd.apple.mpegurl')) {
-        videoPlayerElement.src = url;
-        videoPlayerElement.addEventListener('loadedmetadata', () => {
-            videoPlayerElement.play().catch(e => console.log("Autoplay blocked:", e));
-        });
-        videoPlayerElement.addEventListener('error', () => {
-            showToast('Канал недоступен');
-            addToBlacklist(url);
-            playerModal.style.display = 'none';
-        });
-    }
 }
 
 // Иконка по группе
@@ -353,14 +315,7 @@ document.addEventListener('keydown', function(e) {
             break;
         case 'Enter':
             e.preventDefault();
-            if (document.activeElement.classList.contains('channel-card')) {
-                const card = document.activeElement;
-                const index = Array.from(channelsContainer.children).indexOf(card);
-                if (index >= 0 && index < channels.length) {
-                    const channel = channels[index];
-                    openFullScreenPlayer(channel.name, channel.url);
-                }
-            }
+            // ВРЕМЕННО НИЧЕГО НЕ ДЕЛАЕМ ПРИ НАЖАТИИ ENTER
             break;
     }
 });

@@ -9,9 +9,9 @@ const toastContainer = document.getElementById('toastContainer');
 // Глобальные переменные
 let channels = [];
 let currentMiniPlayer = null; // Текущий активный мини-плеер
-let miniPlayers = new Map();  // Кэш мини-плееров по URL
+let miniPlayers = new Map();  // Кэш контейнеров по URL
 
-// Закрытие модального окна (на всякий случай)
+// Закрытие модального окна
 closeModal.addEventListener('click', function() {
     playerModal.style.display = 'none';
     videoPlayerElement.pause();
@@ -30,11 +30,11 @@ function showToast(message) {
     }, 3000);
 }
 
-// Загрузка плейлиста — с ТЕСТОВЫМИ РАБОЧИМИ КАНАЛАМИ
+// Загрузка плейлиста — с тестовыми каналами (включая example.com для проверки)
 function loadM3UFromUrl(url) {
     const testPlaylist = `#EXTM3U
 #EXTINF:-1 tvg-name="Test Channel 1" group-title="Test",Test Channel 1
-https://cph-p2p-msl.akamaized.net/hls/live/2000341/test/master.m3u8
+https://example.com/stream1
 #EXTINF:-1 tvg-name="Télé-Québec" group-title="News",Télé-Québec
 https://mnmedias.api.telequebec.tv/m3u8/29880.m3u8
 #EXTINF:-1 tvg-name="Big Buck Bunny" group-title="Movies",Big Buck Bunny
@@ -80,12 +80,10 @@ function parseM3UContent(content) {
         }
     }
     
-    // Временно отключаем фильтрацию по чёрному списку для тестов
-    // filterBlacklistedChannels();
     renderChannels(channels);
 }
 
-// Создание мини-плеера для канала
+// Создание контейнера мини-плеера БЕЗ инициализации видео (ленивая загрузка)
 function createMiniPlayer(url) {
     if (miniPlayers.has(url)) {
         return miniPlayers.get(url);
@@ -93,44 +91,23 @@ function createMiniPlayer(url) {
 
     const container = document.createElement('div');
     container.className = 'mini-player';
+    container.dataset.url = url; // Сохраняем URL для будущей загрузки
     
     const video = document.createElement('video');
-    video.muted = true; // Мини-плеер без звука
+    video.muted = true;
     video.playsInline = true;
     video.loop = true;
-
+    video.style.width = '100%';
+    video.style.height = '100%';
+    video.style.background = '#000';
+    
     container.appendChild(video);
     miniPlayers.set(url, container);
-
-    // Инициализация HLS
-    if (Hls.isSupported()) {
-        const hls = new Hls();
-        hls.loadSource(url);
-        hls.attachMedia(video);
-        hls.on(Hls.Events.MANIFEST_PARSED, () => {
-            console.log("Мини-плеер: поток загружен", url);
-        });
-        hls.on(Hls.Events.ERROR, function(event, data) {
-            if (data.fatal) {
-                handleStreamError(url, container);
-            }
-        });
-    } else if (video.canPlayType('application/vnd.apple.mpegurl')) {
-        video.src = url;
-        video.addEventListener('loadedmetadata', () => {
-            console.log("Мини-плеер: поток загружен (Safari)", url);
-        });
-        video.addEventListener('error', () => {
-            handleStreamError(url, container);
-        });
-    } else {
-        handleStreamError(url, container);
-    }
-
+    
     return container;
 }
 
-// Обработка ошибки потока — БЕЗ добавления в чёрный список
+// Обработка ошибки потока
 function handleStreamError(url, container) {
     showToast('Канал недоступен');
     console.error("Ошибка воспроизведения:", url);
@@ -173,7 +150,7 @@ function renderChannels(channelsToRender) {
         icon.className = `fas ${groupIcon}`;
         mediaContainer.appendChild(icon);
         
-        // Мини-плеер (изначально скрыт)
+        // Мини-плеер (изначально скрыт) — создаем, но НЕ инициализируем
         const miniPlayer = createMiniPlayer(channel.url);
         mediaContainer.appendChild(miniPlayer);
         
@@ -188,13 +165,17 @@ function renderChannels(channelsToRender) {
         channelCard.appendChild(mediaContainer);
         channelCard.appendChild(infoContainer);
         
-        // Фокус — показываем мини-плеер
+        // Фокус — показываем мини-плеер и ИНИЦИАЛИЗИРУЕМ видео
         channelCard.addEventListener('focus', function() {
             // Скрываем предыдущий мини-плеер
-            if (currentMiniPlayer) {
+            if (currentMiniPlayer && currentMiniPlayer !== miniPlayer) {
                 currentMiniPlayer.style.display = 'none';
                 const prevIcon = currentMiniPlayer.parentElement.querySelector('i');
                 if (prevIcon) prevIcon.style.display = 'block';
+                
+                // Останавливаем предыдущее видео
+                const prevVideo = currentMiniPlayer.querySelector('video');
+                if (prevVideo) prevVideo.pause();
             }
             
             // Показываем текущий
@@ -202,13 +183,49 @@ function renderChannels(channelsToRender) {
             icon.style.display = 'none';
             currentMiniPlayer = miniPlayer;
             
-            // Запускаем воспроизведение
+            // Получаем видео-элемент
             const video = miniPlayer.querySelector('video');
-            if (video && video.paused) {
-                video.play().catch(e => {
-                    console.log("Autoplay blocked in mini player:", e);
-                    showToast('Браузер заблокировал автовоспроизведение');
-                });
+            
+            // Инициализируем HLS ТОЛЬКО ПРИ ПЕРВОМ ФОКУСЕ
+            if (!video.dataset.initialized) {
+                video.dataset.initialized = 'true';
+                const url = miniPlayer.dataset.url;
+                
+                if (Hls.isSupported()) {
+                    const hls = new Hls();
+                    hls.loadSource(url);
+                    hls.attachMedia(video);
+                    hls.on(Hls.Events.MANIFEST_PARSED, () => {
+                        console.log("Мини-плеер: поток загружен", url);
+                        video.play().catch(e => {
+                            console.log("Autoplay blocked:", e);
+                        });
+                    });
+                    hls.on(Hls.Events.ERROR, function(event, data) {
+                        if (data.fatal) {
+                            handleStreamError(url, miniPlayer);
+                        }
+                    });
+                } else if (video.canPlayType('application/vnd.apple.mpegurl')) {
+                    video.src = url;
+                    video.addEventListener('loadedmetadata', () => {
+                        video.play().catch(e => {
+                            console.log("Autoplay blocked:", e);
+                        });
+                    });
+                    video.addEventListener('error', () => {
+                        handleStreamError(url, miniPlayer);
+                    });
+                } else {
+                    handleStreamError(url, miniPlayer);
+                }
+            } else {
+                // Если уже инициализировано — просто играем
+                if (video.paused) {
+                    video.play().catch(e => {
+                        console.log("Autoplay blocked:", e);
+                    });
+                }
             }
         });
         
@@ -225,17 +242,9 @@ function renderChannels(channelsToRender) {
             }, 100);
         });
         
-        // ВРЕМЕННО ОТКЛЮЧАЕМ ОТКРЫТИЕ ПО КЛИКУ И ENTER
-        // channelCard.addEventListener('click', function() {
-        //     openFullScreenPlayer(channel.name, channel.url);
-        // });
-        // 
-        // channelCard.addEventListener('keydown', function(e) {
-        //     if (e.key === 'Enter') {
-        //         e.preventDefault();
-        //         openFullScreenPlayer(channel.name, channel.url);
-        //     }
-        // });
+        // ВРЕМЕННО ОТКЛЮЧЕНО — для тестирования только превью
+        // channelCard.addEventListener('click', function() { ... });
+        // channelCard.addEventListener('keydown', function(e) { ... });
 
         channelsContainer.appendChild(channelCard);
     });
@@ -315,7 +324,7 @@ document.addEventListener('keydown', function(e) {
             break;
         case 'Enter':
             e.preventDefault();
-            // ВРЕМЕННО НИЧЕГО НЕ ДЕЛАЕМ ПРИ НАЖАТИИ ENTER
+            // ВРЕМЕННО НИЧЕГО НЕ ДЕЛАЕМ
             break;
     }
 });

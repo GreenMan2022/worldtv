@@ -10,66 +10,14 @@ const toastContainer = document.getElementById('toastContainer');
 
 // Глобальные переменные
 let mainCategories = ['Категории', 'Страны', 'Языки'];
-let currentMainCategory = 'Категории';
-let currentSubcategory = '';
+let currentMainCategory = 'Страны'; // Начинаем с гарантированно рабочей категории
+let currentSubcategory = 'Россия'; // Начинаем с гарантированно рабочей подкатегории
 let currentChannelIndex = 0;
 let currentMiniPlayer = null;
 let miniPlayers = new Map();
 let focusTimer = null;
 let loadedPlaylists = {}; // { url: [...channels] }
-
-// Структура данных: главные категории → подкатегории → URL плейлиста
-const categoryTree = {
-    'Категории': {
-        'Новости': 'https://iptv-org.github.io/iptv/categories/news.m3u',
-        'Спорт': 'https://iptv-org.github.io/iptv/categories/sports.m3u',
-        'Футбол': 'https://iptv-org.github.io/iptv/categories/football.m3u',
-        'Баскетбол': 'https://iptv-org.github.io/iptv/categories/basketball.m3u',
-        'Теннис': 'https://iptv-org.github.io/iptv/categories/tennis.m3u',
-        'Кино': 'https://iptv-org.github.io/iptv/categories/movies.m3u',
-        'Боевики': 'https://iptv-org.github.io/iptv/categories/action.m3u',
-        'Комедии': 'https://iptv-org.github.io/iptv/categories/comedy.m3u',
-        'Драмы': 'https://iptv-org.github.io/iptv/categories/drama.m3u',
-        'Развлечения': 'https://iptv-org.github.io/iptv/categories/entertainment.m3u',
-        'Документальные': 'https://iptv-org.github.io/iptv/categories/documentary.m3u',
-        'Детские': 'https://iptv-org.github.io/iptv/categories/kids.m3u',
-        'Музыка': 'https://iptv-org.github.io/iptv/categories/music.m3u',
-        'Поп': 'https://iptv-org.github.io/iptv/categories/pop.m3u',
-        'Рок': 'https://iptv-org.github.io/iptv/categories/rock.m3u',
-        'Хип-хоп': 'https://iptv-org.github.io/iptv/categories/hiphop.m3u'
-    },
-    'Страны': {
-        'Россия': 'https://iptv-org.github.io/iptv/countries/ru.m3u',
-        'США': 'https://iptv-org.github.io/iptv/countries/us.m3u',
-        'Великобритания': 'https://iptv-org.github.io/iptv/countries/gb.m3u',
-        'Германия': 'https://iptv-org.github.io/iptv/countries/de.m3u',
-        'Франция': 'https://iptv-org.github.io/iptv/countries/fr.m3u',
-        'Италия': 'https://iptv-org.github.io/iptv/countries/it.m3u',
-        'Испания': 'https://iptv-org.github.io/iptv/countries/es.m3u',
-        'Китай': 'https://iptv-org.github.io/iptv/countries/cn.m3u',
-        'Япония': 'https://iptv-org.github.io/iptv/countries/jp.m3u',
-        'Корея': 'https://iptv-org.github.io/iptv/countries/kr.m3u',
-        'Индия': 'https://iptv-org.github.io/iptv/countries/in.m3u',
-        'Бразилия': 'https://iptv-org.github.io/iptv/countries/br.m3u',
-        'Канада': 'https://iptv-org.github.io/iptv/countries/ca.m3u',
-        'Австралия': 'https://iptv-org.github.io/iptv/countries/au.m3u'
-    },
-    'Языки': {
-        'Русский': 'https://iptv-org.github.io/iptv/languages/rus.m3u',
-        'Английский': 'https://iptv-org.github.io/iptv/languages/eng.m3u',
-        'Испанский': 'https://iptv-org.github.io/iptv/languages/spa.m3u',
-        'Французский': 'https://iptv-org.github.io/iptv/languages/fra.m3u',
-        'Немецкий': 'https://iptv-org.github.io/iptv/languages/deu.m3u',
-        'Итальянский': 'https://iptv-org.github.io/iptv/languages/ita.m3u',
-        'Португальский': 'https://iptv-org.github.io/iptv/languages/por.m3u',
-        'Китайский': 'https://iptv-org.github.io/iptv/languages/zho.m3u',
-        'Японский': 'https://iptv-org.github.io/iptv/languages/jpn.m3u',
-        'Корейский': 'https://iptv-org.github.io/iptv/languages/kor.m3u',
-        'Арабский': 'https://iptv-org.github.io/iptv/languages/ara.m3u',
-        'Турецкий': 'https://iptv-org.github.io/iptv/languages/tur.m3u',
-        'Хинди': 'https://iptv-org.github.io/iptv/languages/hin.m3u'
-    }
-};
+let categoryTree = {}; // Будет загружено из playlists.json
 
 // Закрытие модального окна
 closeModal.addEventListener('click', function() {
@@ -90,14 +38,42 @@ function showToast(message) {
     }, 3000);
 }
 
+// Загрузка структуры плейлистов из JSON
+async function loadPlaylistsStructure() {
+    try {
+        const response = await fetch('/playlists.json');
+        if (!response.ok) throw new Error(`HTTP ${response.status}`);
+        categoryTree = await response.json();
+        return true;
+    } catch (error) {
+        console.error("Ошибка загрузки playlists.json:", error);
+        showToast("Ошибка загрузки структуры плейлистов");
+        return false;
+    }
+}
+
 // Инициализация приложения
-function initApp() {
-    currentMainCategory = 'Категории';
-    currentSubcategory = Object.keys(categoryTree[currentMainCategory])[0];
+async function initApp() {
+    initialLoader.style.display = 'flex';
+    
+    // Загружаем структуру плейлистов
+    const success = await loadPlaylistsStructure();
+    
+    if (!success) {
+        initialLoader.style.display = 'none';
+        return;
+    }
     
     renderMainCategories();
     renderSubcategories();
-    loadAndRenderPlaylist(currentMainCategory, currentSubcategory);
+    
+    // Загружаем первый плейлист
+    loadAndRenderPlaylist(currentMainCategory, currentSubcategory, () => {
+        setTimeout(() => {
+            const firstChannel = document.querySelector('.channel-card');
+            if (firstChannel) firstChannel.focus();
+        }, 100);
+    });
 }
 
 // Отображение главных категорий
@@ -122,7 +98,7 @@ function renderMainCategories() {
 function renderSubcategories() {
     subcategoriesContainer.innerHTML = '';
     
-    const subcategories = Object.keys(categoryTree[currentMainCategory]);
+    const subcategories = categoryTree[currentMainCategory] ? Object.keys(categoryTree[currentMainCategory]) : [];
     subcategories.forEach((subcategory, index) => {
         const btn = document.createElement('button');
         btn.className = 'subcategory-btn';
@@ -140,7 +116,8 @@ function renderSubcategories() {
 // Выбор главной категории
 function selectMainCategory(categoryName) {
     currentMainCategory = categoryName;
-    currentSubcategory = Object.keys(categoryTree[categoryName])[0];
+    const firstSub = categoryTree[categoryName] ? Object.keys(categoryTree[categoryName])[0] : '';
+    currentSubcategory = firstSub;
     
     renderMainCategories();
     renderSubcategories();
@@ -152,27 +129,23 @@ function selectSubcategory(subcategoryName) {
     currentSubcategory = subcategoryName;
     renderSubcategories();
     
-    // После загрузки плейлиста — фокус на первый канал
     loadAndRenderPlaylist(currentMainCategory, currentSubcategory, () => {
         setTimeout(() => {
             const firstChannel = document.querySelector('.channel-card');
-            if (firstChannel) {
-                firstChannel.focus();
-            }
+            if (firstChannel) firstChannel.focus();
         }, 100);
     });
 }
 
 // Загрузка и отображение плейлиста
 async function loadAndRenderPlaylist(mainCategory, subcategory, callback = null) {
-    const url = categoryTree[mainCategory][subcategory];
-    
-    if (!url) {
+    if (!categoryTree[mainCategory] || !categoryTree[mainCategory][subcategory]) {
         renderChannels([]);
         if (callback) callback();
         return;
     }
     
+    const url = categoryTree[mainCategory][subcategory];
     initialLoader.style.display = 'flex';
     
     try {
@@ -192,7 +165,7 @@ async function loadAndRenderPlaylist(mainCategory, subcategory, callback = null)
         showToast("Ошибка загрузки каналов");
         renderChannels([]);
     } finally {
-        initialLoader.style.display = 'none';
+        initialLoader.style.display = 'none'; // ВСЕГДА скрываем лоадер
         if (callback) callback();
     }
 }
@@ -346,8 +319,6 @@ function renderChannels(channelsToRender) {
         
         channelsContainer.appendChild(channelCard);
     });
-
-    // Не фокусируем здесь — фокус устанавливается в selectSubcategory
 }
 
 // Создание контейнера мини-плеера
@@ -545,7 +516,6 @@ document.addEventListener('keydown', function(e) {
     switch(e.key) {
         case 'ArrowDown':
             e.preventDefault();
-            // Переключаем главные категории вниз
             const mainIndex = mainCategories.indexOf(currentMainCategory);
             const nextMainIndex = (mainIndex + 1) % mainCategories.length;
             selectMainCategory(mainCategories[nextMainIndex]);
@@ -553,7 +523,6 @@ document.addEventListener('keydown', function(e) {
             
         case 'ArrowUp':
             e.preventDefault();
-            // Переключаем главные категории вверх
             const currentIndex = mainCategories.indexOf(currentMainCategory);
             const prevMainIndex = (currentIndex - 1 + mainCategories.length) % mainCategories.length;
             selectMainCategory(mainCategories[prevMainIndex]);
@@ -561,15 +530,13 @@ document.addEventListener('keydown', function(e) {
             
         case 'ArrowRight':
             e.preventDefault();
-            // Если фокус на канале — переключаем каналы
             if (document.activeElement.classList.contains('channel-card')) {
                 if (channelCards.length > 0) {
                     currentChannelIndex = (currentChannelIndex + 1) % channelCards.length;
                     channelCards[currentChannelIndex].focus();
                 }
             } else {
-                // Иначе — переключаем подкатегории вперед
-                const subcategories = Object.keys(categoryTree[currentMainCategory]);
+                const subcategories = categoryTree[currentMainCategory] ? Object.keys(categoryTree[currentMainCategory]) : [];
                 const subIndex = subcategories.indexOf(currentSubcategory);
                 const nextSubIndex = (subIndex + 1) % subcategories.length;
                 selectSubcategory(subcategories[nextSubIndex]);
@@ -578,15 +545,13 @@ document.addEventListener('keydown', function(e) {
             
         case 'ArrowLeft':
             e.preventDefault();
-            // Если фокус на канале — переключаем каналы
             if (document.activeElement.classList.contains('channel-card')) {
                 if (channelCards.length > 0) {
                     currentChannelIndex = (currentChannelIndex - 1 + channelCards.length) % channelCards.length;
                     channelCards[currentChannelIndex].focus();
                 }
             } else {
-                // Иначе — переключаем подкатегории назад
-                const currentSubs = Object.keys(categoryTree[currentMainCategory]);
+                const currentSubs = categoryTree[currentMainCategory] ? Object.keys(categoryTree[currentMainCategory]) : [];
                 const currSubIndex = currentSubs.indexOf(currentSubcategory);
                 const prevSubIndex = (currSubIndex - 1 + currentSubs.length) % currentSubs.length;
                 selectSubcategory(currentSubs[prevSubIndex]);

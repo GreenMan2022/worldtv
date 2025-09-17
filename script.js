@@ -8,77 +8,65 @@ const initialLoader = document.getElementById('initialLoader');
 const toastContainer = document.getElementById('toastContainer');
 
 // Глобальные переменные
-let categoryTree = {}; // { categoryName: { subcategoryName: url, ... }, ... }
-let currentCategory = '';
+let mainCategories = ['Категории', 'Страны', 'Языки'];
+let currentMainCategory = 'Категории';
 let currentSubcategory = '';
 let currentChannelIndex = 0;
 let currentMiniPlayer = null;
 let miniPlayers = new Map();
 let focusTimer = null;
-let loadedPlaylists = {}; // Кэш загруженных плейлистов: { url: [...channels] }
+let loadedPlaylists = {}; // { url: [...channels] }
 
-// Структура категорий и подкатегорий (извлечена из PLAYLISTS.md)
-const categoryStructure = {
-    'Новости': {
-        'Все новости': 'https://iptv-org.github.io/iptv/categories/news.m3u',
-        '24/7 Новости': 'https://iptv-org.github.io/iptv/categories/news24.m3u',
-        'Бизнес Новости': 'https://iptv-org.github.io/iptv/categories/business-news.m3u',
-        'Погода': 'https://iptv-org.github.io/iptv/categories/weather.m3u'
-    },
-    'Спорт': {
-        'Все спорт': 'https://iptv-org.github.io/iptv/categories/sports.m3u',
+// Структура данных: главные категории → подкатегории → URL плейлиста
+const categoryTree = {
+    'Категории': {
+        'Новости': 'https://iptv-org.github.io/iptv/categories/news.m3u',
+        'Спорт': 'https://iptv-org.github.io/iptv/categories/sports.m3u',
         'Футбол': 'https://iptv-org.github.io/iptv/categories/football.m3u',
         'Баскетбол': 'https://iptv-org.github.io/iptv/categories/basketball.m3u',
         'Теннис': 'https://iptv-org.github.io/iptv/categories/tennis.m3u',
-        'Гольф': 'https://iptv-org.github.io/iptv/categories/golf.m3u',
-        'ММА': 'https://iptv-org.github.io/iptv/categories/mma.m3u',
-        'Формула 1': 'https://iptv-org.github.io/iptv/categories/formula1.m3u',
-        'Мотоспорт': 'https://iptv-org.github.io/iptv/categories/motorsport.m3u',
-        'Хоккей': 'https://iptv-org.github.io/iptv/categories/hockey.m3u',
-        'Бокс': 'https://iptv-org.github.io/iptv/categories/boxing.m3u'
-    },
-    'Кино': {
-        'Все кино': 'https://iptv-org.github.io/iptv/categories/movies.m3u',
+        'Кино': 'https://iptv-org.github.io/iptv/categories/movies.m3u',
         'Боевики': 'https://iptv-org.github.io/iptv/categories/action.m3u',
         'Комедии': 'https://iptv-org.github.io/iptv/categories/comedy.m3u',
         'Драмы': 'https://iptv-org.github.io/iptv/categories/drama.m3u',
-        'Ужасы': 'https://iptv-org.github.io/iptv/categories/horror.m3u',
-        'Романтика': 'https://iptv-org.github.io/iptv/categories/romance.m3u',
-        'Триллеры': 'https://iptv-org.github.io/iptv/categories/thriller.m3u',
-        'Фантастика': 'https://iptv-org.github.io/iptv/categories/sci-fi.m3u',
-        'Вестерны': 'https://iptv-org.github.io/iptv/categories/western.m3u'
-    },
-    'Музыка': {
-        'Все музыка': 'https://iptv-org.github.io/iptv/categories/music.m3u',
+        'Развлечения': 'https://iptv-org.github.io/iptv/categories/entertainment.m3u',
+        'Документальные': 'https://iptv-org.github.io/iptv/categories/documentary.m3u',
+        'Детские': 'https://iptv-org.github.io/iptv/categories/kids.m3u',
+        'Музыка': 'https://iptv-org.github.io/iptv/categories/music.m3u',
         'Поп': 'https://iptv-org.github.io/iptv/categories/pop.m3u',
         'Рок': 'https://iptv-org.github.io/iptv/categories/rock.m3u',
-        'Хип-хоп': 'https://iptv-org.github.io/iptv/categories/hiphop.m3u',
-        'Электроника': 'https://iptv-org.github.io/iptv/categories/electronic.m3u',
-        'Джаз': 'https://iptv-org.github.io/iptv/categories/jazz.m3u',
-        'Классика': 'https://iptv-org.github.io/iptv/categories/classic.m3u',
-        'Кантри': 'https://iptv-org.github.io/iptv/categories/country.m3u',
-        'Метал': 'https://iptv-org.github.io/iptv/categories/metal.m3u'
+        'Хип-хоп': 'https://iptv-org.github.io/iptv/categories/hiphop.m3u'
     },
-    'Детские': {
-        'Все детские': 'https://iptv-org.github.io/iptv/categories/kids.m3u',
-        'Мультфильмы': 'https://iptv-org.github.io/iptv/categories/cartoons.m3u',
-        'Образование': 'https://iptv-org.github.io/iptv/categories/educational.m3u',
-        'Для малышей': 'https://iptv-org.github.io/iptv/categories/preschool.m3u'
+    'Страны': {
+        'Россия': 'https://iptv-org.github.io/iptv/countries/ru.m3u',
+        'США': 'https://iptv-org.github.io/iptv/countries/us.m3u',
+        'Великобритания': 'https://iptv-org.github.io/iptv/countries/gb.m3u',
+        'Германия': 'https://iptv-org.github.io/iptv/countries/de.m3u',
+        'Франция': 'https://iptv-org.github.io/iptv/countries/fr.m3u',
+        'Италия': 'https://iptv-org.github.io/iptv/countries/it.m3u',
+        'Испания': 'https://iptv-org.github.io/iptv/countries/es.m3u',
+        'Китай': 'https://iptv-org.github.io/iptv/countries/cn.m3u',
+        'Япония': 'https://iptv-org.github.io/iptv/countries/jp.m3u',
+        'Корея': 'https://iptv-org.github.io/iptv/countries/kr.m3u',
+        'Индия': 'https://iptv-org.github.io/iptv/countries/in.m3u',
+        'Бразилия': 'https://iptv-org.github.io/iptv/countries/br.m3u',
+        'Канада': 'https://iptv-org.github.io/iptv/countries/ca.m3u',
+        'Австралия': 'https://iptv-org.github.io/iptv/countries/au.m3u'
     },
-    'Документальные': {
-        'Все документальные': 'https://iptv-org.github.io/iptv/categories/documentary.m3u',
-        'История': 'https://iptv-org.github.io/iptv/categories/history.m3u',
-        'Наука': 'https://iptv-org.github.io/iptv/categories/science.m3u',
-        'Природа': 'https://iptv-org.github.io/iptv/categories/nature.m3u',
-        'Путешествия': 'https://iptv-org.github.io/iptv/categories/travel.m3u',
-        'Технологии': 'https://iptv-org.github.io/iptv/categories/technology.m3u'
-    },
-    'Развлечения': {
-        'Все развлечения': 'https://iptv-org.github.io/iptv/categories/entertainment.m3u',
-        'Реалити-шоу': 'https://iptv-org.github.io/iptv/categories/reality.m3u',
-        'Ток-шоу': 'https://iptv-org.github.io/iptv/categories/talk.m3u',
-        'Игры': 'https://iptv-org.github.io/iptv/categories/games.m3u',
-        'Юмор': 'https://iptv-org.github.io/iptv/categories/comedy.m3u'
+    'Языки': {
+        'Русский': 'https://iptv-org.github.io/iptv/languages/rus.m3u',
+        'Английский': 'https://iptv-org.github.io/iptv/languages/eng.m3u',
+        'Испанский': 'https://iptv-org.github.io/iptv/languages/spa.m3u',
+        'Французский': 'https://iptv-org.github.io/iptv/languages/fra.m3u',
+        'Немецкий': 'https://iptv-org.github.io/iptv/languages/deu.m3u',
+        'Итальянский': 'https://iptv-org.github.io/iptv/languages/ita.m3u',
+        'Португальский': 'https://iptv-org.github.io/iptv/languages/por.m3u',
+        'Китайский': 'https://iptv-org.github.io/iptv/languages/zho.m3u',
+        'Японский': 'https://iptv-org.github.io/iptv/languages/jpn.m3u',
+        'Корейский': 'https://iptv-org.github.io/iptv/languages/kor.m3u',
+        'Арабский': 'https://iptv-org.github.io/iptv/languages/ara.m3u',
+        'Турецкий': 'https://iptv-org.github.io/iptv/languages/tur.m3u',
+        'Хинди': 'https://iptv-org.github.io/iptv/languages/hin.m3u'
     }
 };
 
@@ -103,32 +91,26 @@ function showToast(message) {
 
 // Инициализация приложения
 function initApp() {
-    // Создаём плоскую структуру для удобства навигации
-    categoryTree = categoryStructure;
+    currentMainCategory = 'Категории';
+    currentSubcategory = Object.keys(categoryTree[currentMainCategory])[0];
     
-    // Получаем список основных категорий
-    const mainCategories = Object.keys(categoryTree);
-    currentCategory = mainCategories[0];
-    currentSubcategory = Object.keys(categoryTree[currentCategory])[0];
-    
-    renderCategories();
+    renderMainCategories();
     renderSubcategories();
-    loadAndRenderPlaylist(currentCategory, currentSubcategory);
+    loadAndRenderPlaylist(currentMainCategory, currentSubcategory);
 }
 
-// Отображение основных категорий
-function renderCategories() {
+// Отображение главных категорий
+function renderMainCategories() {
     categoriesContainer.innerHTML = '';
     
-    const mainCategories = Object.keys(categoryTree);
     mainCategories.forEach((category, index) => {
         const btn = document.createElement('button');
         btn.className = 'category-btn';
         btn.textContent = category;
-        if (category === currentCategory) btn.classList.add('active');
+        if (category === currentMainCategory) btn.classList.add('active');
         
         btn.addEventListener('click', () => {
-            selectCategory(category);
+            selectMainCategory(category);
         });
         
         categoriesContainer.appendChild(btn);
@@ -148,7 +130,7 @@ function renderSubcategories() {
     const container = document.getElementById('subcategoriesContainer');
     container.innerHTML = '';
     
-    const subcategories = Object.keys(categoryTree[currentCategory]);
+    const subcategories = Object.keys(categoryTree[currentMainCategory]);
     subcategories.forEach((subcategory, index) => {
         const btn = document.createElement('button');
         btn.className = 'subcategory-btn';
@@ -163,45 +145,43 @@ function renderSubcategories() {
     });
 }
 
-// Выбор основной категории
-function selectCategory(categoryName) {
-    currentCategory = categoryName;
-    currentSubcategory = Object.keys(categoryTree[categoryName])[0]; // Первая подкатегория
+// Выбор главной категории
+function selectMainCategory(categoryName) {
+    currentMainCategory = categoryName;
+    currentSubcategory = Object.keys(categoryTree[categoryName])[0];
     
-    renderCategories();
+    renderMainCategories();
     renderSubcategories();
-    loadAndRenderPlaylist(currentCategory, currentSubcategory);
+    loadAndRenderPlaylist(currentMainCategory, currentSubcategory);
 }
 
 // Выбор подкатегории
 function selectSubcategory(subcategoryName) {
     currentSubcategory = subcategoryName;
     renderSubcategories();
-    loadAndRenderPlaylist(currentCategory, currentSubcategory);
+    loadAndRenderPlaylist(currentMainCategory, currentSubcategory);
 }
 
 // Загрузка и отображение плейлиста
-async function loadAndRenderPlaylist(categoryName, subcategoryName) {
-    const url = categoryTree[categoryName][subcategoryName];
+async function loadAndRenderPlaylist(mainCategory, subcategory) {
+    const url = categoryTree[mainCategory][subcategory];
     
     if (!url) {
         renderChannels([]);
         return;
     }
     
-    // Показываем индикатор загрузки
     initialLoader.style.display = 'flex';
     
     try {
         let channels = [];
         
-        // Проверяем кэш
         if (loadedPlaylists[url]) {
             channels = loadedPlaylists[url];
         } else {
             const content = await fetchM3U(url);
-            channels = parseM3UContent(content, subcategoryName);
-            loadedPlaylists[url] = channels; // Кэшируем
+            channels = parseM3UContent(content, subcategory);
+            loadedPlaylists[url] = channels;
         }
         
         renderChannels(channels);
@@ -541,13 +521,13 @@ function requestNativeFullscreen() {
 // Иконка по группе
 function getGroupIcon(group) {
     group = group.toLowerCase();
-    if (group.includes('новости')) return 'fa-newspaper';
-    if (group.includes('спорт')) return 'fa-futbol';
-    if (group.includes('кино')) return 'fa-film';
-    if (group.includes('музыка')) return 'fa-music';
-    if (group.includes('детск')) return 'fa-child';
-    if (group.includes('документ')) return 'fa-video';
-    if (group.includes('развлеч')) return 'fa-theater-masks';
+    if (group.includes('новости') || group.includes('news')) return 'fa-newspaper';
+    if (group.includes('спорт') || group.includes('sport')) return 'fa-futbol';
+    if (group.includes('кино') || group.includes('movie')) return 'fa-film';
+    if (group.includes('музыка') || group.includes('music')) return 'fa-music';
+    if (group.includes('детск') || group.includes('kids')) return 'fa-child';
+    if (group.includes('документ') || group.includes('doc')) return 'fa-video';
+    if (group.includes('развлеч') || group.includes('entertainment')) return 'fa-theater-masks';
     return 'fa-tv';
 }
 
@@ -565,38 +545,36 @@ document.addEventListener('keydown', function(e) {
     switch(e.key) {
         case 'ArrowDown':
             e.preventDefault();
-            // Переключаем подкатегории вперед
-            const subcategories = Object.keys(categoryTree[currentCategory]);
-            const currentIndex = subcategories.indexOf(currentSubcategory);
-            const nextIndex = (currentIndex + 1) % subcategories.length;
-            selectSubcategory(subcategories[nextIndex]);
+            // Переключаем главные категории вниз
+            const mainIndex = mainCategories.indexOf(currentMainCategory);
+            const nextMainIndex = (mainIndex + 1) % mainCategories.length;
+            selectMainCategory(mainCategories[nextMainIndex]);
             break;
             
         case 'ArrowUp':
             e.preventDefault();
-            // Переключаем подкатегории назад
-            const currentSubs = Object.keys(categoryTree[currentCategory]);
-            const currIndex = currentSubs.indexOf(currentSubcategory);
-            const prevIndex = (currIndex - 1 + currentSubs.length) % currentSubs.length;
-            selectSubcategory(currentSubs[prevIndex]);
+            // Переключаем главные категории вверх
+            const currentIndex = mainCategories.indexOf(currentMainCategory);
+            const prevMainIndex = (currentIndex - 1 + mainCategories.length) % mainCategories.length;
+            selectMainCategory(mainCategories[prevMainIndex]);
             break;
             
         case 'ArrowRight':
             e.preventDefault();
-            // Перемещение по каналам вперед
-            if (channelCards.length > 0) {
-                currentChannelIndex = (currentChannelIndex + 1) % channelCards.length;
-                channelCards[currentChannelIndex].focus();
-            }
+            // Переключаем подкатегории вперед
+            const subcategories = Object.keys(categoryTree[currentMainCategory]);
+            const subIndex = subcategories.indexOf(currentSubcategory);
+            const nextSubIndex = (subIndex + 1) % subcategories.length;
+            selectSubcategory(subcategories[nextSubIndex]);
             break;
             
         case 'ArrowLeft':
             e.preventDefault();
-            // Перемещение по каналам назад
-            if (channelCards.length > 0) {
-                currentChannelIndex = (currentChannelIndex - 1 + channelCards.length) % channelCards.length;
-                channelCards[currentChannelIndex].focus();
-            }
+            // Переключаем подкатегории назад
+            const currentSubs = Object.keys(categoryTree[currentMainCategory]);
+            const currSubIndex = currentSubs.indexOf(currentSubcategory);
+            const prevSubIndex = (currSubIndex - 1 + currentSubs.length) % currentSubs.length;
+            selectSubcategory(currentSubs[prevSubIndex]);
             break;
             
         case 'Enter':
@@ -604,8 +582,7 @@ document.addEventListener('keydown', function(e) {
             if (document.activeElement.classList.contains('channel-card')) {
                 const card = document.activeElement;
                 const index = parseInt(card.dataset.index);
-                const subcategories = Object.keys(categoryTree[currentCategory]);
-                const url = categoryTree[currentCategory][currentSubcategory];
+                const url = categoryTree[currentMainCategory][currentSubcategory];
                 const channels = loadedPlaylists[url] || [];
                 
                 if (index >= 0 && index < channels.length) {
@@ -617,7 +594,7 @@ document.addEventListener('keydown', function(e) {
     }
 });
 
-// Добавим стили для подкатегорий (в style.css нужно добавить)
+// Добавим стили для подкатегорий
 const style = document.createElement('style');
 style.textContent = `
 .subcategories-container {

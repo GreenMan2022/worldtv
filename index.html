@@ -19,11 +19,13 @@
         </div>
     </div>
 
-    <!-- Основные категории -->
-    <div class="categories-container" id="categoriesContainer"></div>
+    <!-- Панель категорий (скрыта по умолчанию) -->
+    <div class="categories-panel" id="categoriesPanel" style="display: none;">
+        <!-- Категории будут здесь -->
+    </div>
 
-    <!-- Подкатегории -->
-    <div class="subcategories-container" id="subcategoriesContainer"></div>
+    <!-- Основные категории (для совместимости) -->
+    <div class="categories-container" id="categoriesContainer"></div>
 
     <!-- Сетка каналов -->
     <main class="channels-grid" id="channelsContainer"></main>
@@ -42,6 +44,6 @@
     <!-- HLS.js -->
     <script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
     <!-- Основной скрипт -->
-    <script src="/script.js"></script>
+    <script src="/script.js?v=1.0.0"></script>
 </body>
 </html>

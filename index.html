@@ -15,21 +15,20 @@
     <div class="loader" id="initialLoader">
         <div class="loader-content">
             <i class="fas fa-spinner fa-spin"></i>
-            <p>Загрузка каналов...</p>
+            <p>Загрузка...</p>
         </div>
     </div>
 
-    <!-- Контейнер категорий -->
-    <div class="categories-container" id="categoriesContainer">
-        <!-- Категории будут добавлены сюда скриптом -->
-    </div>
+    <!-- Основные категории -->
+    <div class="categories-container" id="categoriesContainer"></div>
 
-    <!-- Основной контент: сетка каналов -->
-    <main class="channels-grid" id="channelsContainer">
-        <!-- Каналы будут добавлены сюда скриптом -->
-    </main>
+    <!-- Подкатегории -->
+    <div class="subcategories-container" id="subcategoriesContainer"></div>
 
-    <!-- Модальное окно с плеером -->
+    <!-- Сетка каналов -->
+    <main class="channels-grid" id="channelsContainer"></main>
+
+    <!-- Модальное окно плеера -->
     <div class="modal" id="playerModal">
         <div class="modal-content">
             <button class="close-btn" id="closeModal">&times;</button>
@@ -37,12 +36,12 @@
         </div>
     </div>
 
-    <!-- Контейнер для уведомлений -->
+    <!-- Уведомления -->
     <div class="toast-container" id="toastContainer"></div>
 
-    <!-- Подключаем hls.js -->
+    <!-- HLS.js -->
     <script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
-    <!-- Наш скрипт -->
+    <!-- Основной скрипт -->
     <script src="/script.js"></script>
 </body>
 </html>

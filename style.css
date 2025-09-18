@@ -40,64 +40,106 @@ body {
     color: #aaa;
 }
 
-/* Панель категорий */
-.categories-panel {
+/* Главное меню категорий */
+.main-categories-panel {
+    display: flex;
+    gap: 15px;
+    padding: 15px 20px 10px;
+    background: rgba(0, 0, 0, 0.8);
+    border-bottom: 2px solid #ff375f;
+    overflow-x: auto;
+    white-space: nowrap;
     position: fixed;
     top: 0;
     left: 0;
     width: 100%;
-    background: rgba(0, 0, 0, 0.9);
-    padding: 15px 20px;
-    z-index: 100;
-    display: none;
-    border-bottom: 2px solid #ff375f;
-    overflow-x: auto;
-    white-space: nowrap;
-    scrollbar-width: none;
+    z-index: 99;
 }
 
-.categories-panel::-webkit-scrollbar {
+.main-categories-panel::-webkit-scrollbar {
     display: none;
 }
 
-.categories-panel .category-btn {
+.main-categories-panel .category-btn {
     background: rgba(255, 255, 255, 0.1);
     color: #fff;
     border: none;
-    padding: 8px 20px;
-    border-radius: 20px;
-    margin: 0 5px;
+    padding: 10px 20px;
+    border-radius: 25px;
     cursor: pointer;
     white-space: nowrap;
-    font-size: 15px;
-    min-width: 100px;
+    font-size: 16px;
+    min-width: 120px;
+    text-align: center;
     outline: none;
     transition: all 0.2s;
 }
 
-.categories-panel .category-btn:hover,
-.categories-panel .category-btn.active,
-.categories-panel .category-btn:focus {
+.main-categories-panel .category-btn:hover,
+.main-categories-panel .category-btn.active,
+.main-categories-panel .category-btn:focus {
     background: linear-gradient(90deg, #ff375f, #ff5e41);
     color: white;
 }
 
-.categories-panel .category-btn:focus {
+.main-categories-panel .category-btn:focus {
     outline: 3px solid #ff375f;
     outline-offset: 2px;
 }
 
-/* Главные категории (для совместимости) */
-.categories-container {
-    display: none; /* Скрываем, не используем */
+/* Подменю подкатегорий */
+.sub-categories-panel {
+    display: none;
+    gap: 10px;
+    padding: 10px 20px;
+    background: rgba(0, 0, 0, 0.7);
+    border-bottom: 1px solid #555;
+    overflow-x: auto;
+    white-space: nowrap;
+    position: fixed;
+    top: 70px; /* Под главным меню */
+    left: 0;
+    width: 100%;
+    z-index: 98;
 }
 
-/* Сетка каналов */
+.sub-categories-panel::-webkit-scrollbar {
+    display: none;
+}
+
+.sub-categories-panel .subcategory-btn {
+    background: rgba(255, 255, 255, 0.1);
+    color: #fff;
+    border: none;
+    padding: 8px 16px;
+    border-radius: 20px;
+    cursor: pointer;
+    white-space: nowrap;
+    font-size: 14px;
+    min-width: 100px;
+    text-align: center;
+    outline: none;
+    transition: all 0.2s;
+}
+
+.sub-categories-panel .subcategory-btn:hover,
+.sub-categories-panel .subcategory-btn.active,
+.sub-categories-panel .subcategory-btn:focus {
+    background: linear-gradient(90deg, #ff375f, #ff5e41);
+    color: white;
+}
+
+.sub-categories-panel .subcategory-btn:focus {
+    outline: 3px solid #ff375f;
+    outline-offset: 2px;
+}
+
+/* Сетка каналов — сдвинута вниз, чтобы не перекрывалась меню */
 .channels-grid {
     display: grid;
     grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
     gap: 15px;
-    padding: 80px 20px 20px; /* Отступ сверху для панели категорий */
+    padding: 140px 20px 20px; /* Отступ сверху: 70px (главное меню) + 70px (подменю) */
 }
 
 /* Карточка канала */
@@ -280,7 +322,7 @@ body {
 @media (max-width: 600px) {
     .channels-grid {
         grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
-        padding: 70px 10px 10px;
+        padding: 130px 10px 10px;
     }
     
     .channel-card {

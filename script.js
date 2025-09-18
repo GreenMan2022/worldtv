@@ -9,15 +9,16 @@ const initialLoader = document.getElementById('initialLoader');
 const toastContainer = document.getElementById('toastContainer');
 
 // Глобальные переменные
-let currentCategory = 'Все'; // Текущая выбранная категория
-let navigationState = 'channels'; // 'channels' | 'categoriesPanel'
+let currentMainCategory = 'Категории'; // Главная категория
+let currentSubcategory = '';            // Подкатегория
+let navigationState = 'channels';       // 'channels' | 'mainCategories' | 'subCategories'
 let currentChannelIndex = 0;
 let currentMiniPlayer = null;
 let miniPlayers = new Map();
 let focusTimer = null;
 let loadedPlaylists = {};
 
-// Структура плейлистов (реальные ссылки, без example.com)
+// Структура плейлистов — ТОЛЬКО РЕАЛЬНЫЕ ССЫЛКИ
 const categoryTree = {
   "Категории": {
     "Новости": "https://iptv-org.github.io/iptv/categories/news.m3u",
@@ -54,192 +55,19 @@ const categoryTree = {
     "Австралия": "https://iptv-org.github.io/iptv/countries/au.m3u"
   },
   "Языки": {
-    "Acoli": "https://iptv-org.github.io/iptv/languages/ach.m3u",
-    "Adhola": "https://iptv-org.github.io/iptv/languages/adh.m3u",
-    "Afar": "https://iptv-org.github.io/iptv/languages/aar.m3u",
-    "Afrikaans": "https://iptv-org.github.io/iptv/languages/afr.m3u",
-    "Albanian": "https://iptv-org.github.io/iptv/languages/sqi.m3u",
-    "Algerian Sign Language": "https://iptv-org.github.io/iptv/languages/asp.m3u",
-    "Alur": "https://iptv-org.github.io/iptv/languages/alz.m3u",
-    "Amharic": "https://iptv-org.github.io/iptv/languages/amh.m3u",
-    "Arabic": "https://iptv-org.github.io/iptv/languages/ara.m3u",
-    "Armenian": "https://iptv-org.github.io/iptv/languages/hye.m3u",
-    "Assamese": "https://iptv-org.github.io/iptv/languages/asm.m3u",
-    "Assyrian Neo-Aramaic": "https://iptv-org.github.io/iptv/languages/aii.m3u",
-    "Ayizo Gbe": "https://iptv-org.github.io/iptv/languages/ayb.m3u",
-    "Aymara": "https://iptv-org.github.io/iptv/languages/aym.m3u",
-    "Azerbaijani": "https://iptv-org.github.io/iptv/languages/aze.m3u",
-    "Baatonum": "https://iptv-org.github.io/iptv/languages/bba.m3u",
-    "Bambara": "https://iptv-org.github.io/iptv/languages/bam.m3u",
-    "Bashkir": "https://iptv-org.github.io/iptv/languages/bak.m3u",
-    "Basque": "https://iptv-org.github.io/iptv/languages/eus.m3u",
-    "Belarusian": "https://iptv-org.github.io/iptv/languages/bel.m3u",
-    "Bengali": "https://iptv-org.github.io/iptv/languages/ben.m3u",
-    "Bhojpuri": "https://iptv-org.github.io/iptv/languages/bho.m3u",
-    "Bosnian": "https://iptv-org.github.io/iptv/languages/bos.m3u",
-    "Bulgarian": "https://iptv-org.github.io/iptv/languages/bul.m3u",
-    "Burmese": "https://iptv-org.github.io/iptv/languages/mya.m3u",
-    "Catalan": "https://iptv-org.github.io/iptv/languages/cat.m3u",
-    "Central Atlas Tamazight": "https://iptv-org.github.io/iptv/languages/tzm.m3u",
-    "Central Kurdish": "https://iptv-org.github.io/iptv/languages/ckb.m3u",
-    "Chenoua": "https://iptv-org.github.io/iptv/languages/cnu.m3u",
-    "Chhattisgarhi": "https://iptv-org.github.io/iptv/languages/hne.m3u",
-    "Chiga": "https://iptv-org.github.io/iptv/languages/cgg.m3u",
-    "Chinese": "https://iptv-org.github.io/iptv/languages/zho.m3u",
-    "Croatian": "https://iptv-org.github.io/iptv/languages/hrv.m3u",
-    "Czech": "https://iptv-org.github.io/iptv/languages/ces.m3u",
-    "Danish": "https://iptv-org.github.io/iptv/languages/dan.m3u",
-    "Dari (Parsi)": "https://iptv-org.github.io/iptv/languages/prd.m3u",
-    "Dendi (Benin)": "https://iptv-org.github.io/iptv/languages/ddn.m3u",
-    "Dhanwar (Nepal)": "https://iptv-org.github.io/iptv/languages/dhw.m3u",
-    "Dhivehi": "https://iptv-org.github.io/iptv/languages/div.m3u",
-    "Dholuo": "https://iptv-org.github.io/iptv/languages/luo.m3u",
-    "Dimili": "https://iptv-org.github.io/iptv/languages/zza.m3u",
-    "Dutch": "https://iptv-org.github.io/iptv/languages/nld.m3u",
-    "Dyula": "https://iptv-org.github.io/iptv/languages/dyu.m3u",
-    "Egyptian Arabic": "https://iptv-org.github.io/iptv/languages/arz.m3u",
-    "English": "https://iptv-org.github.io/iptv/languages/eng.m3u",
-    "Estonian": "https://iptv-org.github.io/iptv/languages/est.m3u",
-    "Ewe": "https://iptv-org.github.io/iptv/languages/ewe.m3u",
-    "Faroese": "https://iptv-org.github.io/iptv/languages/fao.m3u",
-    "Fataleka": "https://iptv-org.github.io/iptv/languages/far.m3u",
-    "Filipino": "https://iptv-org.github.io/iptv/languages/fil.m3u",
-    "Finnish": "https://iptv-org.github.io/iptv/languages/fin.m3u",
-    "Fon": "https://iptv-org.github.io/iptv/languages/fon.m3u",
-    "French": "https://iptv-org.github.io/iptv/languages/fra.m3u",
-    "Fulah": "https://iptv-org.github.io/iptv/languages/ful.m3u",
-    "Gaelic": "https://iptv-org.github.io/iptv/languages/gla.m3u",
-    "Ganda": "https://iptv-org.github.io/iptv/languages/lug.m3u",
-    "Gen": "https://iptv-org.github.io/iptv/languages/gej.m3u",
-    "Georgian": "https://iptv-org.github.io/iptv/languages/kat.m3u",
-    "German": "https://iptv-org.github.io/iptv/languages/deu.m3u",
-    "Gikuyu": "https://iptv-org.github.io/iptv/languages/kik.m3u",
-    "Goan Konkani": "https://iptv-org.github.io/iptv/languages/gom.m3u",
-    "Greek": "https://iptv-org.github.io/iptv/languages/ell.m3u",
-    "Guadeloupean Creole French": "https://iptv-org.github.io/iptv/languages/gcf.m3u",
-    "Gujarati": "https://iptv-org.github.io/iptv/languages/guj.m3u",
-    "Gun": "https://iptv-org.github.io/iptv/languages/guw.m3u",
-    "Haitian": "https://iptv-org.github.io/iptv/languages/hat.m3u",
-    "Hausa": "https://iptv-org.github.io/iptv/languages/hau.m3u",
-    "Hebrew": "https://iptv-org.github.io/iptv/languages/heb.m3u",
-    "Hindi": "https://iptv-org.github.io/iptv/languages/hin.m3u",
-    "Hmong": "https://iptv-org.github.io/iptv/languages/hmn.m3u",
-    "Hungarian": "https://iptv-org.github.io/iptv/languages/hun.m3u",
-    "Icelandic": "https://iptv-org.github.io/iptv/languages/isl.m3u",
-    "Indonesian": "https://iptv-org.github.io/iptv/languages/ind.m3u",
-    "Inuktitut": "https://iptv-org.github.io/iptv/languages/iku.m3u",
-    "Irish": "https://iptv-org.github.io/iptv/languages/gle.m3u",
-    "Isekiri": "https://iptv-org.github.io/iptv/languages/its.m3u",
-    "Italian": "https://iptv-org.github.io/iptv/languages/ita.m3u",
-    "Japanese": "https://iptv-org.github.io/iptv/languages/jpn.m3u",
-    "Javanese": "https://iptv-org.github.io/iptv/languages/jav.m3u",
-    "Kabiyè": "https://iptv-org.github.io/iptv/languages/kbp.m3u",
-    "Kabyle": "https://iptv-org.github.io/iptv/languages/kab.m3u",
-    "Kannada": "https://iptv-org.github.io/iptv/languages/kan.m3u",
-    "Kapampangan": "https://iptv-org.github.io/iptv/languages/pam.m3u",
-    "Kazakh": "https://iptv-org.github.io/iptv/languages/kaz.m3u",
-    "Khmer": "https://iptv-org.github.io/iptv/languages/khm.m3u",
-    "Khorasani Turkish": "https://iptv-org.github.io/iptv/languages/kmz.m3u",
-    "Kinyarwanda": "https://iptv-org.github.io/iptv/languages/kin.m3u",
-    "Kirghiz": "https://iptv-org.github.io/iptv/languages/kir.m3u",
-    "Kituba (Congo)": "https://iptv-org.github.io/iptv/languages/mkw.m3u",
-    "Kongo": "https://iptv-org.github.io/iptv/languages/kon.m3u",
-    "Konkani (macrolanguage)": "https://iptv-org.github.io/iptv/languages/kok.m3u",
-    "Korean": "https://iptv-org.github.io/iptv/languages/kor.m3u",
-    "Kumam": "https://iptv-org.github.io/iptv/languages/kdi.m3u",
-    "Kurdish": "https://iptv-org.github.io/iptv/languages/kur.m3u",
-    "Lango (Uganda)": "https://iptv-org.github.io/iptv/languages/laj.m3u",
-    "Lao": "https://iptv-org.github.io/iptv/languages/lao.m3u",
-    "Latin": "https://iptv-org.github.io/iptv/languages/lat.m3u",
-    "Latvian": "https://iptv-org.github.io/iptv/languages/lav.m3u",
-    "Letzeburgesch": "https://iptv-org.github.io/iptv/languages/ltz.m3u",
-    "Lingala": "https://iptv-org.github.io/iptv/languages/lin.m3u",
-    "Lithuanian": "https://iptv-org.github.io/iptv/languages/lit.m3u",
-    "Luba-Lulua": "https://iptv-org.github.io/iptv/languages/lua.m3u",
-    "Lushai": "https://iptv-org.github.io/iptv/languages/lus.m3u",
-    "Macedonian": "https://iptv-org.github.io/iptv/languages/mkd.m3u",
-    "Malay": "https://iptv-org.github.io/iptv/languages/msa.m3u",
-    "Malayalam": "https://iptv-org.github.io/iptv/languages/mal.m3u",
-    "Maltese": "https://iptv-org.github.io/iptv/languages/mlt.m3u",
-    "Mandarin Chinese": "https://iptv-org.github.io/iptv/languages/cmn.m3u",
-    "Mandinka": "https://iptv-org.github.io/iptv/languages/mnk.m3u",
-    "Maori": "https://iptv-org.github.io/iptv/languages/mri.m3u",
-    "Marathi": "https://iptv-org.github.io/iptv/languages/mar.m3u",
-    "Min Nan Chinese": "https://iptv-org.github.io/iptv/languages/nan.m3u",
-    "Mongolian": "https://iptv-org.github.io/iptv/languages/mon.m3u",
-    "Montenegrin": "https://iptv-org.github.io/iptv/languages/cnr.m3u",
-    "Morisyen": "https://iptv-org.github.io/iptv/languages/mfe.m3u",
-    "Moroccan Sign Language": "https://iptv-org.github.io/iptv/languages/xms.m3u",
-    "Mossi": "https://iptv-org.github.io/iptv/languages/mos.m3u",
-    "Mycenaean Greek": "https://iptv-org.github.io/iptv/languages/gmy.m3u",
-    "Nepali": "https://iptv-org.github.io/iptv/languages/nep.m3u",
-    "Norwegian": "https://iptv-org.github.io/iptv/languages/nor.m3u",
-    "Nyankole": "https://iptv-org.github.io/iptv/languages/nyn.m3u",
-    "Nyoro": "https://iptv-org.github.io/iptv/languages/nyo.m3u",
-    "Oriya (macrolanguage)": "https://iptv-org.github.io/iptv/languages/ori.m3u",
-    "Panjabi": "https://iptv-org.github.io/iptv/languages/pan.m3u",
-    "Papiamento": "https://iptv-org.github.io/iptv/languages/pap.m3u",
-    "Pashto": "https://iptv-org.github.io/iptv/languages/pus.m3u",
-    "Persian": "https://iptv-org.github.io/iptv/languages/fas.m3u",
-    "Polish": "https://iptv-org.github.io/iptv/languages/pol.m3u",
-    "Portuguese": "https://iptv-org.github.io/iptv/languages/por.m3u",
-    "Pulaar": "https://iptv-org.github.io/iptv/languages/fuc.m3u",
-    "Quechua": "https://iptv-org.github.io/iptv/languages/que.m3u",
-    "Romanian": "https://iptv-org.github.io/iptv/languages/ron.m3u",
-    "Russian": "https://iptv-org.github.io/iptv/languages/rus.m3u",
-    "Saint Lucian Creole French": "https://iptv-org.github.io/iptv/languages/acf.m3u",
-    "Samoan": "https://iptv-org.github.io/iptv/languages/smo.m3u",
-    "Santali": "https://iptv-org.github.io/iptv/languages/sat.m3u",
-    "Serbian": "https://iptv-org.github.io/iptv/languages/srp.m3u",
-    "Serbo-Croatian": "https://iptv-org.github.io/iptv/languages/hbs.m3u",
-    "Sinhala": "https://iptv-org.github.io/iptv/languages/sin.m3u",
-    "Slovak": "https://iptv-org.github.io/iptv/languages/slk.m3u",
-    "Slovenian": "https://iptv-org.github.io/iptv/languages/slv.m3u",
-    "Somali": "https://iptv-org.github.io/iptv/languages/som.m3u",
-    "South African Sign Language": "https://iptv-org.github.io/iptv/languages/sfs.m3u",
-    "South Ndebele": "https://iptv-org.github.io/iptv/languages/nbl.m3u",
-    "Spanish": "https://iptv-org.github.io/iptv/languages/spa.m3u",
-    "Standard Arabic": "https://iptv-org.github.io/iptv/languages/arb.m3u",
-    "Swahili": "https://iptv-org.github.io/iptv/languages/swa.m3u",
-    "Swati": "https://iptv-org.github.io/iptv/languages/ssw.m3u",
-    "Swedish": "https://iptv-org.github.io/iptv/languages/swe.m3u",
-    "Tachawit": "https://iptv-org.github.io/iptv/languages/shy.m3u",
-    "Tachelhit": "https://iptv-org.github.io/iptv/languages/shi.m3u",
-    "Tagalog": "https://iptv-org.github.io/iptv/languages/tgl.m3u",
-    "Tahitian": "https://iptv-org.github.io/iptv/languages/tah.m3u",
-    "Tajik": "https://iptv-org.github.io/iptv/languages/tgk.m3u",
-    "Tamashek": "https://iptv-org.github.io/iptv/languages/tmh.m3u",
-    "Tamasheq": "https://iptv-org.github.io/iptv/languages/taq.m3u",
-    "Tamil": "https://iptv-org.github.io/iptv/languages/tam.m3u",
-    "Tarifit": "https://iptv-org.github.io/iptv/languages/rif.m3u",
-    "Tatar": "https://iptv-org.github.io/iptv/languages/tat.m3u",
-    "Telugu": "https://iptv-org.github.io/iptv/languages/tel.m3u",
-    "Thai": "https://iptv-org.github.io/iptv/languages/tha.m3u",
-    "Tibetan": "https://iptv-org.github.io/iptv/languages/bod.m3u",
-    "Tigre": "https://iptv-org.github.io/iptv/languages/tig.m3u",
-    "Tigrinya": "https://iptv-org.github.io/iptv/languages/tir.m3u",
-    "Tooro": "https://iptv-org.github.io/iptv/languages/ttj.m3u",
-    "Tsonga": "https://iptv-org.github.io/iptv/languages/tso.m3u",
-    "Tumzabt": "https://iptv-org.github.io/iptv/languages/mzb.m3u",
-    "Turkish": "https://iptv-org.github.io/iptv/languages/tur.m3u",
-    "Turkmen": "https://iptv-org.github.io/iptv/languages/tuk.m3u",
-    "Uighur": "https://iptv-org.github.io/iptv/languages/uig.m3u",
-    "Ukrainian": "https://iptv-org.github.io/iptv/languages/ukr.m3u",
-    "Urdu": "https://iptv-org.github.io/iptv/languages/urd.m3u",
-    "Uzbek": "https://iptv-org.github.io/iptv/languages/uzb.m3u",
-    "Venda": "https://iptv-org.github.io/iptv/languages/ven.m3u",
-    "Vietnamese": "https://iptv-org.github.io/iptv/languages/vie.m3u",
-    "Welsh": "https://iptv-org.github.io/iptv/languages/cym.m3u",
-    "Western Frisian": "https://iptv-org.github.io/iptv/languages/fry.m3u",
-    "Wolof": "https://iptv-org.github.io/iptv/languages/wol.m3u",
-    "Xhosa": "https://iptv-org.github.io/iptv/languages/xho.m3u",
-    "Yakut": "https://iptv-org.github.io/iptv/languages/sah.m3u",
-    "Yoruba": "https://iptv-org.github.io/iptv/languages/yor.m3u",
-    "Yucatec Maya": "https://iptv-org.github.io/iptv/languages/yua.m3u",
-    "Yue Chinese": "https://iptv-org.github.io/iptv/languages/yue.m3u",
-    "Zarma": "https://iptv-org.github.io/iptv/languages/dje.m3u",
-    "Zulu": "https://iptv-org.github.io/iptv/languages/zul.m3u",
-    "Undefined": "https://iptv-org.github.io/iptv/languages/undefined.m3u"
+    "Русский": "https://iptv-org.github.io/iptv/languages/rus.m3u",
+    "Английский": "https://iptv-org.github.io/iptv/languages/eng.m3u",
+    "Испанский": "https://iptv-org.github.io/iptv/languages/spa.m3u",
+    "Французский": "https://iptv-org.github.io/iptv/languages/fra.m3u",
+    "Немецкий": "https://iptv-org.github.io/iptv/languages/deu.m3u",
+    "Итальянский": "https://iptv-org.github.io/iptv/languages/ita.m3u",
+    "Португальский": "https://iptv-org.github.io/iptv/languages/por.m3u",
+    "Китайский": "https://iptv-org.github.io/iptv/languages/zho.m3u",
+    "Японский": "https://iptv-org.github.io/iptv/languages/jpn.m3u",
+    "Корейский": "https://iptv-org.github.io/iptv/languages/kor.m3u",
+    "Арабский": "https://iptv-org.github.io/iptv/languages/ara.m3u",
+    "Турецкий": "https://iptv-org.github.io/iptv/languages/tur.m3u",
+    "Хинди": "https://iptv-org.github.io/iptv/languages/hin.m3u"
   }
 };
 
@@ -264,16 +92,22 @@ function showToast(message) {
 
 // Инициализация приложения
 function initApp() {
-    // Добавляем аварийный таймаут
     const safetyTimeout = setTimeout(() => {
-        console.warn("Аварийное скрытие лоадера");
         initialLoader.style.display = 'none';
         showToast("Ошибка инициализации");
     }, 10000);
 
     try {
+        // Устанавливаем начальные значения
+        currentMainCategory = 'Категории';
+        const firstSub = Object.keys(categoryTree['Категории'])[0];
+        currentSubcategory = firstSub || '';
+        
+        // Рендерим панель (пока скрыта)
         renderCategoriesPanel();
-        loadAndRenderChannels('Все');
+        
+        // Загружаем первый плейлист
+        loadAndRenderChannels(currentMainCategory, currentSubcategory);
         
         // Фокус на первый канал
         setTimeout(() => {
@@ -294,89 +128,93 @@ function initApp() {
 function renderCategoriesPanel() {
     categoriesPanel.innerHTML = '';
     
-    // Собираем все уникальные категории
-    const categories = ['Все'];
+    if (navigationState === 'mainCategories') {
+        // Показываем главные категории
+        const mainCategories = Object.keys(categoryTree);
+        
+        mainCategories.forEach(cat => {
+            const btn = document.createElement('button');
+            btn.className = 'category-btn';
+            btn.textContent = cat;
+            if (cat === currentMainCategory) btn.classList.add('active');
+            
+            btn.addEventListener('click', () => {
+                selectMainCategory(cat);
+            });
+            
+            categoriesPanel.appendChild(btn);
+        });
+    } else if (navigationState === 'subCategories') {
+        // Показываем подкатегории
+        const subcategories = categoryTree[currentMainCategory] ? Object.keys(categoryTree[currentMainCategory]) : [];
+        
+        subcategories.forEach(subcat => {
+            const btn = document.createElement('button');
+            btn.className = 'category-btn';
+            btn.textContent = subcat;
+            if (subcat === currentSubcategory) btn.classList.add('active');
+            
+            btn.addEventListener('click', () => {
+                selectSubcategory(subcat);
+            });
+            
+            categoriesPanel.appendChild(btn);
+        });
+    }
+}
+
+// Выбор главной категории
+function selectMainCategory(categoryName) {
+    currentMainCategory = categoryName;
+    const firstSub = categoryTree[categoryName] ? Object.keys(categoryTree[categoryName])[0] : '';
+    currentSubcategory = firstSub || '';
+    navigationState = 'subCategories';
+    renderCategoriesPanel();
     
-    for (let mainCat in categoryTree) {
-        for (let subCat in categoryTree[mainCat]) {
-            if (!categories.includes(subCat)) {
-                categories.push(subCat);
-            }
-        }
+    // Фокус на первую подкатегорию
+    setTimeout(() => {
+        const firstBtn = categoriesPanel.querySelector('.category-btn');
+        if (firstBtn) firstBtn.focus();
+    }, 100);
+}
+
+// Выбор подкатегории
+function selectSubcategory(subcategoryName) {
+    currentSubcategory = subcategoryName;
+    navigationState = 'channels';
+    categoriesPanel.style.display = 'none';
+    
+    loadAndRenderChannels(currentMainCategory, currentSubcategory);
+}
+
+// Загрузка и отображение каналов
+async function loadAndRenderChannels(mainCategory, subcategory) {
+    if (!categoryTree[mainCategory] || !categoryTree[mainCategory][subcategory]) {
+        renderChannels([]);
+        return;
     }
     
-    categories.forEach(cat => {
-        const btn = document.createElement('button');
-        btn.className = 'category-btn';
-        btn.textContent = cat;
-        if (cat === currentCategory) btn.classList.add('active');
-        
-        btn.addEventListener('click', () => {
-            selectCategory(cat);
-        });
-        
-        categoriesPanel.appendChild(btn);
-    });
-}
-
-// Выбор категории
-function selectCategory(categoryName) {
-    currentCategory = categoryName;
-    renderCategoriesPanel(); // Обновляем активную кнопку
-    
-    // Скрываем панель
-    categoriesPanel.style.display = 'none';
-    navigationState = 'channels';
-    
-    // Загружаем каналы
-    loadAndRenderChannels(categoryName);
-}
-
-// Загрузка и отображение каналов по категории
-async function loadAndRenderChannels(categoryName) {
+    const url = categoryTree[mainCategory][subcategory];
     initialLoader.style.display = 'flex';
     
     try {
-        let allChannels = [];
+        let channels = [];
         
-        if (categoryName === 'Все') {
-            // Собираем все каналы из всех категорий
-            for (let mainCat in categoryTree) {
-                for (let subCat in categoryTree[mainCat]) {
-                    const url = categoryTree[mainCat][subCat];
-                    if (!loadedPlaylists[url]) {
-                        const content = await fetchM3U(url);
-                        const channels = parseM3UContent(content, subCat);
-                        loadedPlaylists[url] = channels;
-                    }
-                    allChannels = [...allChannels, ...loadedPlaylists[url]];
-                }
-            }
+        if (loadedPlaylists[url]) {
+            channels = loadedPlaylists[url];
         } else {
-            // Ищем категорию во всех разделах
-            for (let mainCat in categoryTree) {
-                if (categoryTree[mainCat][categoryName]) {
-                    const url = categoryTree[mainCat][categoryName];
-                    if (!loadedPlaylists[url]) {
-                        const content = await fetchM3U(url);
-                        const channels = parseM3UContent(content, categoryName);
-                        loadedPlaylists[url] = channels;
-                    }
-                    allChannels = loadedPlaylists[url];
-                    break;
-                }
-            }
+            const content = await fetchM3U(url);
+            channels = parseM3UContent(content, subcategory);
+            loadedPlaylists[url] = channels;
         }
         
-        renderChannels(allChannels);
+        renderChannels(channels);
     } catch (error) {
-        console.error("Ошибка загрузки каналов:", error);
+        console.error("Ошибка загрузки плейлиста:", error);
         showToast("Ошибка загрузки каналов");
         renderChannels([]);
     } finally {
         initialLoader.style.display = 'none';
-        
-        // Фокус на первый канал
         setTimeout(() => {
             const firstChannel = document.querySelector('.channel-card');
             if (firstChannel) firstChannel.focus();
@@ -723,14 +561,14 @@ document.addEventListener('keydown', function(e) {
         return;
     }
 
-    // Back / Escape — переключение панели категорий
+    // Back / Escape — навигация по иерархии
     if (e.key === 'Escape' || e.key === 'Backspace') {
         e.preventDefault();
         toggleCategoriesPanel();
         return;
     }
 
-    if (navigationState === 'categoriesPanel') {
+    if (navigationState === 'mainCategories' || navigationState === 'subCategories') {
         handleCategoriesPanelNavigation(e);
     } else {
         handleChannelsNavigation(e);
@@ -739,20 +577,31 @@ document.addEventListener('keydown', function(e) {
 
 // Переключение панели категорий
 function toggleCategoriesPanel() {
-    if (categoriesPanel.style.display === 'none') {
+    if (navigationState === 'channels') {
+        navigationState = 'mainCategories';
         categoriesPanel.style.display = 'block';
-        navigationState = 'categoriesPanel';
+        renderCategoriesPanel();
         
-        // Фокус на активную категорию
         setTimeout(() => {
             const activeBtn = categoriesPanel.querySelector('.category-btn.active');
             if (activeBtn) activeBtn.focus();
+            else {
+                const firstBtn = categoriesPanel.querySelector('.category-btn');
+                if (firstBtn) firstBtn.focus();
+            }
         }, 100);
-    } else {
-        categoriesPanel.style.display = 'none';
-        navigationState = 'channels';
+    } else if (navigationState === 'mainCategories') {
+        navigationState = 'subCategories';
+        renderCategoriesPanel();
         
-        // Фокус на канал
+        setTimeout(() => {
+            const firstBtn = categoriesPanel.querySelector('.category-btn');
+            if (firstBtn) firstBtn.focus();
+        }, 100);
+    } else if (navigationState === 'subCategories') {
+        navigationState = 'channels';
+        categoriesPanel.style.display = 'none';
+        
         setTimeout(() => {
             const firstChannel = document.querySelector('.channel-card');
             if (firstChannel) firstChannel.focus();
@@ -763,13 +612,15 @@ function toggleCategoriesPanel() {
 // Навигация в панели категорий
 function handleCategoriesPanelNavigation(e) {
     const buttons = categoriesPanel.querySelectorAll('.category-btn');
+    if (buttons.length === 0) return;
+    
     const currentIndex = Array.from(buttons).findIndex(btn => btn.classList.contains('active'));
+    let nextIndex = currentIndex;
     
     switch(e.key) {
         case 'ArrowLeft':
         case 'ArrowRight':
             e.preventDefault();
-            let nextIndex;
             if (e.key === 'ArrowRight') {
                 nextIndex = (currentIndex + 1) % buttons.length;
             } else {
@@ -780,8 +631,13 @@ function handleCategoriesPanelNavigation(e) {
             
         case 'Enter':
             e.preventDefault();
-            const categoryName = buttons[nextIndex || currentIndex].textContent;
-            selectCategory(categoryName);
+            const btnText = buttons[nextIndex || currentIndex].textContent;
+            
+            if (navigationState === 'mainCategories') {
+                selectMainCategory(btnText);
+            } else if (navigationState === 'subCategories') {
+                selectSubcategory(btnText);
+            }
             break;
     }
 }
@@ -789,6 +645,10 @@ function handleCategoriesPanelNavigation(e) {
 // Навигация по каналам
 function handleChannelsNavigation(e) {
     const channelCards = document.querySelectorAll('.channel-card');
+    if (channelCards.length === 0) return;
+    
+    const currentIndex = Array.from(channelCards).indexOf(document.activeElement);
+    let nextIndex = currentIndex;
     
     switch(e.key) {
         case 'ArrowLeft':
@@ -797,13 +657,7 @@ function handleChannelsNavigation(e) {
         case 'ArrowDown':
             e.preventDefault();
             
-            if (channelCards.length === 0) return;
-            
-            const currentIndex = Array.from(channelCards).indexOf(document.activeElement);
-            let nextIndex = currentIndex;
-            
             const cols = Math.floor(channelsContainer.offsetWidth / 280) || 1;
-            const rows = Math.ceil(channelCards.length / cols);
             
             switch(e.key) {
                 case 'ArrowRight':
@@ -829,27 +683,12 @@ function handleChannelsNavigation(e) {
             if (document.activeElement.classList.contains('channel-card')) {
                 const card = document.activeElement;
                 const index = parseInt(card.dataset.index);
-                const categoryName = currentCategory;
                 
-                let targetChannels = [];
-                if (categoryName === 'Все') {
-                    // Собираем все каналы
-                    for (let url in loadedPlaylists) {
-                        targetChannels = [...targetChannels, ...loadedPlaylists[url]];
-                    }
-                } else {
-                    // Ищем нужную категорию
-                    for (let mainCat in categoryTree) {
-                        if (categoryTree[mainCat][categoryName]) {
-                            const url = categoryTree[mainCat][categoryName];
-                            targetChannels = loadedPlaylists[url] || [];
-                            break;
-                        }
-                    }
-                }
+                const url = categoryTree[currentMainCategory][currentSubcategory];
+                const channels = loadedPlaylists[url] || [];
                 
-                if (index >= 0 && index < targetChannels.length) {
-                    const channel = targetChannels[index];
+                if (index >= 0 && index < channels.length) {
+                    const channel = channels[index];
                     openFullScreenPlayer(channel.name, channel.url);
                 }
             }

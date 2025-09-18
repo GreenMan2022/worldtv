@@ -16,7 +16,7 @@ let currentMiniPlayer = null;
 let miniPlayers = new Map();
 let focusTimer = null;
 let loadedPlaylists = {};
-let navigationState = 'channels'; // 'channels' | 'subCategories'
+let navigationState = 'channels'; // 'channels' | 'mainCategories' | 'subCategories'
 let scrollInterval = null;
 let scrollDirection = 0;
 
@@ -100,19 +100,14 @@ function initApp() {
     }, 10000);
 
     try {
-        // Устанавливаем начальные значения
         currentMainCategory = 'Категории';
         const firstSub = Object.keys(categoryTree['Категории'])[0];
         currentSubcategory = firstSub || '';
         
-        // Рендерим главное меню
         renderMainCategories();
         renderSubCategories();
-        
-        // Загружаем первый плейлист
         loadAndRenderChannels(currentMainCategory, currentSubcategory);
         
-        // Фокус на первый канал
         setTimeout(() => {
             const firstChannel = document.querySelector('.channel-card');
             if (firstChannel) firstChannel.focus();
@@ -179,27 +174,14 @@ function selectMainCategory(categoryName) {
     currentMainCategory = categoryName;
     const firstSub = categoryTree[categoryName] ? Object.keys(categoryTree[categoryName])[0] : '';
     currentSubcategory = firstSub || '';
-    
-    // Обновляем активную кнопку
     renderMainCategories();
     renderSubCategories();
-    
-    // Фокус на первую подкатегорию
-    setTimeout(() => {
-        const firstBtn = subCategoriesPanel.querySelector('.subcategory-btn');
-        if (firstBtn) firstBtn.focus();
-        navigationState = 'subCategories';
-    }, 100);
 }
 
 // Выбор подкатегории
 function selectSubcategory(subcategoryName) {
     currentSubcategory = subcategoryName;
-    
-    // Обновляем активную кнопку
     renderSubCategories();
-    navigationState = 'channels';
-    
     loadAndRenderChannels(currentMainCategory, currentSubcategory);
 }
 
@@ -237,6 +219,195 @@ async function loadAndRenderChannels(mainCategory, subcategory) {
         }, 100);
     }
 }
+
+// Остальные функции без изменений (fetchM3U, parseM3UContent, renderChannels, createMiniPlayer, initializeMiniPlayer, handleStreamError, addToBlacklist, openFullScreenPlayer, requestNativeFullscreen, getGroupIcon)
+
+// ... (все функции остаются как в предыдущей версии)
+
+// Начало прокрутки
+function startScrolling(direction) {
+    scrollDirection = direction;
+    if (scrollInterval) clearInterval(scrollInterval);
+    scrollInterval = setInterval(() => {
+        moveFocus(direction);
+    }, 150);
+}
+
+// Остановка прокрутки
+function stopScrolling() {
+    if (scrollInterval) {
+        clearInterval(scrollInterval);
+        scrollInterval = null;
+    }
+}
+
+// Перемещение фокуса
+function moveFocus(direction) {
+    if (navigationState === 'channels') {
+        const channelCards = document.querySelectorAll('.channel-card');
+        if (channelCards.length === 0) return;
+        
+        const currentIndex = Array.from(channelCards).indexOf(document.activeElement);
+        let nextIndex = currentIndex;
+        
+        const cols = Math.floor(channelsContainer.offsetWidth / 280) || 1;
+        
+        switch(direction) {
+            case 'right':
+                nextIndex = (currentIndex + 1) % channelCards.length;
+                break;
+            case 'left':
+                nextIndex = (currentIndex - 1 + channelCards.length) % channelCards.length;
+                break;
+            case 'down':
+                nextIndex = (currentIndex + cols) % channelCards.length;
+                if (nextIndex >= channelCards.length) nextIndex = channelCards.length - 1;
+                break;
+            case 'up':
+                nextIndex = (currentIndex - cols + channelCards.length) % channelCards.length;
+                break;
+        }
+        
+        if (nextIndex >= 0 && nextIndex < channelCards.length) {
+            channelCards[nextIndex].focus();
+        }
+    } else if (navigationState === 'mainCategories') {
+        const buttons = mainCategoriesPanel.querySelectorAll('.category-btn');
+        if (buttons.length === 0) return;
+        
+        const currentIndex = Array.from(buttons).indexOf(document.activeElement);
+        let nextIndex;
+        
+        if (direction === 'right') {
+            nextIndex = (currentIndex + 1) % buttons.length;
+        } else if (direction === 'left') {
+            nextIndex = (currentIndex - 1 + buttons.length) % buttons.length;
+        } else {
+            return;
+        }
+        
+        buttons[nextIndex].focus();
+    } else if (navigationState === 'subCategories') {
+        const buttons = subCategoriesPanel.querySelectorAll('.subcategory-btn');
+        if (buttons.length === 0) return;
+        
+        const currentIndex = Array.from(buttons).indexOf(document.activeElement);
+        let nextIndex;
+        
+        if (direction === 'right') {
+            nextIndex = (currentIndex + 1) % buttons.length;
+        } else if (direction === 'left') {
+            nextIndex = (currentIndex - 1 + buttons.length) % buttons.length;
+        } else {
+            return;
+        }
+        
+        buttons[nextIndex].focus();
+    }
+}
+
+// Навигация с пульта — ПОЛНОСТЬЮ ПЕРЕПИСАНА
+document.addEventListener('keydown', function(e) {
+    if (playerModal.style.display === 'flex') {
+        if (e.key === 'Escape') closeModal.click();
+        return;
+    }
+
+    // Предотвращаем стандартное поведение для стрелок и Enter
+    if (['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'Enter', 'Escape'].includes(e.key)) {
+        e.preventDefault();
+    }
+
+    switch(e.key) {
+        case 'ArrowUp':
+            // Всегда переходим к главным категориям
+            navigationState = 'mainCategories';
+            mainCategoriesPanel.style.display = 'flex';
+            subCategoriesPanel.style.display = 'none';
+            
+            setTimeout(() => {
+                const activeBtn = mainCategoriesPanel.querySelector('.category-btn.active');
+                if (activeBtn) activeBtn.focus();
+                else {
+                    const firstBtn = mainCategoriesPanel.querySelector('.category-btn');
+                    if (firstBtn) firstBtn.focus();
+                }
+            }, 100);
+            break;
+            
+        case 'ArrowDown':
+            // Всегда переходим к каналам
+            navigationState = 'channels';
+            mainCategoriesPanel.style.display = 'flex';
+            subCategoriesPanel.style.display = 'none';
+            
+            setTimeout(() => {
+                const firstChannel = document.querySelector('.channel-card');
+                if (firstChannel) firstChannel.focus();
+            }, 100);
+            break;
+            
+        case 'ArrowLeft':
+        case 'ArrowRight':
+            moveFocus(e.key === 'ArrowRight' ? 'right' : 'left');
+            break;
+            
+        case 'Enter':
+            if (navigationState === 'mainCategories') {
+                // Переход к подкатегориям
+                navigationState = 'subCategories';
+                subCategoriesPanel.style.display = 'flex';
+                
+                setTimeout(() => {
+                    const firstBtn = subCategoriesPanel.querySelector('.subcategory-btn');
+                    if (firstBtn) firstBtn.focus();
+                }, 100);
+            } else if (navigationState === 'subCategories') {
+                // Переход к каналам
+                selectSubcategory(document.activeElement.textContent);
+            } else if (navigationState === 'channels') {
+                // Открытие канала
+                if (document.activeElement.classList.contains('channel-card')) {
+                    const card = document.activeElement;
+                    const index = parseInt(card.dataset.index);
+                    const url = categoryTree[currentMainCategory][currentSubcategory];
+                    const channels = loadedPlaylists[url] || [];
+                    if (index >= 0 && index < channels.length) {
+                        const channel = channels[index];
+                        openFullScreenPlayer(channel.name, channel.url);
+                    }
+                }
+            }
+            break;
+            
+        case 'Escape':
+            if (navigationState === 'subCategories') {
+                // Возврат к главным категориям
+                navigationState = 'mainCategories';
+                setTimeout(() => {
+                    const activeBtn = mainCategoriesPanel.querySelector('.category-btn.active');
+                    if (activeBtn) activeBtn.focus();
+                }, 100);
+            } else if (navigationState === 'mainCategories') {
+                // Возврат к каналам
+                navigationState = 'channels';
+                setTimeout(() => {
+                    const firstChannel = document.querySelector('.channel-card');
+                    if (firstChannel) firstChannel.focus();
+                }, 100);
+            }
+            break;
+    }
+});
+
+// Обработка отпускания клавиш
+document.addEventListener('keyup', function(e) {
+    if (e.key === 'ArrowLeft' || e.key === 'ArrowRight') {
+        stopScrolling();
+    }
+});
+
+// Остальные функции (fetchM3U, parseM3UContent и т.д.)
 
 // Загрузка M3U
 async function fetchM3U(url) {
@@ -569,121 +740,6 @@ function getGroupIcon(group) {
     if (group.includes('развлеч')) return 'fa-theater-masks';
     return 'fa-tv';
 }
-
-// Начало прокрутки
-function startScrolling(direction) {
-    scrollDirection = direction;
-    if (scrollInterval) clearInterval(scrollInterval);
-    scrollInterval = setInterval(() => {
-        moveFocus(scrollDirection);
-    }, 150); // Интервал 150 мс для плавной прокрутки
-}
-
-// Остановка прокрутки
-function stopScrolling() {
-    if (scrollInterval) {
-        clearInterval(scrollInterval);
-        scrollInterval = null;
-    }
-}
-
-// Перемещение фокуса
-function moveFocus(direction) {
-    const channelCards = document.querySelectorAll('.channel-card');
-    if (channelCards.length === 0) return;
-    
-    const currentIndex = Array.from(channelCards).indexOf(document.activeElement);
-    let nextIndex = currentIndex;
-    
-    const cols = Math.floor(channelsContainer.offsetWidth / 280) || 1;
-    
-    switch(direction) {
-        case 'right':
-            nextIndex = (currentIndex + 1) % channelCards.length;
-            break;
-        case 'left':
-            nextIndex = (currentIndex - 1 + channelCards.length) % channelCards.length;
-            break;
-        case 'down':
-            nextIndex = (currentIndex + cols) % channelCards.length;
-            if (nextIndex >= channelCards.length) nextIndex = channelCards.length - 1;
-            break;
-        case 'up':
-            nextIndex = (currentIndex - cols + channelCards.length) % channelCards.length;
-            break;
-    }
-    
-    if (nextIndex >= 0 && nextIndex < channelCards.length) {
-        channelCards[nextIndex].focus();
-    }
-}
-
-// Навигация с пульта
-document.addEventListener('keydown', function(e) {
-    if (playerModal.style.display === 'flex') {
-        if (e.key === 'Escape') closeModal.click();
-        return;
-    }
-
-    // Предотвращаем стандартное поведение
-    if (['ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown', 'Enter'].includes(e.key)) {
-        e.preventDefault();
-    }
-
-    switch(e.key) {
-        case 'ArrowLeft':
-            if (navigationState === 'channels') {
-                startScrolling('left');
-            }
-            break;
-        case 'ArrowRight':
-            if (navigationState === 'channels') {
-                startScrolling('right');
-            }
-            break;
-        case 'ArrowUp':
-            if (navigationState === 'subCategories') {
-                // Возврат к главным категориям
-                navigationState = 'channels';
-                const activeMainBtn = mainCategoriesPanel.querySelector('.category-btn.active');
-                if (activeMainBtn) activeMainBtn.focus();
-            } else if (navigationState === 'channels') {
-                moveFocus('up');
-            }
-            break;
-        case 'ArrowDown':
-            if (navigationState === 'channels') {
-                moveFocus('down');
-            }
-            break;
-        case 'Enter':
-            if (navigationState === 'channels') {
-                if (document.activeElement.classList.contains('channel-card')) {
-                    const card = document.activeElement;
-                    const index = parseInt(card.dataset.index);
-                    const url = categoryTree[currentMainCategory][currentSubcategory];
-                    const channels = loadedPlaylists[url] || [];
-                    if (index >= 0 && index < channels.length) {
-                        const channel = channels[index];
-                        openFullScreenPlayer(channel.name, channel.url);
-                    }
-                }
-            } else if (navigationState === 'subCategories') {
-                if (document.activeElement.classList.contains('subcategory-btn')) {
-                    const subcategoryName = document.activeElement.textContent;
-                    selectSubcategory(subcategoryName);
-                }
-            }
-            break;
-    }
-});
-
-// Обработка отпускания клавиш
-document.addEventListener('keyup', function(e) {
-    if (e.key === 'ArrowLeft' || e.key === 'ArrowRight') {
-        stopScrolling();
-    }
-});
 
 // Запуск приложения
 document.addEventListener('DOMContentLoaded', () => {

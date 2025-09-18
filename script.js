@@ -241,7 +241,7 @@ function stopScrolling() {
     }
 }
 
-// Перемещение фокуса
+// Перемещение фокуса — ИСПРАВЛЕНАЯ ВЕРСИЯ
 function moveFocus(direction) {
     if (navigationState === 'channels') {
         const channelCards = document.querySelectorAll('.channel-card');
@@ -286,6 +286,9 @@ function moveFocus(direction) {
             return;
         }
         
+        // Обновляем текущую категорию и активную кнопку
+        currentMainCategory = buttons[nextIndex].textContent;
+        renderMainCategories(); // Обновляем active класс
         buttons[nextIndex].focus();
     } else if (navigationState === 'subCategories') {
         const buttons = subCategoriesPanel.querySelectorAll('.subcategory-btn');
@@ -302,6 +305,9 @@ function moveFocus(direction) {
             return;
         }
         
+        // Обновляем текущую подкатегорию
+        currentSubcategory = buttons[nextIndex].textContent;
+        renderSubCategories(); // Обновляем active класс
         buttons[nextIndex].focus();
     }
 }

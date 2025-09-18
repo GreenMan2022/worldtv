@@ -312,7 +312,7 @@ function moveFocus(direction) {
     }
 }
 
-// Навигация с пульта — ПОЛНОСТЬЮ ПЕРЕПИСАНА
+// Простая навигация — каждое нажатие = один шаг
 document.addEventListener('keydown', function(e) {
     if (playerModal.style.display === 'flex') {
         if (e.key === 'Escape') closeModal.click();
@@ -322,6 +322,12 @@ document.addEventListener('keydown', function(e) {
     // Предотвращаем стандартное поведение для стрелок и Enter
     if (['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'Enter', 'Escape'].includes(e.key)) {
         e.preventDefault();
+    }
+
+    // Простая навигация стрелками ← →
+    if (e.key === 'ArrowLeft' || e.key === 'ArrowRight') {
+        moveFocus(e.key === 'ArrowRight' ? 'right' : 'left');
+        return;
     }
 
     switch(e.key) {
@@ -351,11 +357,6 @@ document.addEventListener('keydown', function(e) {
                 const firstChannel = document.querySelector('.channel-card');
                 if (firstChannel) firstChannel.focus();
             }, 100);
-            break;
-            
-        case 'ArrowLeft':
-        case 'ArrowRight':
-            moveFocus(e.key === 'ArrowRight' ? 'right' : 'left');
             break;
             
         case 'Enter':
@@ -405,6 +406,8 @@ document.addEventListener('keydown', function(e) {
             break;
     }
 });
+
+// Нет обработчика keyup — не нужен для простой навигации
 
 // Обработка отпускания клавиш
 document.addEventListener('keyup', function(e) {

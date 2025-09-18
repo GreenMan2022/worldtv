@@ -1,7 +1,7 @@
 // DOM элементы
 const channelsContainer = document.getElementById('channelsContainer');
 const categoriesContainer = document.getElementById('categoriesContainer');
-// НЕ получаем subcategoriesContainer здесь — получим внутри renderSubcategories
+const subcategoriesContainer = document.getElementById('subcategoriesContainer');
 const playerModal = document.getElementById('playerModal');
 const videoPlayerElement = document.getElementById('videoPlayerElement');
 const closeModal = document.getElementById('closeModal');
@@ -10,15 +10,18 @@ const toastContainer = document.getElementById('toastContainer');
 
 // Глобальные переменные
 let mainCategories = ['Категории', 'Страны', 'Языки'];
-let currentMainCategory = 'Страны'; // Начинаем с гарантированно рабочей
-let currentSubcategory = 'Россия';    // Начинаем с гарантированно рабочей
+let currentMainCategory = 'Страны';
+let currentSubcategory = 'Россия';
 let currentChannelIndex = 0;
 let currentMiniPlayer = null;
 let miniPlayers = new Map();
 let focusTimer = null;
 let loadedPlaylists = {};
 
-// ВСТРОЕННАЯ структура плейлистов (временно, чтобы избежать проблем с JSON)
+// Состояния навигации
+let navigationState = 'mainMenu'; // 'mainMenu' | 'subMenu' | 'channels'
+
+// Встроенная структура плейлистов
 const categoryTree = {
   "Категории": {
     "Новости": "https://iptv-org.github.io/iptv/categories/news.m3u",
@@ -94,7 +97,6 @@ function showToast(message) {
 async function initApp() {
     initialLoader.style.display = 'flex';
     
-    // Добавим таймаут на случай, если что-то зависнет
     const safetyTimeout = setTimeout(() => {
         console.warn("Аварийное скрытие лоадера");
         initialLoader.style.display = 'none';
@@ -105,12 +107,9 @@ async function initApp() {
         renderMainCategories();
         renderSubcategories();
         
-        loadAndRenderPlaylist(currentMainCategory, currentSubcategory, () => {
-            setTimeout(() => {
-                const firstChannel = document.querySelector('.channel-card');
-                if (firstChannel) firstChannel.focus();
-            }, 100);
-        });
+        // Начинаем с главного меню
+        navigationState = 'mainMenu';
+        focusOnMainMenu();
         
         clearTimeout(safetyTimeout);
     } catch (error) {
@@ -119,6 +118,14 @@ async function initApp() {
         initialLoader.style.display = 'none';
         showToast("Критическая ошибка приложения");
     }
+}
+
+// Фокус на главное меню
+function focusOnMainMenu() {
+    setTimeout(() => {
+        const btn = document.querySelector('.category-btn.active');
+        if (btn) btn.focus();
+    }, 100);
 }
 
 // Отображение главных категорий
@@ -141,7 +148,6 @@ function renderMainCategories() {
 
 // Отображение подкатегорий
 function renderSubcategories() {
-    // Получаем элемент здесь — он уже создан в HTML
     const container = document.getElementById('subcategoriesContainer');
     if (!container) {
         console.error("Элемент subcategoriesContainer не найден!");
@@ -173,7 +179,6 @@ function selectMainCategory(categoryName) {
     
     renderMainCategories();
     renderSubcategories();
-    loadAndRenderPlaylist(currentMainCategory, currentSubcategory);
 }
 
 // Выбор подкатегории
@@ -183,6 +188,7 @@ function selectSubcategory(subcategoryName) {
     
     loadAndRenderPlaylist(currentMainCategory, currentSubcategory, () => {
         setTimeout(() => {
+            navigationState = 'channels';
             const firstChannel = document.querySelector('.channel-card');
             if (firstChannel) firstChannel.focus();
         }, 100);
@@ -217,10 +223,151 @@ async function loadAndRenderPlaylist(mainCategory, subcategory, callback = null)
         showToast("Ошибка загрузки каналов");
         renderChannels([]);
     } finally {
-        initialLoader.style.display = 'none'; // ВСЕГДА скрываем лоадер
+        initialLoader.style.display = 'none';
         if (callback) callback();
     }
 }
+
+// Остальные функции без изменений (fetchM3U, parseM3UContent, renderChannels, createMiniPlayer, initializeMiniPlayer, handleStreamError, addToBlacklist, openFullScreenPlayer, requestNativeFullscreen, getGroupIcon)
+
+// ... (все функции renderChannels, createMiniPlayer и т.д. остаются как в предыдущей версии)
+
+// Навигация с пульта — ПОЛНОСТЬЮ ПЕРЕПИСАНА
+document.addEventListener('keydown', function(e) {
+    const categoryButtons = document.querySelectorAll('.category-btn');
+    const subcategoryButtons = document.querySelectorAll('.subcategory-btn');
+    const channelCards = document.querySelectorAll('.channel-card');
+
+    if (playerModal.style.display === 'flex') {
+        if (e.key === 'Escape') closeModal.click();
+        return;
+    }
+
+    // Обработка Escape / Back
+    if (e.key === 'Escape' || e.key === 'Backspace') {
+        e.preventDefault();
+        if (navigationState === 'channels') {
+            // Возврат к подкатегориям
+            navigationState = 'subMenu';
+            const activeSubBtn = document.querySelector('.subcategory-btn.active');
+            if (activeSubBtn) activeSubBtn.focus();
+        } else if (navigationState === 'subMenu') {
+            // Возврат к главным категориям
+            navigationState = 'mainMenu';
+            const activeMainBtn = document.querySelector('.category-btn.active');
+            if (activeMainBtn) activeMainBtn.focus();
+        }
+        return;
+    }
+
+    switch(navigationState) {
+        case 'mainMenu':
+            handleMainMenuNavigation(e, categoryButtons);
+            break;
+        case 'subMenu':
+            handleSubMenuNavigation(e, subcategoryButtons);
+            break;
+        case 'channels':
+            handleChannelsNavigation(e, channelCards);
+            break;
+    }
+});
+
+// Навигация в главном меню
+function handleMainMenuNavigation(e, categoryButtons) {
+    switch(e.key) {
+        case 'ArrowDown':
+        case 'ArrowUp':
+            e.preventDefault();
+            const currentIndex = Array.from(categoryButtons).findIndex(btn => btn.classList.contains('active'));
+            let nextIndex;
+            if (e.key === 'ArrowDown') {
+                nextIndex = (currentIndex + 1) % categoryButtons.length;
+            } else {
+                nextIndex = (currentIndex - 1 + categoryButtons.length) % categoryButtons.length;
+            }
+            selectMainCategory(mainCategories[nextIndex]);
+            categoryButtons[nextIndex].focus();
+            break;
+            
+        case 'ArrowLeft':
+        case 'ArrowRight':
+            e.preventDefault();
+            const currIndex = Array.from(categoryButtons).findIndex(btn => btn.classList.contains('active'));
+            let nxtIndex;
+            if (e.key === 'ArrowRight') {
+                nxtIndex = (currIndex + 1) % categoryButtons.length;
+            } else {
+                nxtIndex = (currIndex - 1 + categoryButtons.length) % categoryButtons.length;
+            }
+            selectMainCategory(mainCategories[nxtIndex]);
+            categoryButtons[nxtIndex].focus();
+            break;
+            
+        case 'Enter':
+            e.preventDefault();
+            // Переход к подкатегориям
+            navigationState = 'subMenu';
+            setTimeout(() => {
+                const firstSubBtn = document.querySelector('.subcategory-btn');
+                if (firstSubBtn) firstSubBtn.focus();
+            }, 100);
+            break;
+    }
+}
+
+// Навигация в подменю
+function handleSubMenuNavigation(e, subcategoryButtons) {
+    switch(e.key) {
+        case 'ArrowDown':
+        case 'ArrowUp':
+            e.preventDefault();
+            const currentIndex = Array.from(subcategoryButtons).findIndex(btn => btn.classList.contains('active'));
+            let nextIndex;
+            if (e.key === 'ArrowDown') {
+                nextIndex = (currentIndex + 1) % subcategoryButtons.length;
+            } else {
+                nextIndex = (currentIndex - 1 + subcategoryButtons.length) % subcategoryButtons.length;
+            }
+            const subcategoryName = subcategoryButtons[nextIndex].textContent;
+            currentSubcategory = subcategoryName;
+            renderSubcategories();
+            subcategoryButtons[nextIndex].focus();
+            break;
+            
+        case 'Enter':
+            e.preventDefault();
+            // Загрузка плейлиста и переход к каналам
+            loadAndRenderPlaylist(currentMainCategory, currentSubcategory, () => {
+                setTimeout(() => {
+                    navigationState = 'channels';
+                    const firstChannel = document.querySelector('.channel-card');
+                    if (firstChannel) firstChannel.focus();
+                }, 100);
+            });
+            break;
+    }
+}
+
+// Навигация по каналам
+function handleChannelsNavigation(e, channelCards) {
+    switch(e.key) {
+        case 'ArrowLeft':
+        case 'ArrowRight':
+            e.preventDefault();
+            if (channelCards.length > 0) {
+                if (e.key === 'ArrowRight') {
+                    currentChannelIndex = (currentChannelIndex + 1) % channelCards.length;
+                } else {
+                    currentChannelIndex = (currentChannelIndex - 1 + channelCards.length) % channelCards.length;
+                }
+                channelCards[currentChannelIndex].focus();
+            }
+            break;
+    }
+}
+
+// Остальные функции (fetchM3U, parseM3UContent и т.д.) — вставьте из предыдущей версии
 
 // Загрузка M3U
 async function fetchM3U(url) {
@@ -553,82 +700,6 @@ function getGroupIcon(group) {
     if (group.includes('развлеч')) return 'fa-theater-masks';
     return 'fa-tv';
 }
-
-// Навигация с пульта
-document.addEventListener('keydown', function(e) {
-    const categoryButtons = document.querySelectorAll('.category-btn');
-    const subcategoryButtons = document.querySelectorAll('.subcategory-btn');
-    const channelCards = document.querySelectorAll('.channel-card');
-
-    if (playerModal.style.display === 'flex') {
-        if (e.key === 'Escape') closeModal.click();
-        return;
-    }
-
-    switch(e.key) {
-        case 'ArrowDown':
-            e.preventDefault();
-            const mainIndex = mainCategories.indexOf(currentMainCategory);
-            const nextMainIndex = (mainIndex + 1) % mainCategories.length;
-            selectMainCategory(mainCategories[nextMainIndex]);
-            break;
-            
-        case 'ArrowUp':
-            e.preventDefault();
-            const currentIndex = mainCategories.indexOf(currentMainCategory);
-            const prevMainIndex = (currentIndex - 1 + mainCategories.length) % mainCategories.length;
-            selectMainCategory(mainCategories[prevMainIndex]);
-            break;
-            
-        case 'ArrowRight':
-            e.preventDefault();
-            if (document.activeElement.classList.contains('channel-card')) {
-                if (channelCards.length > 0) {
-                    currentChannelIndex = (currentChannelIndex + 1) % channelCards.length;
-                    channelCards[currentChannelIndex].focus();
-                }
-            } else {
-                const subcategories = categoryTree[currentMainCategory] ? Object.keys(categoryTree[currentMainCategory]) : [];
-                const subIndex = subcategories.indexOf(currentSubcategory);
-                const nextSubIndex = (subIndex + 1) % subcategories.length;
-                selectSubcategory(subcategories[nextSubIndex]);
-            }
-            break;
-            
-        case 'ArrowLeft':
-            e.preventDefault();
-            if (document.activeElement.classList.contains('channel-card')) {
-                if (channelCards.length > 0) {
-                    currentChannelIndex = (currentChannelIndex - 1 + channelCards.length) % channelCards.length;
-                    channelCards[currentChannelIndex].focus();
-                }
-            } else {
-                const currentSubs = categoryTree[currentMainCategory] ? Object.keys(categoryTree[currentMainCategory]) : [];
-                const currSubIndex = currentSubs.indexOf(currentSubcategory);
-                const prevSubIndex = (currSubIndex - 1 + currentSubs.length) % currentSubs.length;
-                selectSubcategory(currentSubs[prevSubIndex]);
-            }
-            break;
-            
-        case 'Enter':
-            e.preventDefault();
-            if (document.activeElement.classList.contains('channel-card')) {
-                const card = document.activeElement;
-                const index = parseInt(card.dataset.index);
-                const url = categoryTree[currentMainCategory][currentSubcategory];
-                const channels = loadedPlaylists[url] || [];
-                
-                if (index >= 0 && index < channels.length) {
-                    const channel = channels[index];
-                    openFullScreenPlayer(channel.name, channel.url);
-                }
-            } else if (document.activeElement.classList.contains('subcategory-btn')) {
-                const subcategoryName = document.activeElement.textContent;
-                selectSubcategory(subcategoryName);
-            }
-            break;
-    }
-});
 
 // Запуск приложения
 document.addEventListener('DOMContentLoaded', () => {

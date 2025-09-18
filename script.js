@@ -460,4 +460,232 @@ function initializeMiniPlayer(video, url, miniPlayer, icon) {
         video.addEventListener('error', () => {
             clearTimeout(timeoutId);
             const error = video.error;
-            if
+            if (error && (error.code === error.MEDIA_ERR_SRC_NOT_SUPPORTED || error.code === error.MEDIA_ERR_NETWORK)) {
+                handleStreamError(url, miniPlayer);
+                addToBlacklist(url);
+                miniPlayer.style.display = 'none';
+                icon.style.display = 'block';
+            }
+        });
+    }
+}
+
+// Обработка ошибки
+function handleStreamError(url, container) {
+    showToast('Канал недоступен');
+    console.error("Ошибка:", url);
+    const icon = container.parentElement.querySelector('i');
+    if (icon) icon.style.display = 'block';
+    container.style.display = 'none';
+}
+
+// Добавление в чёрный список
+function addToBlacklist(url) {
+    let blacklist = JSON.parse(localStorage.getItem('blacklist') || '[]');
+    if (!blacklist.includes(url)) {
+        blacklist.push(url);
+        localStorage.setItem('blacklist', JSON.stringify(blacklist));
+    }
+}
+
+// Открытие полноэкранного плеера
+function openFullScreenPlayer(name, url) {
+    playerModal.style.display = 'flex';
+    videoPlayerElement.src = '';
+    videoPlayerElement.load();
+    videoPlayerElement.muted = false;
+
+    let manifestLoaded = false;
+
+    const timeoutId = setTimeout(() => {
+        if (!manifestLoaded) {
+            console.warn("Таймаут полный экран:", url);
+            showToast('Канал не отвечает');
+            addToBlacklist(url);
+            playerModal.style.display = 'none';
+        }
+    }, 30000);
+
+    if (Hls.isSupported()) {
+        const hls = new Hls();
+        hls.loadSource(url);
+        hls.attachMedia(videoPlayerElement);
+        
+        hls.on(Hls.Events.MANIFEST_PARSED, () => {
+            clearTimeout(timeoutId);
+            manifestLoaded = true;
+            videoPlayerElement.play().catch(e => console.log("Autoplay:", e));
+            setTimeout(() => requestNativeFullscreen(), 1000);
+        });
+        
+        hls.on(Hls.Events.ERROR, (event, data) => {
+            if (data.fatal) {
+                clearTimeout(timeoutId);
+                showToast('Канал недоступен');
+                addToBlacklist(url);
+                playerModal.style.display = 'none';
+            }
+        });
+    } else if (videoPlayerElement.canPlayType('application/vnd.apple.mpegurl')) {
+        videoPlayerElement.src = url;
+        videoPlayerElement.addEventListener('loadedmetadata', () => {
+            clearTimeout(timeoutId);
+            manifestLoaded = true;
+            videoPlayerElement.play().catch(e => console.log("Autoplay:", e));
+            setTimeout(() => requestNativeFullscreen(), 1000);
+        });
+        videoPlayerElement.addEventListener('error', () => {
+            clearTimeout(timeoutId);
+            showToast('Канал недоступен');
+            addToBlacklist(url);
+            playerModal.style.display = 'none';
+        });
+    } else {
+        clearTimeout(timeoutId);
+        showToast('Формат не поддерживается');
+        playerModal.style.display = 'none';
+    }
+}
+
+// Fullscreen API
+function requestNativeFullscreen() {
+    const elem = videoPlayerElement;
+    if (elem.requestFullscreen) {
+        elem.requestFullscreen().catch(err => console.log("Fullscreen:", err));
+    } else if (elem.webkitRequestFullscreen) {
+        elem.webkitRequestFullscreen().catch(err => console.log("Fullscreen:", err));
+    }
+}
+
+// Иконка по группе
+function getGroupIcon(group) {
+    group = group.toLowerCase();
+    if (group.includes('новости')) return 'fa-newspaper';
+    if (group.includes('спорт')) return 'fa-futbol';
+    if (group.includes('кино')) return 'fa-film';
+    if (group.includes('музыка')) return 'fa-music';
+    if (group.includes('детск')) return 'fa-child';
+    if (group.includes('документ')) return 'fa-video';
+    if (group.includes('развлеч')) return 'fa-theater-masks';
+    return 'fa-tv';
+}
+
+// Начало прокрутки
+function startScrolling(direction) {
+    scrollDirection = direction;
+    if (scrollInterval) clearInterval(scrollInterval);
+    scrollInterval = setInterval(() => {
+        moveFocus(scrollDirection);
+    }, 150); // Интервал 150 мс для плавной прокрутки
+}
+
+// Остановка прокрутки
+function stopScrolling() {
+    if (scrollInterval) {
+        clearInterval(scrollInterval);
+        scrollInterval = null;
+    }
+}
+
+// Перемещение фокуса
+function moveFocus(direction) {
+    const channelCards = document.querySelectorAll('.channel-card');
+    if (channelCards.length === 0) return;
+    
+    const currentIndex = Array.from(channelCards).indexOf(document.activeElement);
+    let nextIndex = currentIndex;
+    
+    const cols = Math.floor(channelsContainer.offsetWidth / 280) || 1;
+    
+    switch(direction) {
+        case 'right':
+            nextIndex = (currentIndex + 1) % channelCards.length;
+            break;
+        case 'left':
+            nextIndex = (currentIndex - 1 + channelCards.length) % channelCards.length;
+            break;
+        case 'down':
+            nextIndex = (currentIndex + cols) % channelCards.length;
+            if (nextIndex >= channelCards.length) nextIndex = channelCards.length - 1;
+            break;
+        case 'up':
+            nextIndex = (currentIndex - cols + channelCards.length) % channelCards.length;
+            break;
+    }
+    
+    if (nextIndex >= 0 && nextIndex < channelCards.length) {
+        channelCards[nextIndex].focus();
+    }
+}
+
+// Навигация с пульта
+document.addEventListener('keydown', function(e) {
+    if (playerModal.style.display === 'flex') {
+        if (e.key === 'Escape') closeModal.click();
+        return;
+    }
+
+    // Предотвращаем стандартное поведение
+    if (['ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown', 'Enter'].includes(e.key)) {
+        e.preventDefault();
+    }
+
+    switch(e.key) {
+        case 'ArrowLeft':
+            if (navigationState === 'channels') {
+                startScrolling('left');
+            }
+            break;
+        case 'ArrowRight':
+            if (navigationState === 'channels') {
+                startScrolling('right');
+            }
+            break;
+        case 'ArrowUp':
+            if (navigationState === 'subCategories') {
+                // Возврат к главным категориям
+                navigationState = 'channels';
+                const activeMainBtn = mainCategoriesPanel.querySelector('.category-btn.active');
+                if (activeMainBtn) activeMainBtn.focus();
+            } else if (navigationState === 'channels') {
+                moveFocus('up');
+            }
+            break;
+        case 'ArrowDown':
+            if (navigationState === 'channels') {
+                moveFocus('down');
+            }
+            break;
+        case 'Enter':
+            if (navigationState === 'channels') {
+                if (document.activeElement.classList.contains('channel-card')) {
+                    const card = document.activeElement;
+                    const index = parseInt(card.dataset.index);
+                    const url = categoryTree[currentMainCategory][currentSubcategory];
+                    const channels = loadedPlaylists[url] || [];
+                    if (index >= 0 && index < channels.length) {
+                        const channel = channels[index];
+                        openFullScreenPlayer(channel.name, channel.url);
+                    }
+                }
+            } else if (navigationState === 'subCategories') {
+                if (document.activeElement.classList.contains('subcategory-btn')) {
+                    const subcategoryName = document.activeElement.textContent;
+                    selectSubcategory(subcategoryName);
+                }
+            }
+            break;
+    }
+});
+
+// Обработка отпускания клавиш
+document.addEventListener('keyup', function(e) {
+    if (e.key === 'ArrowLeft' || e.key === 'ArrowRight') {
+        stopScrolling();
+    }
+});
+
+// Запуск приложения
+document.addEventListener('DOMContentLoaded', () => {
+    initApp();
+});

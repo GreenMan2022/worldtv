@@ -40,87 +40,56 @@ body {
     color: #aaa;
 }
 
-/* Главные категории */
-.categories-container {
-    display: flex;
-    gap: 15px;
-    padding: 20px 20px 10px;
-    overflow-x: auto;
-    background: rgba(0, 0, 0, 0.3);
-    scrollbar-width: none;
-}
-
-.categories-container::-webkit-scrollbar {
+/* Панель категорий */
+.categories-panel {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    background: rgba(0, 0, 0, 0.9);
+    padding: 15px 20px;
+    z-index: 100;
     display: none;
-}
-
-.category-btn {
-    background: rgba(255, 255, 255, 0.1);
-    color: #fff;
-    border: none;
-    padding: 12px 24px;
-    border-radius: 50px;
-    cursor: pointer;
+    border-bottom: 2px solid #ff375f;
+    overflow-x: auto;
     white-space: nowrap;
-    font-size: 16px;
-    min-width: 140px;
-    text-align: center;
-    outline: none;
-    transition: all 0.2s;
-}
-
-.category-btn:hover,
-.category-btn.active,
-.category-btn:focus {
-    background: linear-gradient(90deg, #ff375f, #ff5e41);
-    color: white;
-}
-
-.category-btn:focus {
-    outline: 3px solid #ff375f;
-    outline-offset: 2px;
-}
-
-/* Подкатегории */
-.subcategories-container {
-    display: flex;
-    gap: 10px;
-    padding: 10px 20px;
-    overflow-x: auto;
-    background: rgba(0, 0, 0, 0.2);
-    margin: 10px 0;
     scrollbar-width: none;
 }
 
-.subcategories-container::-webkit-scrollbar {
+.categories-panel::-webkit-scrollbar {
     display: none;
 }
 
-.subcategory-btn {
+.categories-panel .category-btn {
     background: rgba(255, 255, 255, 0.1);
     color: #fff;
     border: none;
-    padding: 8px 16px;
+    padding: 8px 20px;
     border-radius: 20px;
+    margin: 0 5px;
     cursor: pointer;
     white-space: nowrap;
-    font-size: 14px;
+    font-size: 15px;
     min-width: 100px;
-    text-align: center;
     outline: none;
     transition: all 0.2s;
 }
 
-.subcategory-btn:hover,
-.subcategory-btn.active,
-.subcategory-btn:focus {
+.categories-panel .category-btn:hover,
+.categories-panel .category-btn.active,
+.categories-panel .category-btn:focus {
     background: linear-gradient(90deg, #ff375f, #ff5e41);
     color: white;
 }
 
-.subcategory-btn:focus {
+.categories-panel .category-btn:focus {
     outline: 3px solid #ff375f;
     outline-offset: 2px;
+}
+
+/* Главные категории (для совместимости) */
+.categories-container {
+    display: none; /* Скрываем, не используем */
 }
 
 /* Сетка каналов */
@@ -128,7 +97,7 @@ body {
     display: grid;
     grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
     gap: 15px;
-    padding: 15px 20px 20px;
+    padding: 80px 20px 20px; /* Отступ сверху для панели категорий */
 }
 
 /* Карточка канала */
@@ -311,7 +280,7 @@ body {
 @media (max-width: 600px) {
     .channels-grid {
         grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
-        padding: 10px;
+        padding: 70px 10px 10px;
     }
     
     .channel-card {

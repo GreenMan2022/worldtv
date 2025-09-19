@@ -7,8 +7,9 @@
 body {
     background: #000;
     color: #fff;
-    font-family: Arial, sans-serif;
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
     overflow-x: hidden;
+    touch-action: manipulation; /* Улучшает тач-управление */
 }
 
 /* Загрузочный экран */
@@ -43,9 +44,9 @@ body {
 /* Главное меню категорий */
 .main-categories-panel {
     display: flex;
-    gap: 15px;
-    padding: 15px 20px 10px;
-    background: rgba(0, 0, 0, 0.8);
+    gap: 10px;
+    padding: 12px 15px 8px;
+    background: rgba(0, 0, 0, 0.9);
     border-bottom: 2px solid #ff375f;
     overflow-x: auto;
     white-space: nowrap;
@@ -54,6 +55,7 @@ body {
     left: 0;
     width: 100%;
     z-index: 99;
+    -webkit-overflow-scrolling: touch; /* Плавный скролл на iOS */
 }
 
 .main-categories-panel::-webkit-scrollbar {
@@ -64,15 +66,16 @@ body {
     background: rgba(255, 255, 255, 0.1);
     color: #fff;
     border: none;
-    padding: 10px 20px;
-    border-radius: 25px;
+    padding: 8px 16px;
+    border-radius: 20px;
     cursor: pointer;
     white-space: nowrap;
-    font-size: 16px;
-    min-width: 120px;
+    font-size: 15px;
+    min-width: 100px;
     text-align: center;
     outline: none;
     transition: all 0.2s;
+    touch-action: manipulation;
 }
 
 .main-categories-panel .category-btn:hover,
@@ -90,17 +93,18 @@ body {
 /* Подменю подкатегорий */
 .sub-categories-panel {
     display: none;
-    gap: 10px;
-    padding: 10px 20px;
-    background: rgba(0, 0, 0, 0.7);
+    gap: 8px;
+    padding: 8px 15px;
+    background: rgba(0, 0, 0, 0.8);
     border-bottom: 1px solid #555;
     overflow-x: auto;
     white-space: nowrap;
     position: fixed;
-    top: 70px; /* Под главным меню */
+    top: 60px;
     left: 0;
     width: 100%;
     z-index: 98;
+    -webkit-overflow-scrolling: touch;
 }
 
 .sub-categories-panel::-webkit-scrollbar {
@@ -111,15 +115,16 @@ body {
     background: rgba(255, 255, 255, 0.1);
     color: #fff;
     border: none;
-    padding: 8px 16px;
-    border-radius: 20px;
+    padding: 6px 14px;
+    border-radius: 18px;
     cursor: pointer;
     white-space: nowrap;
-    font-size: 14px;
-    min-width: 100px;
+    font-size: 13px;
+    min-width: 90px;
     text-align: center;
     outline: none;
     transition: all 0.2s;
+    touch-action: manipulation;
 }
 
 .sub-categories-panel .subcategory-btn:hover,
@@ -137,9 +142,9 @@ body {
 /* Сетка каналов — сдвинута вниз, чтобы не перекрывалась меню */
 .channels-grid {
     display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
-    gap: 15px;
-    padding: 140px 20px 20px; /* Отступ сверху: 70px (главное меню) + 70px (подменю) */
+    grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+    gap: 12px;
+    padding: 130px 15px 80px;
 }
 
 /* Карточка канала */
@@ -151,13 +156,13 @@ body {
     cursor: pointer;
     transition: transform 0.2s;
     outline: none;
-    height: 220px;
+    height: 200px;
     display: flex;
     flex-direction: column;
     tabindex: 0;
+    touch-action: manipulation;
 }
 
-.channel-card:hover,
 .channel-card:focus {
     transform: scale(1.02);
     outline: 3px solid #ff375f;
@@ -183,7 +188,7 @@ body {
     top: 50%;
     left: 50%;
     transform: translate(-50%, -50%);
-    font-size: 40px;
+    font-size: 36px;
     color: #ff375f;
 }
 
@@ -206,7 +211,7 @@ body {
 
 /* Информация о канале */
 .channel-info {
-    padding: 10px;
+    padding: 8px;
     background: rgba(0, 0, 0, 0.7);
     flex: 1;
     display: flex;
@@ -215,7 +220,7 @@ body {
 }
 
 .channel-info h3 {
-    font-size: 16px;
+    font-size: 15px;
     font-weight: 500;
     white-space: nowrap;
     overflow: hidden;
@@ -225,7 +230,7 @@ body {
 }
 
 .channel-info p {
-    font-size: 13px;
+    font-size: 12px;
     color: #aaa;
     margin: 0;
     white-space: nowrap;
@@ -258,19 +263,20 @@ body {
 
 .close-btn {
     position: absolute;
-    top: 20px;
-    right: 20px;
+    top: 15px;
+    right: 15px;
     background: rgba(0, 0, 0, 0.7);
     color: white;
     border: none;
     border-radius: 50%;
-    width: 50px;
-    height: 50px;
-    font-size: 24px;
+    width: 40px;
+    height: 40px;
+    font-size: 20px;
     cursor: pointer;
     z-index: 10;
     outline: none;
     backdrop-filter: blur(5px);
+    touch-action: manipulation;
 }
 
 .close-btn:focus {
@@ -287,7 +293,7 @@ body {
 /* Уведомления */
 .toast-container {
     position: fixed;
-    top: 20px;
+    top: 70px;
     left: 50%;
     transform: translateX(-50%);
     z-index: 2000;
@@ -300,15 +306,16 @@ body {
 .toast {
     background: rgba(0, 0, 0, 0.8);
     color: white;
-    padding: 15px 25px;
+    padding: 12px 20px;
     border-radius: 8px;
     box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
     backdrop-filter: blur(5px);
     animation: fadeInOut 3s ease-in-out;
     text-align: center;
-    font-size: 16px;
-    min-width: 280px;
+    font-size: 15px;
+    min-width: 240px;
     pointer-events: auto;
+    touch-action: manipulation;
 }
 
 @keyframes fadeInOut {
@@ -318,22 +325,101 @@ body {
     100% { opacity: 0; transform: translateY(-10px); }
 }
 
-/* Адаптивность */
-@media (max-width: 600px) {
+/* Адаптивность для мобильных устройств */
+@media (max-width: 768px) {
     .channels-grid {
-        grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
-        padding: 130px 10px 10px;
+        grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+        padding: 120px 10px 70px;
     }
     
     .channel-card {
-        height: 200px;
+        height: 180px;
     }
     
     .channel-info h3 {
-        font-size: 15px;
+        font-size: 14px;
     }
     
     .channel-info p {
+        font-size: 11px;
+    }
+    
+    .main-categories-panel {
+        padding: 10px 12px 6px;
+        top: 0;
+    }
+    
+    .main-categories-panel .category-btn {
+        padding: 6px 14px;
+        font-size: 14px;
+        min-width: 90px;
+    }
+    
+    .sub-categories-panel {
+        top: 55px;
+        padding: 6px 12px;
+    }
+    
+    .sub-categories-panel .subcategory-btn {
+        padding: 5px 12px;
         font-size: 12px;
+        min-width: 80px;
+    }
+    
+    .close-btn {
+        top: 10px;
+        right: 10px;
+        width: 35px;
+        height: 35px;
+        font-size: 18px;
+    }
+    
+    .toast {
+        top: 60px;
+        font-size: 14px;
+        min-width: 220px;
+    }
+}
+
+/* Для очень маленьких экранов */
+@media (max-width: 480px) {
+    .channels-grid {
+        grid-template-columns: 1fr;
+        padding: 110px 10px 60px;
+    }
+    
+    .channel-card {
+        height: 160px;
+    }
+    
+    .main-categories-panel {
+        gap: 8px;
+        padding: 8px 10px 5px;
+    }
+    
+    .main-categories-panel .category-btn {
+        padding: 5px 12px;
+        font-size: 13px;
+        min-width: 80px;
+    }
+    
+    .sub-categories-panel {
+        top: 50px;
+        gap: 6px;
+        padding: 5px 10px;
+    }
+    
+    .sub-categories-panel .subcategory-btn {
+        padding: 4px 10px;
+        font-size: 11px;
+        min-width: 70px;
+    }
+    
+    .channel-info h3 {
+        font-size: 13px;
+    }
+    
+    .channel-info p {
+        font-size: 10px;
     }
 }

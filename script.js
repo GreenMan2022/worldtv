@@ -136,11 +136,11 @@ function renderMainCategories() {
             selectMainCategory(cat);
         });
         
-        // Блокируем навигацию внутри кнопки
+        // Блокируем навигацию внутри кнопки — НИЧЕГО НЕ ДЕЛАЕМ, кроме preventDefault
         btn.addEventListener('keydown', function(e) {
             if (e.key === 'ArrowLeft' || e.key === 'ArrowRight') {
                 e.preventDefault();
-                moveFocus(e.key === 'ArrowRight' ? 'right' : 'left');
+                // Ничего не делаем — обработка в основном обработчике
             }
         });
         
@@ -167,11 +167,11 @@ function renderSubCategories() {
             selectSubcategory(subcat);
         });
         
-        // Блокируем навигацию внутри кнопки
+        // Блокируем навигацию внутри кнопки — НИЧЕГО НЕ ДЕЛАЕМ, кроме preventDefault
         btn.addEventListener('keydown', function(e) {
             if (e.key === 'ArrowLeft' || e.key === 'ArrowRight') {
                 e.preventDefault();
-                moveFocus(e.key === 'ArrowRight' ? 'right' : 'left');
+                // Ничего не делаем — обработка в основном обработчике
             }
         });
         
@@ -190,6 +190,19 @@ function selectMainCategory(categoryName) {
     currentSubcategory = firstSub || '';
     renderMainCategories();
     renderSubCategories();
+    
+    // Фокус на первую кнопку + "разбудить" навигацию
+    setTimeout(() => {
+        const firstBtn = mainCategoriesPanel.querySelector('.category-btn');
+        if (firstBtn) {
+            firstBtn.focus();
+            // Принудительно вызываем moveFocus для инициализации
+            setTimeout(() => {
+                moveFocus('right'); // Нейтральный вызов
+                moveFocus('left');  // Возвращаем на место
+            }, 50);
+        }
+    }, 100);
 }
 
 // Выбор подкатегории
@@ -197,6 +210,19 @@ function selectSubcategory(subcategoryName) {
     currentSubcategory = subcategoryName;
     renderSubCategories();
     loadAndRenderChannels(currentMainCategory, currentSubcategory);
+    
+    // Фокус на первую кнопку + "разбудить" навигацию
+    setTimeout(() => {
+        const firstBtn = subCategoriesPanel.querySelector('.subcategory-btn');
+        if (firstBtn) {
+            firstBtn.focus();
+            // Принудительно вызываем moveFocus для инициализации
+            setTimeout(() => {
+                moveFocus('right');
+                moveFocus('left');
+            }, 50);
+        }
+    }, 100);
 }
 
 // Загрузка и отображение каналов

@@ -141,10 +141,13 @@ function renderMainCategories() {
             selectMainCategory(cat, index);
         });
         
-        // Блокируем навигацию внутри кнопки
+        // Обработка Enter и Пробела
         btn.addEventListener('keydown', function(e) {
             if (e.key === 'ArrowLeft' || e.key === 'ArrowRight') {
                 e.preventDefault();
+            } else if (e.key === 'Enter' || e.key === ' ') {
+                e.preventDefault();
+                this.click(); // Явно вызываем click
             }
         });
         
@@ -174,10 +177,13 @@ function renderSubCategories() {
             selectSubcategory(subcat, index);
         });
         
-        // Блокируем навигацию внутри кнопки
+        // Обработка Enter и Пробела
         btn.addEventListener('keydown', function(e) {
             if (e.key === 'ArrowLeft' || e.key === 'ArrowRight') {
                 e.preventDefault();
+            } else if (e.key === 'Enter' || e.key === ' ') {
+                e.preventDefault();
+                this.click(); // Явно вызываем click
             }
         });
         
@@ -743,9 +749,9 @@ document.addEventListener('keydown', function(e) {
                     }
                 }, 100);
             } else if (navigationState === 'subCategories') {
-                // Важно: используем currentSubcategoryIndex, а не 0
                 const buttons = subCategoriesPanel.querySelectorAll('.subcategory-btn');
                 if (buttons[currentSubCategoryIndex]) {
+                    // Явно вызываем обработчик
                     selectSubcategory(buttons[currentSubCategoryIndex].textContent, currentSubCategoryIndex);
                 } else if (buttons.length > 0) {
                     selectSubcategory(buttons[0].textContent, 0);

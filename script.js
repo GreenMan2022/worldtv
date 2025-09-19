@@ -550,9 +550,10 @@ function getGroupIcon(group) {
     return 'fa-tv';
 }
 
-// Перемещение фокуса — ЗАЦИКЛЕННАЯ НАВИГАЦИЯ
+// Перемещение фокуса — ЕДИНАЯ ЛОГИКА ДЛЯ ВСЕХ УРОВНЕЙ
 function moveFocus(direction) {
     if (navigationState === 'channels') {
+        // Логика для каналов (уже работает)
         const channelCards = document.querySelectorAll('.channel-card');
         if (channelCards.length === 0) return;
         
@@ -581,12 +582,14 @@ function moveFocus(direction) {
             channelCards[nextIndex].focus();
         }
     } else if (navigationState === 'mainCategories') {
+        // Применяем ТУ ЖЕ ЛОГИКУ к главным категориям
         const buttons = mainCategoriesPanel.querySelectorAll('.category-btn');
         if (buttons.length === 0) return;
         
         const currentIndex = Array.from(buttons).indexOf(document.activeElement);
         let nextIndex;
         
+        // Зацикленное перемещение по горизонтали (как в каналах)
         if (direction === 'right') {
             nextIndex = (currentIndex + 1) % buttons.length;
         } else if (direction === 'left') {
@@ -597,15 +600,17 @@ function moveFocus(direction) {
         
         // Обновляем текущую категорию и активную кнопку
         currentMainCategory = buttons[nextIndex].textContent;
-        renderMainCategories();
+        renderMainCategories(); // Обновляем active класс
         buttons[nextIndex].focus();
     } else if (navigationState === 'subCategories') {
+        // Применяем ТУ ЖЕ ЛОГИКУ к подкатегориям
         const buttons = subCategoriesPanel.querySelectorAll('.subcategory-btn');
         if (buttons.length === 0) return;
         
         const currentIndex = Array.from(buttons).indexOf(document.activeElement);
         let nextIndex;
         
+        // Зацикленное перемещение по горизонтали (как в каналах)
         if (direction === 'right') {
             nextIndex = (currentIndex + 1) % buttons.length;
         } else if (direction === 'left') {
@@ -616,106 +621,10 @@ function moveFocus(direction) {
         
         // Обновляем текущую подкатегорию
         currentSubcategory = buttons[nextIndex].textContent;
-        renderSubCategories();
+        renderSubCategories(); // Обновляем active класс
         buttons[nextIndex].focus();
     }
 }
-
-// Простая навигация — каждое нажатие = один шаг
-document.addEventListener('keydown', function(e) {
-    if (playerModal.style.display === 'flex') {
-        if (e.key === 'Escape') closeModal.click();
-        return;
-    }
-
-    // Предотвращаем стандартное поведение для стрелок и Enter
-    if (['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'Enter', 'Escape'].includes(e.key)) {
-        e.preventDefault();
-    }
-
-    // Простая навигация стрелками ← →
-    if (e.key === 'ArrowLeft' || e.key === 'ArrowRight') {
-        moveFocus(e.key === 'ArrowRight' ? 'right' : 'left');
-        return;
-    }
-
-    switch(e.key) {
-        case 'ArrowUp':
-            // Всегда переходим к главным категориям
-            navigationState = 'mainCategories';
-            mainCategoriesPanel.style.display = 'flex';
-            subCategoriesPanel.style.display = 'none';
-            
-            setTimeout(() => {
-                const activeBtn = mainCategoriesPanel.querySelector('.category-btn.active');
-                if (activeBtn) activeBtn.focus();
-                else {
-                    const firstBtn = mainCategoriesPanel.querySelector('.category-btn');
-                    if (firstBtn) firstBtn.focus();
-                }
-            }, 100);
-            break;
-            
-        case 'ArrowDown':
-            // Всегда переходим к каналам
-            navigationState = 'channels';
-            mainCategoriesPanel.style.display = 'flex';
-            subCategoriesPanel.style.display = 'none';
-            
-            setTimeout(() => {
-                const firstChannel = document.querySelector('.channel-card');
-                if (firstChannel) firstChannel.focus();
-            }, 100);
-            break;
-            
-        case 'Enter':
-            if (navigationState === 'mainCategories') {
-                // Переход к подкатегориям
-                navigationState = 'subCategories';
-                subCategoriesPanel.style.display = 'flex';
-                
-                setTimeout(() => {
-                    const firstBtn = subCategoriesPanel.querySelector('.subcategory-btn');
-                    if (firstBtn) firstBtn.focus();
-                }, 100);
-            } else if (navigationState === 'subCategories') {
-                // Переход к каналам
-                selectSubcategory(document.activeElement.textContent);
-            } else if (navigationState === 'channels') {
-                // Открытие канала
-                if (document.activeElement.classList.contains('channel-card')) {
-                    const card = document.activeElement;
-                    const index = parseInt(card.dataset.index);
-                    const url = categoryTree[currentMainCategory][currentSubcategory];
-                    const channels = loadedPlaylists[url] || [];
-                    if (index >= 0 && index < channels.length) {
-                        const channel = channels[index];
-                        openFullScreenPlayer(channel.name, channel.url);
-                    }
-                }
-            }
-            break;
-            
-        case 'Escape':
-            if (navigationState === 'subCategories') {
-                // Возврат к главным категориям
-                navigationState = 'mainCategories';
-                setTimeout(() => {
-                    const activeBtn = mainCategoriesPanel.querySelector('.category-btn.active');
-                    if (activeBtn) activeBtn.focus();
-                }, 100);
-            } else if (navigationState === 'mainCategories') {
-                // Возврат к каналам
-                navigationState = 'channels';
-                setTimeout(() => {
-                    const firstChannel = document.querySelector('.channel-card');
-                    if (firstChannel) firstChannel.focus();
-                }, 100);
-            }
-            break;
-    }
-});
-
 // Запуск приложения
 document.addEventListener('DOMContentLoaded', () => {
     initApp();

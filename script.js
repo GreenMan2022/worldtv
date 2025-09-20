@@ -20,62 +20,240 @@ let focusTimer = null;
 let loadedPlaylists = {};
 let navigationState = 'channels';
 
-// 👇 Просмотренные: Новые переменные
-let currentWatchedChannel = null; // { name, url, group, logo }
-let watchStartTime = null;        // timestamp открытия плеера
+// Просмотренные
+let currentWatchedChannel = null;
+let watchStartTime = null;
 
-// Структура плейлистов
+// 👇 Язык интерфейса
+let currentLanguage = 'ru'; // по умолчанию
+
+// Тексты интерфейса
+const translations = {
+    ru: {
+        categories: "Категории",
+        countries: "Страны",
+        languages: "Языки",
+        watched: "Просмотренные",
+        news: "Новости",
+        sports: "Спорт",
+        football: "Футбол",
+        basketball: "Баскетбол",
+        tennis: "Теннис",
+        movies: "Кино",
+        action: "Боевики",
+        comedy: "Комедии",
+        drama: "Драмы",
+        entertainment: "Развлечения",
+        documentary: "Документальные",
+        kids: "Детские",
+        music: "Музыка",
+        pop: "Поп",
+        rock: "Рок",
+        hiphop: "Хип-хоп",
+        russia: "Россия",
+        usa: "США",
+        uk: "Великобритания",
+        germany: "Германия",
+        france: "Франция",
+        italy: "Италия",
+        spain: "Испания",
+        china: "Китай",
+        japan: "Япония",
+        korea: "Корея",
+        india: "Индия",
+        brazil: "Бразилия",
+        canada: "Канада",
+        australia: "Австралия",
+        russian: "Русский",
+        english: "Английский",
+        spanish: "Испанский",
+        french: "Французский",
+        german: "Немецкий",
+        italian: "Итальянский",
+        portuguese: "Португальский",
+        chinese: "Китайский",
+        japanese: "Японский",
+        korean: "Корейский",
+        arabic: "Арабский",
+        turkish: "Турецкий",
+        hindi: "Хинди",
+        loading: "Загрузка...",
+        errorInit: "Ошибка инициализации",
+        errorApp: "Ошибка приложения",
+        errorLoad: "Ошибка загрузки каналов",
+        channelNotFound: "Каналы не найдены",
+        channelUnavailable: "Канал недоступен",
+        formatNotSupported: "Формат не поддерживается",
+        clickToPlay: "Нажмите на видео для воспроизведения",
+        addToWatchedSuccess: (name) => `✅ Канал "${name}" добавлен в "Просмотренные"`,
+        alreadyInWatched: (name) => `ℹ️ Канал "${name}" уже в "Просмотренные"`,
+        lastPlaylistLoaded: (main, sub) => `📂 Загружен последний плейлист: ${main} → ${sub}`,
+        defaultPlaylist: '📂 Используем плейлист по умолчанию: "Просмотренные"',
+        playlistSaved: (main, sub) => `💾 Сохранён плейлист: ${main} → ${sub}`,
+        saveError: '❌ Не удалось сохранить последний плейлист:',
+        parseError: '❌ Ошибка парсинга watchedChannels:',
+        resetPlaylist: 'Последний плейлист сброшен',
+        scrollRestored: 'Позиция прокрутки восстановлена',
+        determiningLocation: 'Определение вашего местоположения...'
+    },
+    en: {
+        categories: "Categories",
+        countries: "Countries",
+        languages: "Languages",
+        watched: "Watched",
+        news: "News",
+        sports: "Sports",
+        football: "Football",
+        basketball: "Basketball",
+        tennis: "Tennis",
+        movies: "Movies",
+        action: "Action",
+        comedy: "Comedy",
+        drama: "Drama",
+        entertainment: "Entertainment",
+        documentary: "Documentary",
+        kids: "Kids",
+        music: "Music",
+        pop: "Pop",
+        rock: "Rock",
+        hiphop: "Hip-Hop",
+        russia: "Russia",
+        usa: "USA",
+        uk: "United Kingdom",
+        germany: "Germany",
+        france: "France",
+        italy: "Italy",
+        spain: "Spain",
+        china: "China",
+        japan: "Japan",
+        korea: "Korea",
+        india: "India",
+        brazil: "Brazil",
+        canada: "Canada",
+        australia: "Australia",
+        russian: "Russian",
+        english: "English",
+        spanish: "Spanish",
+        french: "French",
+        german: "German",
+        italian: "Italian",
+        portuguese: "Portuguese",
+        chinese: "Chinese",
+        japanese: "Japanese",
+        korean: "Korean",
+        arabic: "Arabic",
+        turkish: "Turkish",
+        hindi: "Hindi",
+        loading: "Loading...",
+        errorInit: "Initialization error",
+        errorApp: "Application error",
+        errorLoad: "Failed to load channels",
+        channelNotFound: "Channels not found",
+        channelUnavailable: "Channel unavailable",
+        formatNotSupported: "Format not supported",
+        clickToPlay: "Click video to play",
+        addToWatchedSuccess: (name) => `✅ Channel "${name}" added to "Watched"`,
+        alreadyInWatched: (name) => `ℹ️ Channel "${name}" already in "Watched"`,
+        lastPlaylistLoaded: (main, sub) => `📂 Loaded last playlist: ${main} → ${sub}`,
+        defaultPlaylist: '📂 Using default playlist: "Watched"',
+        playlistSaved: (main, sub) => `💾 Playlist saved: ${main} → ${sub}`,
+        saveError: '❌ Failed to save last playlist:',
+        parseError: '❌ Error parsing watchedChannels:',
+        resetPlaylist: 'Last playlist reset',
+        scrollRestored: 'Scroll position restored',
+        determiningLocation: 'Detecting your location...'
+    }
+};
+
+// Функция получения перевода
+function t(key, ...args) {
+    let str = translations[currentLanguage][key] || key;
+    if (typeof str === 'function') {
+        return str(...args);
+    }
+    return str;
+}
+
+// 👇 Определение языка по IP
+async function detectLanguageByIP() {
+    // Если уже определено — не повторяем
+    const savedLang = localStorage.getItem('userLanguage');
+    if (savedLang) {
+        currentLanguage = savedLang;
+        return;
+    }
+
+    try {
+        showToast(t('determiningLocation'));
+        const response = await fetch('https://ipapi.co/json/');
+        const data = await response.json();
+        const countryCode = data.country_code;
+
+        // Если Россия — русский, иначе английский
+        currentLanguage = countryCode === 'RU' ? 'ru' : 'en';
+
+        // Сохраняем выбор
+        localStorage.setItem('userLanguage', currentLanguage);
+        console.log(`🌐 Определён язык: ${currentLanguage} (страна: ${countryCode})`);
+    } catch (e) {
+        console.error('❌ Не удалось определить язык по IP:', e);
+        currentLanguage = 'en'; // fallback
+        localStorage.setItem('userLanguage', currentLanguage);
+    }
+}
+
+// 👇 Структура плейлистов — с поддержкой перевода
 const categoryTree = {
-  "Просмотренные": {},
-  "Категории": {
-    "Новости": "https://iptv-org.github.io/iptv/categories/news.m3u",
-    "Спорт": "https://iptv-org.github.io/iptv/categories/sports.m3u",
-    "Футбол": "https://iptv-org.github.io/iptv/categories/football.m3u",
-    "Баскетбол": "https://iptv-org.github.io/iptv/categories/basketball.m3u",
-    "Теннис": "https://iptv-org.github.io/iptv/categories/tennis.m3u",
-    "Кино": "https://iptv-org.github.io/iptv/categories/movies.m3u",
-    "Боевики": "https://iptv-org.github.io/iptv/categories/action.m3u",
-    "Комедии": "https://iptv-org.github.io/iptv/categories/comedy.m3u",
-    "Драмы": "https://iptv-org.github.io/iptv/categories/drama.m3u",
-    "Развлечения": "https://iptv-org.github.io/iptv/categories/entertainment.m3u",
-    "Документальные": "https://iptv-org.github.io/iptv/categories/documentary.m3u",
-    "Детские": "https://iptv-org.github.io/iptv/categories/kids.m3u",
-    "Музыка": "https://iptv-org.github.io/iptv/categories/music.m3u",
-    "Поп": "https://iptv-org.github.io/iptv/categories/pop.m3u",
-    "Рок": "https://iptv-org.github.io/iptv/categories/rock.m3u",
-    "Хип-хоп": "https://iptv-org.github.io/iptv/categories/hiphop.m3u"
-  },
-  "Страны": {
-    "Россия": "https://iptv-org.github.io/iptv/countries/ru.m3u",
-    "США": "https://iptv-org.github.io/iptv/countries/us.m3u",
-    "Великобритания": "https://iptv-org.github.io/iptv/countries/gb.m3u",
-    "Германия": "https://iptv-org.github.io/iptv/countries/de.m3u",
-    "Франция": "https://iptv-org.github.io/iptv/countries/fr.m3u",
-    "Италия": "https://iptv-org.github.io/iptv/countries/it.m3u",
-    "Испания": "https://iptv-org.github.io/iptv/countries/es.m3u",
-    "Китай": "https://iptv-org.github.io/iptv/countries/cn.m3u",
-    "Япония": "https://iptv-org.github.io/iptv/countries/jp.m3u",
-    "Корея": "https://iptv-org.github.io/iptv/countries/kr.m3u",
-    "Индия": "https://iptv-org.github.io/iptv/countries/in.m3u",
-    "Бразилия": "https://iptv-org.github.io/iptv/countries/br.m3u",
-    "Канада": "https://iptv-org.github.io/iptv/countries/ca.m3u",
-    "Австралия": "https://iptv-org.github.io/iptv/countries/au.m3u"
-  },
-  "Языки": {
-    "Русский": "https://iptv-org.github.io/iptv/languages/rus.m3u",
-    "Английский": "https://iptv-org.github.io/iptv/languages/eng.m3u",
-    "Испанский": "https://iptv-org.github.io/iptv/languages/spa.m3u",
-    "Французский": "https://iptv-org.github.io/iptv/languages/fra.m3u",
-    "Немецкий": "https://iptv-org.github.io/iptv/languages/deu.m3u",
-    "Итальянский": "https://iptv-org.github.io/iptv/languages/ita.m3u",
-    "Португальский": "https://iptv-org.github.io/iptv/languages/por.m3u",
-    "Китайский": "https://iptv-org.github.io/iptv/languages/zho.m3u",
-    "Японский": "https://iptv-org.github.io/iptv/languages/jpn.m3u",
-    "Корейский": "https://iptv-org.github.io/iptv/languages/kor.m3u",
-    "Арабский": "https://iptv-org.github.io/iptv/languages/ara.m3u",
-    "Турецкий": "https://iptv-org.github.io/iptv/languages/tur.m3u",
-    "Хинди": "https://iptv-org.github.io/iptv/languages/hin.m3u"
-  }
+    [t('watched')]: {},
+    [t('categories')]: {
+        [t('news')]: "https://iptv-org.github.io/iptv/categories/news.m3u",
+        [t('sports')]: "https://iptv-org.github.io/iptv/categories/sports.m3u",
+        [t('football')]: "https://iptv-org.github.io/iptv/categories/football.m3u",
+        [t('basketball')]: "https://iptv-org.github.io/iptv/categories/basketball.m3u",
+        [t('tennis')]: "https://iptv-org.github.io/iptv/categories/tennis.m3u",
+        [t('movies')]: "https://iptv-org.github.io/iptv/categories/movies.m3u",
+        [t('action')]: "https://iptv-org.github.io/iptv/categories/action.m3u",
+        [t('comedy')]: "https://iptv-org.github.io/iptv/categories/comedy.m3u",
+        [t('drama')]: "https://iptv-org.github.io/iptv/categories/drama.m3u",
+        [t('entertainment')]: "https://iptv-org.github.io/iptv/categories/entertainment.m3u",
+        [t('documentary')]: "https://iptv-org.github.io/iptv/categories/documentary.m3u",
+        [t('kids')]: "https://iptv-org.github.io/iptv/categories/kids.m3u",
+        [t('music')]: "https://iptv-org.github.io/iptv/categories/music.m3u",
+        [t('pop')]: "https://iptv-org.github.io/iptv/categories/pop.m3u",
+        [t('rock')]: "https://iptv-org.github.io/iptv/categories/rock.m3u",
+        [t('hiphop')]: "https://iptv-org.github.io/iptv/categories/hiphop.m3u"
+    },
+    [t('countries')]: {
+        [t('russia')]: "https://iptv-org.github.io/iptv/countries/ru.m3u",
+        [t('usa')]: "https://iptv-org.github.io/iptv/countries/us.m3u",
+        [t('uk')]: "https://iptv-org.github.io/iptv/countries/gb.m3u",
+        [t('germany')]: "https://iptv-org.github.io/iptv/countries/de.m3u",
+        [t('france')]: "https://iptv-org.github.io/iptv/countries/fr.m3u",
+        [t('italy')]: "https://iptv-org.github.io/iptv/countries/it.m3u",
+        [t('spain')]: "https://iptv-org.github.io/iptv/countries/es.m3u",
+        [t('china')]: "https://iptv-org.github.io/iptv/countries/cn.m3u",
+        [t('japan')]: "https://iptv-org.github.io/iptv/countries/jp.m3u",
+        [t('korea')]: "https://iptv-org.github.io/iptv/countries/kr.m3u",
+        [t('india')]: "https://iptv-org.github.io/iptv/countries/in.m3u",
+        [t('brazil')]: "https://iptv-org.github.io/iptv/countries/br.m3u",
+        [t('canada')]: "https://iptv-org.github.io/iptv/countries/ca.m3u",
+        [t('australia')]: "https://iptv-org.github.io/iptv/countries/au.m3u"
+    },
+    [t('languages')]: {
+        [t('russian')]: "https://iptv-org.github.io/iptv/languages/rus.m3u",
+        [t('english')]: "https://iptv-org.github.io/iptv/languages/eng.m3u",
+        [t('spanish')]: "https://iptv-org.github.io/iptv/languages/spa.m3u",
+        [t('french')]: "https://iptv-org.github.io/iptv/languages/fra.m3u",
+        [t('german')]: "https://iptv-org.github.io/iptv/languages/deu.m3u",
+        [t('italian')]: "https://iptv-org.github.io/iptv/languages/ita.m3u",
+        [t('portuguese')]: "https://iptv-org.github.io/iptv/languages/por.m3u",
+        [t('chinese')]: "https://iptv-org.github.io/iptv/languages/zho.m3u",
+        [t('japanese')]: "https://iptv-org.github.io/iptv/languages/jpn.m3u",
+        [t('korean')]: "https://iptv-org.github.io/iptv/languages/kor.m3u",
+        [t('arabic')]: "https://iptv-org.github.io/iptv/languages/ara.m3u",
+        [t('turkish')]: "https://iptv-org.github.io/iptv/languages/tur.m3u",
+        [t('hindi')]: "https://iptv-org.github.io/iptv/languages/hin.m3u"
+    }
 };
 
 // Закрытие модального окна
@@ -84,7 +262,6 @@ closeModal.addEventListener('click', function() {
     videoPlayerElement.pause();
     videoPlayerElement.src = '';
 
-    // 👇 Просмотренные: Проверка времени при закрытии
     if (currentWatchedChannel && watchStartTime) {
         const watchedSeconds = Math.floor((Date.now() - watchStartTime) / 1000);
         console.log(`📺 Просмотрено: ${watchedSeconds} секунд`);
@@ -98,7 +275,6 @@ closeModal.addEventListener('click', function() {
             );
         }
 
-        // Сброс
         currentWatchedChannel = null;
         watchStartTime = null;
     }
@@ -116,9 +292,8 @@ function showToast(message) {
     }, 3000);
 }
 
-// 👇 Просмотренные: Добавление в localStorage — с защитой от ошибок
+// Просмотренные: Добавление в localStorage — с защитой от ошибок
 function addToWatched(name, url, group, logo) {
-    // Безопасное получение массива из localStorage
     let watched;
     try {
         const raw = localStorage.getItem('watchedChannels');
@@ -128,42 +303,84 @@ function addToWatched(name, url, group, logo) {
             watched = [];
         }
     } catch (e) {
-        console.error('❌ Ошибка парсинга watchedChannels:', e);
+        console.error(t('parseError'), e);
         watched = [];
     }
 
-    // Проверка дубликатов
     if (watched.some(item => item.url === url)) {
-        console.log(`ℹ️ Канал "${name}" уже в "Просмотренные"`);
+        console.log(t('alreadyInWatched')(name));
         return;
     }
 
-    // Добавляем
     watched.push({ name, url, group, logo });
     try {
         localStorage.setItem('watchedChannels', JSON.stringify(watched));
-        console.log(`✅ Канал "${name}" добавлен в "Просмотренные"`);
+        console.log(t('addToWatchedSuccess')(name));
     } catch (e) {
         console.error('❌ Не удалось сохранить в localStorage:', e);
         showToast('Ошибка сохранения');
         return;
     }
 
-    // Если сейчас открыта категория "Просмотренные" — обновляем
-    if (currentMainCategory === 'Просмотренные') {
-        loadAndRenderChannels('Просмотренные', '');
+    if (currentMainCategory === t('watched')) {
+        loadAndRenderChannels(t('watched'), '');
+    }
+}
+
+// 👇 Сохранение позиции скролла
+function saveScrollPosition() {
+    if (navigationState === 'channels') {
+        try {
+            const key = `scroll_${currentMainCategory}_${currentSubcategory}`;
+            localStorage.setItem(key, channelsContainer.scrollTop.toString());
+        } catch (e) {
+            console.error('❌ Не удалось сохранить позицию скролла:', e);
+        }
+    }
+}
+
+// 👇 Восстановление позиции скролла
+function restoreScrollPosition() {
+    try {
+        const key = `scroll_${currentMainCategory}_${currentSubcategory}`;
+        const saved = localStorage.getItem(key);
+        if (saved) {
+            setTimeout(() => {
+                channelsContainer.scrollTop = parseInt(saved);
+                console.log(t('scrollRestored'));
+            }, 100);
+        }
+    } catch (e) {
+        console.error('❌ Не удалось восстановить позицию скролла:', e);
     }
 }
 
 // Инициализация приложения
-function initApp() {
+async function initApp() {
     const safetyTimeout = setTimeout(() => {
         initialLoader.style.display = 'none';
-        showToast("Ошибка инициализации");
+        showToast(t('errorInit'));
     }, 10000);
 
     try {
-        currentMainCategory = 'Просмотренные';
+        // 👇 Определяем язык ПЕРЕД инициализацией
+        await detectLanguageByIP();
+
+        // 👇 Пытаемся загрузить последний просмотренный плейлист
+        let lastMain = localStorage.getItem('lastMainCategory');
+        let lastSub = localStorage.getItem('lastSubcategory');
+
+        // Проверяем, что данные существуют и категория всё ещё доступна
+        if (lastMain && lastSub && categoryTree[lastMain] && categoryTree[lastMain][lastSub]) {
+            currentMainCategory = lastMain;
+            currentSubcategory = lastSub;
+            console.log(t('lastPlaylistLoaded')(lastMain, lastSub));
+        } else {
+            currentMainCategory = t('watched');
+            currentSubcategory = '';
+            console.log(t('defaultPlaylist'));
+        }
+
         renderMainCategories();
         renderSubCategories();
         loadAndRenderChannels(currentMainCategory, currentSubcategory);
@@ -171,15 +388,33 @@ function initApp() {
         setTimeout(() => {
             const firstChannel = document.querySelector('.channel-card');
             if (firstChannel) firstChannel.focus();
+            // 👇 Восстанавливаем скролл после рендеринга
+            restoreScrollPosition();
         }, 500);
+
+        // 👇 Сохраняем скролл при прокрутке
+        channelsContainer.addEventListener('scroll', debounce(saveScrollPosition, 300));
         
         clearTimeout(safetyTimeout);
     } catch (error) {
         clearTimeout(safetyTimeout);
         console.error("Ошибка инициализации:", error);
         initialLoader.style.display = 'none';
-        showToast("Ошибка приложения");
+        showToast(t('errorApp'));
     }
+}
+
+// Debounce функция
+function debounce(func, wait) {
+    let timeout;
+    return function executedFunction(...args) {
+        const later = () => {
+            clearTimeout(timeout);
+            func(...args);
+        };
+        clearTimeout(timeout);
+        timeout = setTimeout(later, wait);
+    };
 }
 
 // Отображение главных категорий
@@ -256,10 +491,19 @@ function selectMainCategory(categoryName, index) {
     }, 100);
 }
 
-// Выбор подкатегории
+// Выбор подкатегории + сохранение в localStorage
 function selectSubcategory(subcategoryName, index) {
     currentSubcategory = subcategoryName;
     currentSubCategoryIndex = index;
+
+    try {
+        localStorage.setItem('lastMainCategory', currentMainCategory);
+        localStorage.setItem('lastSubcategory', subcategoryName);
+        console.log(t('playlistSaved')(currentMainCategory, subcategoryName));
+    } catch (e) {
+        console.error(t('saveError'), e);
+    }
+
     loadAndRenderChannels(currentMainCategory, currentSubcategory);
     
     setTimeout(() => {
@@ -288,10 +532,22 @@ function updateSubCategoryActive() {
 
 // Загрузка и отображение каналов
 async function loadAndRenderChannels(mainCategory, subcategory) {
-    // 👇 Просмотренные: Обработка
-    if (mainCategory === 'Просмотренные') {
+    if (mainCategory === t('watched')) {
         initialLoader.style.display = 'none';
-        const watched = JSON.parse(localStorage.getItem('watchedChannels') || '[]');
+        let watched;
+        try {
+            const raw = localStorage.getItem('watchedChannels');
+            watched = raw ? JSON.parse(raw) : [];
+            if (!Array.isArray(watched)) {
+                console.warn('⚠️ watchedChannels не массив — сброс при загрузке');
+                watched = [];
+                localStorage.setItem('watchedChannels', '[]');
+            }
+        } catch (e) {
+            console.error('❌ Ошибка парсинга при загрузке:', e);
+            watched = [];
+            localStorage.setItem('watchedChannels', '[]');
+        }
         renderChannels(watched);
         return;
     }
@@ -309,13 +565,15 @@ async function loadAndRenderChannels(mainCategory, subcategory) {
         renderChannels(channels);
     } catch (error) {
         console.error("Ошибка загрузки:", error);
-        showToast("Ошибка загрузки каналов");
+        showToast(t('errorLoad'));
         renderChannels([]);
     } finally {
         initialLoader.style.display = 'none';
         setTimeout(() => {
             const firstChannel = document.querySelector('.channel-card');
             if (firstChannel) firstChannel.focus();
+            // 👇 Восстанавливаем скролл после загрузки каналов
+            restoreScrollPosition();
         }, 100);
     }
 }
@@ -372,7 +630,7 @@ function renderChannels(channelsToRender) {
     if (channelsToRender.length === 0) {
         channelsContainer.innerHTML = `
             <div style="color:#aaa; padding:40px; text-align:center">
-                ${initialLoader.style.display === 'none' ? 'Каналы не найдены' : 'Загрузка...'}
+                ${initialLoader.style.display === 'none' ? t('channelNotFound') : t('loading')}
             </div>`;
         return;
     }
@@ -384,7 +642,6 @@ function renderChannels(channelsToRender) {
         channelCard.setAttribute('tabindex', '0');
         channelCard.dataset.index = index;
         
-        // Медиа-контейнер
         const mediaContainer = document.createElement('div');
         mediaContainer.className = 'channel-media';
         
@@ -400,11 +657,9 @@ function renderChannels(channelsToRender) {
         icon.className = `fas ${groupIcon}`;
         mediaContainer.appendChild(icon);
         
-        // Мини-плеер
         const miniPlayer = createMiniPlayer(channel.url);
         mediaContainer.appendChild(miniPlayer);
         
-        // Информация
         const infoContainer = document.createElement('div');
         infoContainer.className = 'channel-info';
         infoContainer.innerHTML = `<h3>${channel.name}</h3><p>${channel.group}</p>`;
@@ -412,7 +667,6 @@ function renderChannels(channelsToRender) {
         channelCard.appendChild(mediaContainer);
         channelCard.appendChild(infoContainer);
         
-        // Фокус
         channelCard.addEventListener('focus', function() {
             currentChannelIndex = parseInt(this.dataset.index);
             if (focusTimer) clearTimeout(focusTimer);
@@ -439,7 +693,6 @@ function renderChannels(channelsToRender) {
             }, 3000);
         });
         
-        // Блюр
         channelCard.addEventListener('blur', function() {
             if (focusTimer) clearTimeout(focusTimer);
             setTimeout(() => {
@@ -452,7 +705,6 @@ function renderChannels(channelsToRender) {
             }, 100);
         });
         
-        // Открытие плеера
         channelCard.addEventListener('click', () => openFullScreenPlayer(channel.name, channel.url, channel.group, channel.logo));
         channelCard.addEventListener('keydown', (e) => {
             if (e.key === 'Enter') {
@@ -494,7 +746,7 @@ function initializeMiniPlayer(video, url, miniPlayer, icon) {
     const timeoutId = setTimeout(() => {
         if (!manifestLoaded && !networkErrorOccurred) {
             console.warn("Таймаут:", url);
-            showToast('Канал не отвечает');
+            showToast(t('channelUnavailable'));
             addToBlacklist(url);
             miniPlayer.style.display = 'none';
             icon.style.display = 'block';
@@ -509,7 +761,10 @@ function initializeMiniPlayer(video, url, miniPlayer, icon) {
         hls.on(Hls.Events.MANIFEST_PARSED, () => {
             clearTimeout(timeoutId);
             manifestLoaded = true;
-            video.play().catch(e => console.log("Autoplay:", e));
+            video.play().catch(e => {
+                console.log("Autoplay blocked:", e);
+                showToast(t('clickToPlay'));
+            });
         });
         
         hls.on(Hls.Events.ERROR, (event, data) => {
@@ -527,7 +782,10 @@ function initializeMiniPlayer(video, url, miniPlayer, icon) {
         video.addEventListener('loadedmetadata', () => {
             clearTimeout(timeoutId);
             manifestLoaded = true;
-            video.play().catch(e => console.log("Autoplay:", e));
+            video.play().catch(e => {
+                console.log("Autoplay blocked:", e);
+                showToast(t('clickToPlay'));
+            });
         });
         video.addEventListener('error', () => {
             clearTimeout(timeoutId);
@@ -541,7 +799,7 @@ function initializeMiniPlayer(video, url, miniPlayer, icon) {
 
 // Обработка ошибки потока
 function handleStreamError(url, container) {
-    showToast('Канал недоступен');
+    showToast(t('channelUnavailable'));
     console.error("Ошибка потока:", url);
     const icon = container.parentElement.querySelector('i');
     if (icon) icon.style.display = 'block';
@@ -557,9 +815,8 @@ function addToBlacklist(url) {
     }
 }
 
-// 👇 Просмотренные: Открытие полноэкранного плеера
+// Открытие полноэкранного плеера
 function openFullScreenPlayer(name, url, group, logo) {
-    // 👇 Запоминаем канал и время открытия
     currentWatchedChannel = { name, url, group, logo };
     watchStartTime = Date.now();
 
@@ -573,7 +830,7 @@ function openFullScreenPlayer(name, url, group, logo) {
     const timeoutId = setTimeout(() => {
         if (!manifestLoaded) {
             console.warn("Таймаут полный экран:", url);
-            showToast('Канал не отвечает');
+            showToast(t('channelUnavailable'));
             addToBlacklist(url);
             playerModal.style.display = 'none';
         }
@@ -589,7 +846,7 @@ function openFullScreenPlayer(name, url, group, logo) {
             manifestLoaded = true;
             videoPlayerElement.play().catch(e => {
                 console.log("Autoplay blocked:", e);
-                showToast("Нажмите на видео для воспроизведения");
+                showToast(t('clickToPlay'));
             });
             setTimeout(() => requestNativeFullscreen(), 1000);
         });
@@ -597,7 +854,7 @@ function openFullScreenPlayer(name, url, group, logo) {
         hls.on(Hls.Events.ERROR, (event, data) => {
             if (data.fatal) {
                 clearTimeout(timeoutId);
-                showToast('Канал недоступен');
+                showToast(t('channelUnavailable'));
                 addToBlacklist(url);
                 playerModal.style.display = 'none';
             }
@@ -609,19 +866,19 @@ function openFullScreenPlayer(name, url, group, logo) {
             manifestLoaded = true;
             videoPlayerElement.play().catch(e => {
                 console.log("Autoplay blocked:", e);
-                showToast("Нажмите на видео для воспроизведения");
+                showToast(t('clickToPlay'));
             });
             setTimeout(() => requestNativeFullscreen(), 1000);
         });
         videoPlayerElement.addEventListener('error', () => {
             clearTimeout(timeoutId);
-            showToast('Канал недоступен');
+            showToast(t('channelUnavailable'));
             addToBlacklist(url);
             playerModal.style.display = 'none';
         });
     } else {
         clearTimeout(timeoutId);
-        showToast('Формат не поддерживается');
+        showToast(t('formatNotSupported'));
         playerModal.style.display = 'none';
     }
 }
@@ -639,13 +896,13 @@ function requestNativeFullscreen() {
 // Иконка по группе
 function getGroupIcon(group) {
     group = group.toLowerCase();
-    if (group.includes('новости')) return 'fa-newspaper';
-    if (group.includes('спорт')) return 'fa-futbol';
-    if (group.includes('кино')) return 'fa-film';
-    if (group.includes('музыка')) return 'fa-music';
-    if (group.includes('детск')) return 'fa-child';
-    if (group.includes('документ')) return 'fa-video';
-    if (group.includes('развлеч')) return 'fa-theater-masks';
+    if (group.includes('новости') || group.includes('news')) return 'fa-newspaper';
+    if (group.includes('спорт') || group.includes('sports') || group.includes('football') || group.includes('basketball') || group.includes('tennis')) return 'fa-futbol';
+    if (group.includes('кино') || group.includes('movies') || group.includes('action') || group.includes('comedy') || group.includes('drama')) return 'fa-film';
+    if (group.includes('музыка') || group.includes('music') || group.includes('pop') || group.includes('rock') || group.includes('hiphop')) return 'fa-music';
+    if (group.includes('детск') || group.includes('kids')) return 'fa-child';
+    if (group.includes('документ') || group.includes('documentary')) return 'fa-video';
+    if (group.includes('развлеч') || group.includes('entertainment')) return 'fa-theater-masks';
     return 'fa-tv';
 }
 
@@ -748,7 +1005,7 @@ document.addEventListener('keydown', function(e) {
             } else if (navigationState === 'channels' && document.activeElement.classList.contains('channel-card')) {
                 const card = document.activeElement;
                 const index = parseInt(card.dataset.index);
-                const list = currentMainCategory === 'Просмотренные'
+                const list = currentMainCategory === t('watched')
                     ? JSON.parse(localStorage.getItem('watchedChannels') || '[]')
                     : loadedPlaylists[categoryTree[currentMainCategory][currentSubcategory]] || [];
                 if (index >= 0 && index < list.length) {

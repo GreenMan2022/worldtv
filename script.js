@@ -189,12 +189,22 @@ function t(key) {
     return str;
 }
 
-// 👇 Определение языка по IP — с fallback и защитой от ошибок
+// 👇 Определение языка по IP — с таймаутом 3 сек и fallback
 function detectLanguageByIP() {
     return new Promise(function(resolve, reject) {
+        var timeoutId = setTimeout(function() {
+            console.warn('⚠️ Таймаут определения языка — устанавливаем английский');
+            currentLanguage = 'en';
+            try {
+                localStorage.setItem('userLanguage', currentLanguage);
+            } catch (e) {}
+            resolve();
+        }, 3000); // 3 секунды
+
         // Если уже определено — не повторяем
         var savedLang = localStorage.getItem('userLanguage');
         if (savedLang) {
+            clearTimeout(timeoutId);
             currentLanguage = savedLang;
             resolve();
             return;
@@ -217,11 +227,11 @@ function detectLanguageByIP() {
         .then(function(data) {
             countryCode = data.country_code;
             console.log('🌍 Определена страна: ' + countryCode);
-            return tryFallback();
+            finalize();
         })
         .catch(function(e) {
             console.warn('⚠️ ipapi.co недоступен:', e.message);
-            return tryFallback();
+            tryFallback();
         });
 
         function tryFallback() {
@@ -253,6 +263,8 @@ function detectLanguageByIP() {
         }
 
         function finalize() {
+            clearTimeout(timeoutId); // Отменяем таймаут
+
             // Если всё ещё не определено — ставим английский
             currentLanguage = countryCode === 'RU' ? 'ru' : 'en';
 

@@ -24,6 +24,84 @@ const firebaseConfig = {
 const app = firebase.initializeApp(firebaseConfig);
 const database = firebase.database();
 
+// 👇 Язык интерфейса
+let currentLanguage = localStorage.getItem('appLanguage') || 'ru';
+
+// 👇 Словарь переводов
+const translations = {
+    ru: {
+        "Просмотренные": "Просмотренные",
+        "Прямо сейчас": "Прямо сейчас",
+        "Смотрят": "Смотрят",
+        "Свой плейлист": "Свой плейлист",
+        "Категории": "Категории",
+        "Страны": "Страны",
+        "Языки": "Языки",
+        "Загрузите плейлист по ссылке": "Загрузите плейлист по ссылке",
+        "Поддерживается формат M3U": "Поддерживается формат M3U",
+        "Загрузить плейлист": "Загрузить плейлист",
+        "Плейлист не загружен.": "Плейлист не загружен.",
+        "Перейдите в подменю и выберите «Загрузить по ссылке»": "Перейдите в подменю и выберите «Загрузить по ссылке»",
+        "Пока никто в мире не смотрит...": "Пока никто в мире не смотрит...",
+        "Включите канал на 60+ сек — и вы первым появитесь здесь!": "Включите канал на 60+ сек — и вы первым появитесь здесь!",
+        "Прямо сейчас никто не смотрит...": "Прямо сейчас никто не смотрит...",
+        "Включите канал — и станьте первым!": "Включите канал — и станьте первым!",
+        "Каналы не найдены": "Каналы не найдены",
+        "Загрузка...": "Загрузка...",
+        "Загрузка": "Загрузка",
+        "Ошибка инициализации": "Ошибка инициализации",
+        "Ошибка приложения": "Ошибка приложения",
+        "Ошибка сохранения": "Ошибка сохранения",
+        "Канал не отвечает": "Канал не отвечает",
+        "Канал недоступен": "Канал недоступен",
+        "Нажмите на видео для воспроизведения": "Нажмите на видео для воспроизведения",
+        "Формат не поддерживается": "Формат не поддерживается",
+        "Не удалось загрузить плейлист": "Не удалось загрузить плейлист",
+        "Плейлист загружен!": "Плейлист загружен!",
+        "Введите ссылку": "Введите ссылку",
+        "Язык изменён на Русский": "Язык изменён на Русский",
+        "Language changed to English": "Язык изменён на Английский"
+    },
+    en: {
+        "Просмотренные": "Watched",
+        "Прямо сейчас": "Watching Now",
+        "Смотрят": "Popular",
+        "Свой плейлист": "My Playlist",
+        "Категории": "Categories",
+        "Страны": "Countries",
+        "Языки": "Languages",
+        "Загрузите плейлист по ссылке": "Upload playlist via URL",
+        "Поддерживается формат M3U": "M3U format supported",
+        "Загрузить плейлист": "Load Playlist",
+        "Плейлист не загружен.": "Playlist not loaded.",
+        "Перейдите в подменю и выберите «Загрузить по ссылке»": "Go to submenu and select 'Load from URL'",
+        "Пока никто в мире не смотрит...": "No one is watching globally...",
+        "Включите канал на 60+ сек — и вы первым появитесь здесь!": "Watch any channel for 60+ sec to appear here!",
+        "Прямо сейчас никто не смотрит...": "No one is watching right now...",
+        "Включите канал — и станьте первым!": "Start watching to be the first!",
+        "Каналы не найдены": "Channels not found",
+        "Загрузка...": "Loading...",
+        "Загрузка": "Loading",
+        "Ошибка инициализации": "Initialization error",
+        "Ошибка приложения": "App error",
+        "Ошибка сохранения": "Save error",
+        "Канал не отвечает": "Channel not responding",
+        "Канал недоступен": "Channel unavailable",
+        "Нажмите на видео для воспроизведения": "Click video to play",
+        "Формат не поддерживается": "Format not supported",
+        "Не удалось загрузить плейлист": "Failed to load playlist",
+        "Плейлист загружен!": "Playlist loaded!",
+        "Введите ссылку": "Enter URL",
+        "Язык изменён на Русский": "Language changed to Russian",
+        "Language changed to English": "Language changed to English"
+    }
+};
+
+// Функция перевода
+function translateText(key) {
+    return translations[currentLanguage][key] || key;
+}
+
 // Глобальные переменные
 let currentMainCategory = 'Просмотренные';
 let currentSubcategory = '';
@@ -43,56 +121,57 @@ let watchStartTime = null;        // timestamp открытия плеера
 // Структура плейлистов
 const categoryTree = {
   "Просмотренные": {},
-  "Смотрят": {}, // ← Глобальный рейтинг
+  "Прямо сейчас": {},
+  "Смотрят": {},
   "Свой плейлист": {},
   "Категории": {
-    "Новости": "https://iptv-org.github.io/iptv/categories/news.m3u  ",
-    "Спорт": "https://iptv-org.github.io/iptv/categories/sports.m3u  ",
-    "Футбол": "https://iptv-org.github.io/iptv/categories/football.m3u  ",
-    "Баскетбол": "https://iptv-org.github.io/iptv/categories/basketball.m3u  ",
-    "Теннис": "https://iptv-org.github.io/iptv/categories/tennis.m3u  ",
-    "Кино": "https://iptv-org.github.io/iptv/categories/movies.m3u  ",
-    "Боевики": "https://iptv-org.github.io/iptv/categories/action.m3u  ",
-    "Комедии": "https://iptv-org.github.io/iptv/categories/comedy.m3u  ",
-    "Драмы": "https://iptv-org.github.io/iptv/categories/drama.m3u  ",
-    "Развлечения": "https://iptv-org.github.io/iptv/categories/entertainment.m3u  ",
-    "Документальные": "https://iptv-org.github.io/iptv/categories/documentary.m3u  ",
-    "Детские": "https://iptv-org.github.io/iptv/categories/kids.m3u  ",
-    "Музыка": "https://iptv-org.github.io/iptv/categories/music.m3u  ",
-    "Поп": "https://iptv-org.github.io/iptv/categories/pop.m3u  ",
-    "Рок": "https://iptv-org.github.io/iptv/categories/rock.m3u  ",
-    "Хип-хоп": "https://iptv-org.github.io/iptv/categories/hiphop.m3u  "
+    "Новости": "https://iptv-org.github.io/iptv/categories/news.m3u",
+    "Спорт": "https://iptv-org.github.io/iptv/categories/sports.m3u",
+    "Футбол": "https://iptv-org.github.io/iptv/categories/football.m3u",
+    "Баскетбол": "https://iptv-org.github.io/iptv/categories/basketball.m3u",
+    "Теннис": "https://iptv-org.github.io/iptv/categories/tennis.m3u",
+    "Кино": "https://iptv-org.github.io/iptv/categories/movies.m3u",
+    "Боевики": "https://iptv-org.github.io/iptv/categories/action.m3u",
+    "Комедии": "https://iptv-org.github.io/iptv/categories/comedy.m3u",
+    "Драмы": "https://iptv-org.github.io/iptv/categories/drama.m3u",
+    "Развлечения": "https://iptv-org.github.io/iptv/categories/entertainment.m3u",
+    "Документальные": "https://iptv-org.github.io/iptv/categories/documentary.m3u",
+    "Детские": "https://iptv-org.github.io/iptv/categories/kids.m3u",
+    "Музыка": "https://iptv-org.github.io/iptv/categories/music.m3u",
+    "Поп": "https://iptv-org.github.io/iptv/categories/pop.m3u",
+    "Рок": "https://iptv-org.github.io/iptv/categories/rock.m3u",
+    "Хип-хоп": "https://iptv-org.github.io/iptv/categories/hiphop.m3u"
   },
   "Страны": {
-    "Россия": "https://iptv-org.github.io/iptv/countries/ru.m3u  ",
-    "США": "https://iptv-org.github.io/iptv/countries/us.m3u  ",
-    "Великобритания": "https://iptv-org.github.io/iptv/countries/gb.m3u  ",
-    "Германия": "https://iptv-org.github.io/iptv/countries/de.m3u  ",
-    "Франция": "https://iptv-org.github.io/iptv/countries/fr.m3u  ",
-    "Италия": "https://iptv-org.github.io/iptv/countries/it.m3u  ",
-    "Испания": "https://iptv-org.github.io/iptv/countries/es.m3u  ",
-    "Китай": "https://iptv-org.github.io/iptv/countries/cn.m3u  ",
-    "Япония": "https://iptv-org.github.io/iptv/countries/jp.m3u  ",
-    "Корея": "https://iptv-org.github.io/iptv/countries/kr.m3u  ",
-    "Индия": "https://iptv-org.github.io/iptv/countries/in.m3u  ",
-    "Бразилия": "https://iptv-org.github.io/iptv/countries/br.m3u  ",
-    "Канада": "https://iptv-org.github.io/iptv/countries/ca.m3u  ",
-    "Австралия": "https://iptv-org.github.io/iptv/countries/au.m3u  "
+    "Россия": "https://iptv-org.github.io/iptv/countries/ru.m3u",
+    "США": "https://iptv-org.github.io/iptv/countries/us.m3u",
+    "Великобритания": "https://iptv-org.github.io/iptv/countries/gb.m3u",
+    "Германия": "https://iptv-org.github.io/iptv/countries/de.m3u",
+    "Франция": "https://iptv-org.github.io/iptv/countries/fr.m3u",
+    "Италия": "https://iptv-org.github.io/iptv/countries/it.m3u",
+    "Испания": "https://iptv-org.github.io/iptv/countries/es.m3u",
+    "Китай": "https://iptv-org.github.io/iptv/countries/cn.m3u",
+    "Япония": "https://iptv-org.github.io/iptv/countries/jp.m3u",
+    "Корея": "https://iptv-org.github.io/iptv/countries/kr.m3u",
+    "Индия": "https://iptv-org.github.io/iptv/countries/in.m3u",
+    "Бразилия": "https://iptv-org.github.io/iptv/countries/br.m3u",
+    "Канада": "https://iptv-org.github.io/iptv/countries/ca.m3u",
+    "Австралия": "https://iptv-org.github.io/iptv/countries/au.m3u"
   },
   "Языки": {
-    "Русский": "https://iptv-org.github.io/iptv/languages/rus.m3u  ",
-    "Английский": "https://iptv-org.github.io/iptv/languages/eng.m3u  ",
-    "Испанский": "https://iptv-org.github.io/iptv/languages/spa.m3u  ",
-    "Французский": "https://iptv-org.github.io/iptv/languages/fra.m3u  ",
-    "Немецкий": "https://iptv-org.github.io/iptv/languages/deu.m3u  ",
-    "Итальянский": "https://iptv-org.github.io/iptv/languages/ita.m3u  ",
-    "Португальский": "https://iptv-org.github.io/iptv/languages/por.m3u  ",
-    "Китайский": "https://iptv-org.github.io/iptv/languages/zho.m3u  ",
-    "Японский": "https://iptv-org.github.io/iptv/languages/jpn.m3u  ",
-    "Корейский": "https://iptv-org.github.io/iptv/languages/kor.m3u  ",
-    "Арабский": "https://iptv-org.github.io/iptv/languages/ara.m3u  ",
-    "Турецкий": "https://iptv-org.github.io/iptv/languages/tur.m3u  ",
-    "Хинди": "https://iptv-org.github.io/iptv/languages/hin.m3u  "
+    "Русский": "https://iptv-org.github.io/iptv/languages/rus.m3u",
+    "Английский": "https://iptv-org.github.io/iptv/languages/eng.m3u",
+    "Испанский": "https://iptv-org.github.io/iptv/languages/spa.m3u",
+    "Французский": "https://iptv-org.github.io/iptv/languages/fra.m3u",
+    "Немецкий": "https://iptv-org.github.io/iptv/languages/deu.m3u",
+    "Итальянский": "https://iptv-org.github.io/iptv/languages/ita.m3u",
+    "Португальский": "https://iptv-org.github.io/iptv/languages/por.m3u",
+    "Китайский": "https://iptv-org.github.io/iptv/languages/zho.m3u",
+    "Японский": "https://iptv-org.github.io/iptv/languages/jpn.m3u",
+    "Корейский": "https://iptv-org.github.io/iptv/languages/kor.m3u",
+    "Арабский": "https://iptv-org.github.io/iptv/languages/ara.m3u",
+    "Турецкий": "https://iptv-org.github.io/iptv/languages/tur.m3u",
+    "Хинди": "https://iptv-org.github.io/iptv/languages/hin.m3u"
   }
 };
 
@@ -102,7 +181,6 @@ closeModal.addEventListener('click', function() {
     videoPlayerElement.pause();
     videoPlayerElement.src = '';
 
-    // 👇 Просмотренные + Смотрят: Проверка времени при закрытии
     if (currentWatchedChannel && watchStartTime) {
         const watchedSeconds = Math.floor((Date.now() - watchStartTime) / 1000);
         console.log(`📺 Просмотрено: ${watchedSeconds} секунд`);
@@ -114,7 +192,6 @@ closeModal.addEventListener('click', function() {
                 currentWatchedChannel.group,
                 currentWatchedChannel.logo
             );
-            // 👇 Добавляем в глобальный "Смотрят"
             addToWatching(
                 currentWatchedChannel.name,
                 currentWatchedChannel.url,
@@ -123,7 +200,6 @@ closeModal.addEventListener('click', function() {
             );
         }
 
-        // Сброс
         currentWatchedChannel = null;
         watchStartTime = null;
     }
@@ -141,7 +217,7 @@ function showToast(message) {
     }, 3000);
 }
 
-// 👇 Просмотренные: Добавление в localStorage — с защитой от ошибок
+// 👇 Просмотренные: Добавление в localStorage
 function addToWatched(name, url, group, logo) {
     let watched;
     try {
@@ -167,7 +243,7 @@ function addToWatched(name, url, group, logo) {
         console.log(`✅ Канал "${name}" добавлен в "Просмотренные"`);
     } catch (e) {
         console.error('❌ Не удалось сохранить в localStorage:', e);
-        showToast('Ошибка сохранения');
+        showToast(translateText('Ошибка сохранения'));
         return;
     }
 
@@ -180,7 +256,7 @@ function addToWatched(name, url, group, logo) {
 async function addToWatching(name, url, group, logo) {
     try {
         const now = Date.now();
-        const key = url.replace(/[^a-zA-Z0-9]/g, '_').substring(0, 100); // безопасный ключ
+        const key = url.replace(/[^a-zA-Z0-9]/g, '_').substring(0, 100);
 
         const snapshot = await database.ref('watching/' + key).get();
         let data = snapshot.exists() ? snapshot.val() : {
@@ -203,7 +279,6 @@ async function addToWatching(name, url, group, logo) {
 
     } catch (error) {
         console.error("❌ Ошибка Firebase addToWatching:", error);
-        // Не показываем тост, чтобы не раздражать пользователя
     }
 }
 
@@ -212,7 +287,7 @@ async function loadPlaylistFromURL() {
     const urlInput = document.getElementById('playlistURL');
     const url = urlInput.value.trim();
     if (!url) {
-        showToast('Введите ссылку');
+        showToast(translateText('Введите ссылку'));
         urlInput.focus();
         return;
     }
@@ -221,14 +296,14 @@ async function loadPlaylistFromURL() {
 
     try {
         const content = await fetchM3U(url);
-        const channels = parseM3UContent(content, 'Свой плейлист');
+        const channels = parseM3UContent(content, translateText('Свой плейлист'));
 
         if (channels.length === 0) {
             throw new Error('Плейлист пуст или не содержит поддерживаемых каналов');
         }
 
         localStorage.setItem('customPlaylist', JSON.stringify(channels));
-        showToast(`✅ Загружено ${channels.length} каналов`);
+        showToast(translateText('Плейлист загружен!'));
 
         renderChannels(channels);
 
@@ -240,7 +315,7 @@ async function loadPlaylistFromURL() {
 
     } catch (err) {
         console.error('Ошибка загрузки по URL:', err);
-        showToast('❌ Не удалось загрузить плейлист');
+        showToast(translateText('Не удалось загрузить плейлист'));
     } finally {
         initialLoader.style.display = 'none';
     }
@@ -270,7 +345,7 @@ function renderCustomPlaylistSubmenu() {
     input.setAttribute('tabindex', '0');
 
     const button = document.createElement('button');
-    button.textContent = 'Загрузить';
+    button.textContent = translateText('Загрузить плейлист');
     button.style.padding = '8px 16px';
     button.style.borderRadius = '6px';
     button.style.border = 'none';
@@ -305,58 +380,28 @@ function renderCustomPlaylistSubmenu() {
     }, 100);
 }
 
-// Инициализация приложения
-function initApp() {
-    const safetyTimeout = setTimeout(() => {
-        initialLoader.style.display = 'none';
-        showToast("Ошибка инициализации");
-    }, 10000);
+// 👇 Установка языка
+function setLanguage(lang) {
+    currentLanguage = lang;
+    localStorage.setItem('appLanguage', lang);
 
-    try {
-        currentMainCategory = 'Просмотренные';
-        renderMainCategories();
-        renderSubCategories();
-        loadAndRenderChannels(currentMainCategory, currentSubcategory);
-
-        // 👇 Очистка старых записей в Firebase раз в 24 часа
-        const lastCleanup = localStorage.getItem('lastFirebaseCleanup');
-        const now = Date.now();
-        if (!lastCleanup || now - parseInt(lastCleanup) > 24 * 60 * 60 * 1000) {
-            database.ref('watching').once('value', async (snapshot) => {
-                if (snapshot.exists()) {
-                    const updates = {};
-                    const data = snapshot.val();
-                    let deleted = 0;
-                    for (let key in data) {
-                        if (now - data[key].lastWatched > 24 * 60 * 60 * 1000) {
-                            updates[key] = null;
-                            deleted++;
-                        }
-                    }
-                    if (Object.keys(updates).length > 0) {
-                        await database.ref('watching').update(updates);
-                        console.log(`🧹 Удалено ${deleted} устаревших записей из "Смотрят"`);
-                    }
-                }
-            });
-            localStorage.setItem('lastFirebaseCleanup', now.toString());
+    const flags = mainCategoriesPanel.querySelectorAll('.category-btn');
+    flags.forEach(flag => {
+        if (flag.textContent === '🇷🇺') {
+            flag.classList.toggle('active', lang === 'ru');
+        } else if (flag.textContent === '🇬🇧') {
+            flag.classList.toggle('active', lang === 'en');
         }
+    });
 
-        setTimeout(() => {
-            const firstChannel = document.querySelector('.channel-card');
-            if (firstChannel) firstChannel.focus();
-        }, 500);
+    renderMainCategories();
+    renderSubCategories();
+    loadAndRenderChannels(currentMainCategory, currentSubcategory);
 
-        clearTimeout(safetyTimeout);
-    } catch (error) {
-        clearTimeout(safetyTimeout);
-        console.error("Ошибка инициализации:", error);
-        initialLoader.style.display = 'none';
-        showToast("Ошибка приложения");
-    }
+    showToast(translateText(lang === 'ru' ? "Язык изменён на Русский" : "Language changed to English"));
 }
 
-// Отображение главных категорий
+// Отображение главных категорий + флаги языка
 function renderMainCategories() {
     mainCategoriesPanel.innerHTML = '';
     const mainCategories = Object.keys(categoryTree);
@@ -364,7 +409,7 @@ function renderMainCategories() {
     mainCategories.forEach((cat, index) => {
         const btn = document.createElement('button');
         btn.className = 'category-btn';
-        btn.textContent = cat;
+        btn.textContent = translateText(cat);
         if (cat === currentMainCategory) {
             btn.classList.add('active');
             currentMainCategoryIndex = index;
@@ -380,6 +425,40 @@ function renderMainCategories() {
 
         mainCategoriesPanel.appendChild(btn);
     });
+
+    const spacer = document.createElement('div');
+    spacer.style.width = '20px';
+    mainCategoriesPanel.appendChild(spacer);
+
+    const ruFlag = document.createElement('button');
+    ruFlag.className = 'category-btn';
+    ruFlag.textContent = '🇷🇺';
+    ruFlag.style.minWidth = '40px';
+    ruFlag.style.padding = '8px';
+    if (currentLanguage === 'ru') ruFlag.classList.add('active');
+    ruFlag.addEventListener('click', () => setLanguage('ru'));
+    ruFlag.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter' || e.key === ' ') {
+            e.preventDefault();
+            setLanguage('ru');
+        }
+    });
+    mainCategoriesPanel.appendChild(ruFlag);
+
+    const enFlag = document.createElement('button');
+    enFlag.className = 'category-btn';
+    enFlag.textContent = '🇬🇧';
+    enFlag.style.minWidth = '40px';
+    enFlag.style.padding = '8px';
+    if (currentLanguage === 'en') enFlag.classList.add('active');
+    enFlag.addEventListener('click', () => setLanguage('en'));
+    enFlag.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter' || e.key === ' ') {
+            e.preventDefault();
+            setLanguage('en');
+        }
+    });
+    mainCategoriesPanel.appendChild(enFlag);
 }
 
 // Отображение подкатегорий (или кастомного UI)
@@ -398,7 +477,7 @@ function renderSubCategories() {
     subcategories.forEach((subcat, index) => {
         const btn = document.createElement('button');
         btn.className = 'subcategory-btn';
-        btn.textContent = subcat;
+        btn.textContent = translateText(subcat);
         if (subcat === currentSubcategory) {
             btn.classList.add('active');
             currentSubCategoryIndex = index;
@@ -422,6 +501,14 @@ function renderSubCategories() {
 
 // Выбор главной категории
 function selectMainCategory(categoryName, index) {
+    if (currentMainCategory === 'Прямо сейчас' && window.watchingNowInterval) {
+        clearInterval(window.watchingNowInterval);
+        window.watchingNowInterval = null;
+        if (document.getElementById('reloadTimer')) {
+            document.getElementById('reloadTimer').remove();
+        }
+    }
+
     currentMainCategory = categoryName;
     currentMainCategoryIndex = index;
     currentSubcategory = '';
@@ -432,8 +519,8 @@ function selectMainCategory(categoryName, index) {
     if (categoryName === 'Свой плейлист') {
         loadAndRenderChannels('Свой плейлист', '');
         navigationState = 'customInput';
-    } else if (categoryName === 'Смотрят') {
-        loadAndRenderChannels('Смотрят', '');
+    } else if (categoryName === 'Смотрят' || categoryName === 'Прямо сейчас') {
+        loadAndRenderChannels(categoryName, '');
     } else if (!categoryTree[categoryName] || Object.keys(categoryTree[categoryName]).length === 0) {
         loadAndRenderChannels(currentMainCategory, currentSubcategory);
     }
@@ -444,8 +531,16 @@ function selectMainCategory(categoryName, index) {
     }, 100);
 }
 
-// Выбор подкатегории (для остальных категорий)
+// Выбор подкатегории
 function selectSubcategory(subcategoryName, index) {
+    if (currentMainCategory === 'Прямо сейчас' && window.watchingNowInterval) {
+        clearInterval(window.watchingNowInterval);
+        window.watchingNowInterval = null;
+        if (document.getElementById('reloadTimer')) {
+            document.getElementById('reloadTimer').remove();
+        }
+    }
+
     currentSubcategory = subcategoryName;
     currentSubCategoryIndex = index;
     loadAndRenderChannels(currentMainCategory, currentSubcategory);
@@ -477,7 +572,6 @@ function updateSubCategoryActive() {
 
 // Загрузка и отображение каналов
 async function loadAndRenderChannels(mainCategory, subcategory) {
-    // 👇 Просмотренные
     if (mainCategory === 'Просмотренные') {
         initialLoader.style.display = 'none';
         let watched;
@@ -496,7 +590,53 @@ async function loadAndRenderChannels(mainCategory, subcategory) {
         return;
     }
 
-    // 👇 Смотрят — из Firebase
+    // 👇 Прямо сейчас
+    if (mainCategory === 'Прямо сейчас') {
+        initialLoader.style.display = 'none';
+        channelsContainer.innerHTML = `<div style="color:#aaa; padding:40px; text-align:center">${translateText("Загрузка...")}</div>`;
+
+        const loadWatchingNow = async () => {
+            try {
+                const snapshot = await database.ref('watching').get();
+                let watchingNow = [];
+
+                if (snapshot.exists()) {
+                    const now = Date.now();
+                    watchingNow = Object.values(snapshot.val()).filter(channel => {
+                        return (now - channel.lastWatched) < 600000; // 10 минут
+                    });
+                    watchingNow.sort((a, b) => b.lastWatched - a.lastWatched);
+                }
+
+                renderChannels(watchingNow);
+
+                if (watchingNow.length === 0) {
+                    channelsContainer.innerHTML = `
+                        <div style="color:#aaa; padding:60px 20px; text-align:center; font-size:16px;">
+                            <i class="fas fa-bolt" style="font-size:48px; margin-bottom:20px;"></i><br>
+                            ${translateText("Прямо сейчас никто не смотрит...")}<br>
+                            ${translateText("Включите канал — и станьте первым!")}
+                        </div>`;
+                }
+
+            } catch (error) {
+                console.error("❌ Ошибка загрузки 'Прямо сейчас':", error);
+                channelsContainer.innerHTML = `<div style="color:#aaa; padding:40px; text-align:center">${translateText("Ошибка загрузки")}</div>`;
+            }
+        };
+
+        await loadWatchingNow();
+
+        if (window.watchingNowInterval) {
+            clearInterval(window.watchingNowInterval);
+        }
+
+        window.watchingNowInterval = setInterval(loadWatchingNow, 10000);
+
+        return;
+    }
+
+    // 👇 Смотрят
     if (mainCategory === 'Смотрят') {
         initialLoader.style.display = 'flex';
         channelsContainer.innerHTML = '';
@@ -518,15 +658,15 @@ async function loadAndRenderChannels(mainCategory, subcategory) {
                 channelsContainer.innerHTML = `
                     <div style="color:#aaa; padding:60px 20px; text-align:center; font-size:16px;">
                         <i class="fas fa-users" style="font-size:48px; margin-bottom:20px;"></i><br>
-                        Пока никто в мире не смотрит...<br>
-                        Включите канал на 60+ сек — и вы первым появитесь здесь!
+                        ${translateText("Пока никто в мире не смотрит...")}<br>
+                        ${translateText("Включите канал на 60+ сек — и вы первым появитесь здесь!")}
                     </div>`;
             }
 
         } catch (error) {
             console.error("❌ Ошибка загрузки из Firebase:", error);
-            showToast("Ошибка загрузки рейтинга");
-            channelsContainer.innerHTML = `<div style="color:#aaa; padding:40px; text-align:center">Не удалось загрузить</div>`;
+            showToast(translateText("Ошибка загрузки рейтинга"));
+            channelsContainer.innerHTML = `<div style="color:#aaa; padding:40px; text-align:center">${translateText("Не удалось загрузить")}</div>`;
         } finally {
             initialLoader.style.display = 'none';
         }
@@ -556,8 +696,8 @@ async function loadAndRenderChannels(mainCategory, subcategory) {
             channelsContainer.innerHTML = `
                 <div style="color:#aaa; padding:60px 20px; text-align:center; font-size:16px;">
                     <i class="fas fa-list" style="font-size:48px; margin-bottom:20px;"></i><br>
-                    Плейлист не загружен.<br>
-                    Введите ссылку выше и нажмите “Загрузить”.
+                    ${translateText("Плейлист не загружен.")}<br>
+                    ${translateText("Перейдите в подменю и выберите «Загрузить по ссылке»")}
                 </div>`;
         }
 
@@ -578,7 +718,7 @@ async function loadAndRenderChannels(mainCategory, subcategory) {
         renderChannels(channels);
     } catch (error) {
         console.error("Ошибка загрузки:", error);
-        showToast("Ошибка загрузки каналов");
+        showToast(translateText("Ошибка загрузки каналов"));
         renderChannels([]);
     } finally {
         initialLoader.style.display = 'none';
@@ -639,10 +779,7 @@ function renderChannels(channelsToRender) {
     channelsContainer.innerHTML = '';
 
     if (channelsToRender.length === 0 && initialLoader.style.display === 'none') {
-        channelsContainer.innerHTML = `
-            <div style="color:#aaa; padding:40px; text-align:center">
-                Каналы не найдены
-            </div>`;
+        channelsContainer.innerHTML = `<div style="color:#aaa; padding:40px; text-align:center">${translateText("Каналы не найдены")}</div>`;
         return;
     }
 
@@ -671,10 +808,19 @@ function renderChannels(channelsToRender) {
         const miniPlayer = createMiniPlayer(channel.url);
         mediaContainer.appendChild(miniPlayer);
 
+        let viewsText = '';
+        if (channel.views) {
+            viewsText = ` 👥 ${channel.views}`;
+        }
+        if (currentMainCategory === 'Прямо сейчас' && channel.lastWatched) {
+            const now = Date.now();
+            if (now - channel.lastWatched < 600000) {
+                viewsText += ` ⚡`;
+            }
+        }
+
         const infoContainer = document.createElement('div');
         infoContainer.className = 'channel-info';
-        // 👇 Если есть views — показываем
-        const viewsText = channel.views ? ` 👥 ${channel.views}` : '';
         infoContainer.innerHTML = `<h3>${channel.name}${viewsText}</h3><p>${channel.group}</p>`;
 
         channelCard.appendChild(mediaContainer);
@@ -759,7 +905,7 @@ function initializeMiniPlayer(video, url, miniPlayer, icon) {
     const timeoutId = setTimeout(() => {
         if (!manifestLoaded && !networkErrorOccurred) {
             console.warn("Таймаут:", url);
-            showToast('Канал не отвечает');
+            showToast(translateText('Канал не отвечает'));
             addToBlacklist(url);
             miniPlayer.style.display = 'none';
             icon.style.display = 'block';
@@ -806,7 +952,7 @@ function initializeMiniPlayer(video, url, miniPlayer, icon) {
 
 // Обработка ошибки потока
 function handleStreamError(url, container) {
-    showToast('Канал недоступен');
+    showToast(translateText('Канал недоступен'));
     console.error("Ошибка потока:", url);
     const icon = container.parentElement.querySelector('i');
     if (icon) icon.style.display = 'block';
@@ -837,7 +983,7 @@ function openFullScreenPlayer(name, url, group, logo) {
     const timeoutId = setTimeout(() => {
         if (!manifestLoaded) {
             console.warn("Таймаут полный экран:", url);
-            showToast('Канал не отвечает');
+            showToast(translateText('Канал не отвечает'));
             addToBlacklist(url);
             playerModal.style.display = 'none';
         }
@@ -853,7 +999,7 @@ function openFullScreenPlayer(name, url, group, logo) {
             manifestLoaded = true;
             videoPlayerElement.play().catch(e => {
                 console.log("Autoplay blocked:", e);
-                showToast("Нажмите на видео для воспроизведения");
+                showToast(translateText("Нажмите на видео для воспроизведения"));
             });
             setTimeout(() => requestNativeFullscreen(), 1000);
         });
@@ -861,7 +1007,7 @@ function openFullScreenPlayer(name, url, group, logo) {
         hls.on(Hls.Events.ERROR, (event, data) => {
             if (data.fatal) {
                 clearTimeout(timeoutId);
-                showToast('Канал недоступен');
+                showToast(translateText('Канал недоступен'));
                 addToBlacklist(url);
                 playerModal.style.display = 'none';
             }
@@ -873,19 +1019,19 @@ function openFullScreenPlayer(name, url, group, logo) {
             manifestLoaded = true;
             videoPlayerElement.play().catch(e => {
                 console.log("Autoplay blocked:", e);
-                showToast("Нажмите на видео для воспроизведения");
+                showToast(translateText("Нажмите на видео для воспроизведения"));
             });
             setTimeout(() => requestNativeFullscreen(), 1000);
         });
         videoPlayerElement.addEventListener('error', () => {
             clearTimeout(timeoutId);
-            showToast('Канал недоступен');
+            showToast(translateText('Канал недоступен'));
             addToBlacklist(url);
             playerModal.style.display = 'none';
         });
     } else {
         clearTimeout(timeoutId);
-        showToast('Формат не поддерживается');
+        showToast(translateText('Формат не поддерживается'));
         playerModal.style.display = 'none';
     }
 }
@@ -1119,14 +1265,11 @@ document.addEventListener('keydown', function(e) {
                 let list;
                 if (currentMainCategory === 'Просмотренные') {
                     list = JSON.parse(localStorage.getItem('watchedChannels') || '[]');
-                } else if (currentMainCategory === 'Смотрят') {
-                    // Для "Смотрят" — данные уже загружены в renderChannels
-                    // Мы не храним их локально — только в Firebase
-                    // Поэтому просто используем DOM или перезагружаем
+                } else if (currentMainCategory === 'Смотрят' || currentMainCategory === 'Прямо сейчас') {
                     const cards = document.querySelectorAll('.channel-card');
                     if (index >= 0 && index < cards.length) {
                         const channel = {
-                            name: cards[index].querySelector('h3').textContent.replace(/ 👥 \d+$/, ''),
+                            name: cards[index].querySelector('h3').textContent.replace(/ 👥 \d+.*$/, ''),
                             url: cards[index].dataset.url || '',
                             group: cards[index].querySelector('p').textContent,
                             logo: ''
@@ -1164,6 +1307,59 @@ document.addEventListener('keydown', function(e) {
             break;
     }
 });
+
+// Инициализация приложения
+function initApp() {
+    currentLanguage = localStorage.getItem('appLanguage') || 'ru';
+
+    const safetyTimeout = setTimeout(() => {
+        initialLoader.style.display = 'none';
+        showToast(translateText("Ошибка инициализации"));
+    }, 10000);
+
+    try {
+        currentMainCategory = 'Просмотренные';
+        renderMainCategories();
+        renderSubCategories();
+        loadAndRenderChannels(currentMainCategory, currentSubcategory);
+
+        // 👇 Очистка старых записей в Firebase раз в 24 часа
+        const lastCleanup = localStorage.getItem('lastFirebaseCleanup');
+        const now = Date.now();
+        if (!lastCleanup || now - parseInt(lastCleanup) > 24 * 60 * 60 * 1000) {
+            database.ref('watching').once('value', async (snapshot) => {
+                if (snapshot.exists()) {
+                    const updates = {};
+                    const data = snapshot.val();
+                    let deleted = 0;
+                    for (let key in data) {
+                        if (now - data[key].lastWatched > 24 * 60 * 60 * 1000) {
+                            updates[key] = null;
+                            deleted++;
+                        }
+                    }
+                    if (Object.keys(updates).length > 0) {
+                        await database.ref('watching').update(updates);
+                        console.log(`🧹 Удалено ${deleted} устаревших записей из "Смотрят"`);
+                    }
+                }
+            });
+            localStorage.setItem('lastFirebaseCleanup', now.toString());
+        }
+
+        setTimeout(() => {
+            const firstChannel = document.querySelector('.channel-card');
+            if (firstChannel) firstChannel.focus();
+        }, 500);
+
+        clearTimeout(safetyTimeout);
+    } catch (error) {
+        clearTimeout(safetyTimeout);
+        console.error("Ошибка инициализации:", error);
+        initialLoader.style.display = 'none';
+        showToast(translateText("Ошибка приложения"));
+    }
+}
 
 // Запуск приложения
 document.addEventListener('DOMContentLoaded', () => {

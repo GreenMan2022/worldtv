@@ -287,10 +287,23 @@ function updateSubCategoryActive() {
 
 // Загрузка и отображение каналов
 async function loadAndRenderChannels(mainCategory, subcategory) {
-    // 👇 Просмотренные: Обработка
+    // 👇 Просмотренные: Обработка с защитой
     if (mainCategory === 'Просмотренные') {
         initialLoader.style.display = 'none';
-        const watched = JSON.parse(localStorage.getItem('watchedChannels') || '[]');
+        let watched;
+        try {
+            const raw = localStorage.getItem('watchedChannels');
+            watched = raw ? JSON.parse(raw) : [];
+            if (!Array.isArray(watched)) {
+                console.warn('⚠️ watchedChannels не массив — сброс при загрузке');
+                watched = [];
+                localStorage.setItem('watchedChannels', '[]');
+            }
+        } catch (e) {
+            console.error('❌ Ошибка парсинга при загрузке:', e);
+            watched = [];
+            localStorage.setItem('watchedChannels', '[]');
+        }
         renderChannels(watched);
         return;
     }

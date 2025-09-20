@@ -240,59 +240,341 @@ async function detectLanguageByIP() {
     }
 }
 
-// 👇 Структура плейлистов — с поддержкой перевода
-const categoryTree = {
-    [t('watched')]: {},
-    [t('categories')]: {
-        [t('news')]: "https://iptv-org.github.io/iptv/categories/news.m3u",
-        [t('sports')]: "https://iptv-org.github.io/iptv/categories/sports.m3u",
-        [t('football')]: "https://iptv-org.github.io/iptv/categories/football.m3u",
-        [t('basketball')]: "https://iptv-org.github.io/iptv/categories/basketball.m3u",
-        [t('tennis')]: "https://iptv-org.github.io/iptv/categories/tennis.m3u",
-        [t('movies')]: "https://iptv-org.github.io/iptv/categories/movies.m3u",
-        [t('action')]: "https://iptv-org.github.io/iptv/categories/action.m3u",
-        [t('comedy')]: "https://iptv-org.github.io/iptv/categories/comedy.m3u",
-        [t('drama')]: "https://iptv-org.github.io/iptv/categories/drama.m3u",
-        [t('entertainment')]: "https://iptv-org.github.io/iptv/categories/entertainment.m3u",
-        [t('documentary')]: "https://iptv-org.github.io/iptv/categories/documentary.m3u",
-        [t('kids')]: "https://iptv-org.github.io/iptv/categories/kids.m3u",
-        [t('music')]: "https://iptv-org.github.io/iptv/categories/music.m3u",
-        [t('pop')]: "https://iptv-org.github.io/iptv/categories/pop.m3u",
-        [t('rock')]: "https://iptv-org.github.io/iptv/categories/rock.m3u",
-        [t('hiphop')]: "https://iptv-org.github.io/iptv/categories/hiphop.m3u"
+// 👇 Функция для получения дерева категорий с учётом текущего языка
+function getCategoryTree() {
+    return {
+        [t('watched')]: {},
+        [t('categories')]: {
+            [t('news')]: "https://iptv-org.github.io/iptv/categories/news.m3u",
+            [t('sports')]: "https://iptv-org.github.io/iptv/categories/sports.m3u",
+            [t('football')]: "https://iptv-org.github.io/iptv/categories/football.m3u",
+            [t('basketball')]: "https://iptv-org.github.io/iptv/categories/basketball.m3u",
+            [t('tennis')]: "https://iptv-org.github.io/iptv/categories/tennis.m3u",
+            [t('movies')]: "https://iptv-org.github.io/iptv/categories/movies.m3u",
+            [t('action')]: "https://iptv-org.github.io/iptv/categories/action.m3u",
+            [t('comedy')]: "https://iptv-org.github.io/iptv/categories/comedy.m3u",
+            [t('drama')]: "https://iptv-org.github.io/iptv/categories/drama.m3u",
+            [t('entertainment')]: "https://iptv-org.github.io/iptv/categories/entertainment.m3u",
+            [t('documentary')]: "https://iptv-org.github.io/iptv/categories/documentary.m3u",
+            [t('kids')]: "https://iptv-org.github.io/iptv/categories/kids.m3u",
+            [t('music')]: "https://iptv-org.github.io/iptv/categories/music.m3u",
+            [t('pop')]: "https://iptv-org.github.io/iptv/categories/pop.m3u",
+            [t('rock')]: "https://iptv-org.github.io/iptv/categories/rock.m3u",
+            [t('hiphop')]: "https://iptv-org.github.io/iptv/categories/hiphop.m3u"
+        },
+        [t('countries')]: {
+Вот **полный финальный код `app.js`**, в котором:
+
+✅ Все элементы интерфейса (меню, подменю, категории) **переводятся корректно** в зависимости от языка  
+✅ Язык определяется по IP (RU → русский, остальные → английский)  
+✅ Позиция скролла сохраняется и восстанавливается  
+✅ Каналы, просмотренные >60 сек, добавляются в “Просмотренные”  
+✅ При перезагрузке открывается последний плейлист  
+✅ Нет ошибок `t(...) is not a function`  
+✅ Полностью совместим с вашим проектом
+
+---
+
+## ✅ Полный код — просто скопируйте и замените `app.js`
+
+```javascript
+// DOM элементы
+const channelsContainer = document.getElementById('channelsContainer');
+const mainCategoriesPanel = document.getElementById('mainCategoriesPanel');
+const subCategoriesPanel = document.getElementById('subCategoriesPanel');
+const playerModal = document.getElementById('playerModal');
+const videoPlayerElement = document.getElementById('videoPlayerElement');
+const closeModal = document.getElementById('closeModal');
+const initialLoader = document.getElementById('initialLoader');
+const toastContainer = document.getElementById('toastContainer');
+
+// Глобальные переменные
+let currentMainCategory = 'Просмотренные';
+let currentSubcategory = '';
+let currentMainCategoryIndex = 0;
+let currentSubCategoryIndex = 0;
+let currentChannelIndex = 0;
+let currentMiniPlayer = null;
+let miniPlayers = new Map();
+let focusTimer = null;
+let loadedPlaylists = {};
+let navigationState = 'channels';
+
+// Просмотренные
+let currentWatchedChannel = null;
+let watchStartTime = null;
+
+// 👇 Язык интерфейса
+let currentLanguage = 'ru'; // по умолчанию
+
+// Тексты интерфейса
+const translations = {
+    ru: {
+        categories: "Категории",
+        countries: "Страны",
+        languages: "Языки",
+        watched: "Просмотренные",
+        news: "Новости",
+        sports: "Спорт",
+        football: "Футбол",
+        basketball: "Баскетбол",
+        tennis: "Теннис",
+        movies: "Кино",
+        action: "Боевики",
+        comedy: "Комедии",
+        drama: "Драмы",
+        entertainment: "Развлечения",
+        documentary: "Документальные",
+        kids: "Детские",
+        music: "Музыка",
+        pop: "Поп",
+        rock: "Рок",
+        hiphop: "Хип-хоп",
+        russia: "Россия",
+        usa: "США",
+        uk: "Великобритания",
+        germany: "Германия",
+        france: "Франция",
+        italy: "Италия",
+        spain: "Испания",
+        china: "Китай",
+        japan: "Япония",
+        korea: "Корея",
+        india: "Индия",
+        brazil: "Бразилия",
+        canada: "Канада",
+        australia: "Австралия",
+        russian: "Русский",
+        english: "Английский",
+        spanish: "Испанский",
+        french: "Французский",
+        german: "Немецкий",
+        italian: "Итальянский",
+        portuguese: "Португальский",
+        chinese: "Китайский",
+        japanese: "Японский",
+        korean: "Корейский",
+        arabic: "Арабский",
+        turkish: "Турецкий",
+        hindi: "Хинди",
+        loading: "Загрузка...",
+        errorInit: "Ошибка инициализации",
+        errorApp: "Ошибка приложения",
+        errorLoad: "Ошибка загрузки каналов",
+        channelNotFound: "Каналы не найдены",
+        channelUnavailable: "Канал недоступен",
+        formatNotSupported: "Формат не поддерживается",
+        clickToPlay: "Нажмите на видео для воспроизведения",
+        addToWatchedSuccess: (name) => `✅ Канал "${name}" добавлен в "Просмотренные"`,
+        alreadyInWatched: (name) => `ℹ️ Канал "${name}" уже в "Просмотренные"`,
+        lastPlaylistLoaded: (main, sub) => `📂 Загружен последний плейлист: ${main} → ${sub}`,
+        defaultPlaylist: '📂 Используем плейлист по умолчанию: "Просмотренные"',
+        playlistSaved: (main, sub) => `💾 Сохранён плейлист: ${main} → ${sub}`,
+        saveError: '❌ Не удалось сохранить последний плейлист:',
+        parseError: '❌ Ошибка парсинга watchedChannels:',
+        resetPlaylist: 'Последний плейлист сброшен',
+        scrollRestored: 'Позиция прокрутки восстановлена',
+        determiningLocation: 'Определение вашего местоположения...'
     },
-    [t('countries')]: {
-        [t('russia')]: "https://iptv-org.github.io/iptv/countries/ru.m3u",
-        [t('usa')]: "https://iptv-org.github.io/iptv/countries/us.m3u",
-        [t('uk')]: "https://iptv-org.github.io/iptv/countries/gb.m3u",
-        [t('germany')]: "https://iptv-org.github.io/iptv/countries/de.m3u",
-        [t('france')]: "https://iptv-org.github.io/iptv/countries/fr.m3u",
-        [t('italy')]: "https://iptv-org.github.io/iptv/countries/it.m3u",
-        [t('spain')]: "https://iptv-org.github.io/iptv/countries/es.m3u",
-        [t('china')]: "https://iptv-org.github.io/iptv/countries/cn.m3u",
-        [t('japan')]: "https://iptv-org.github.io/iptv/countries/jp.m3u",
-        [t('korea')]: "https://iptv-org.github.io/iptv/countries/kr.m3u",
-        [t('india')]: "https://iptv-org.github.io/iptv/countries/in.m3u",
-        [t('brazil')]: "https://iptv-org.github.io/iptv/countries/br.m3u",
-        [t('canada')]: "https://iptv-org.github.io/iptv/countries/ca.m3u",
-        [t('australia')]: "https://iptv-org.github.io/iptv/countries/au.m3u"
-    },
-    [t('languages')]: {
-        [t('russian')]: "https://iptv-org.github.io/iptv/languages/rus.m3u",
-        [t('english')]: "https://iptv-org.github.io/iptv/languages/eng.m3u",
-        [t('spanish')]: "https://iptv-org.github.io/iptv/languages/spa.m3u",
-        [t('french')]: "https://iptv-org.github.io/iptv/languages/fra.m3u",
-        [t('german')]: "https://iptv-org.github.io/iptv/languages/deu.m3u",
-        [t('italian')]: "https://iptv-org.github.io/iptv/languages/ita.m3u",
-        [t('portuguese')]: "https://iptv-org.github.io/iptv/languages/por.m3u",
-        [t('chinese')]: "https://iptv-org.github.io/iptv/languages/zho.m3u",
-        [t('japanese')]: "https://iptv-org.github.io/iptv/languages/jpn.m3u",
-        [t('korean')]: "https://iptv-org.github.io/iptv/languages/kor.m3u",
-        [t('arabic')]: "https://iptv-org.github.io/iptv/languages/ara.m3u",
-        [t('turkish')]: "https://iptv-org.github.io/iptv/languages/tur.m3u",
-        [t('hindi')]: "https://iptv-org.github.io/iptv/languages/hin.m3u"
+    en: {
+        categories: "Categories",
+        countries: "Countries",
+        languages: "Languages",
+        watched: "Watched",
+        news: "News",
+        sports: "Sports",
+        football: "Football",
+        basketball: "Basketball",
+        tennis: "Tennis",
+        movies: "Movies",
+        action: "Action",
+        comedy: "Comedy",
+        drama: "Drama",
+        entertainment: "Entertainment",
+        documentary: "Documentary",
+        kids: "Kids",
+        music: "Music",
+        pop: "Pop",
+        rock: "Rock",
+        hiphop: "Hip-Hop",
+        russia: "Russia",
+        usa: "USA",
+        uk: "United Kingdom",
+        germany: "Germany",
+        france: "France",
+        italy: "Italy",
+        spain: "Spain",
+        china: "China",
+        japan: "Japan",
+        korea: "Korea",
+        india: "India",
+        brazil: "Brazil",
+        canada: "Canada",
+        australia: "Australia",
+        russian: "Russian",
+        english: "English",
+        spanish: "Spanish",
+        french: "French",
+        german: "German",
+        italian: "Italian",
+        portuguese: "Portuguese",
+        chinese: "Chinese",
+        japanese: "Japanese",
+        korean: "Korean",
+        arabic: "Arabic",
+        turkish: "Turkish",
+        hindi: "Hindi",
+        loading: "Loading...",
+        errorInit: "Initialization error",
+        errorApp: "Application error",
+        errorLoad: "Failed to load channels",
+        channelNotFound: "Channels not found",
+        channelUnavailable: "Channel unavailable",
+        formatNotSupported: "Format not supported",
+        clickToPlay: "Click video to play",
+        addToWatchedSuccess: (name) => `✅ Channel "${name}" added to "Watched"`,
+        alreadyInWatched: (name) => `ℹ️ Channel "${name}" already in "Watched"`,
+        lastPlaylistLoaded: (main, sub) => `📂 Loaded last playlist: ${main} → ${sub}`,
+        defaultPlaylist: '📂 Using default playlist: "Watched"',
+        playlistSaved: (main, sub) => `💾 Playlist saved: ${main} → ${sub}`,
+        saveError: '❌ Failed to save last playlist:',
+        parseError: '❌ Error parsing watchedChannels:',
+        resetPlaylist: 'Last playlist reset',
+        scrollRestored: 'Scroll position restored',
+        determiningLocation: 'Detecting your location...'
     }
 };
+
+// 👇 Безопасная функция перевода — принимает аргументы
+function t(key, ...args) {
+    const dict = translations[currentLanguage] || translations['en'];
+    let str = dict[key];
+
+    // Если перевод не найден — fallback на английский или ключ
+    if (str === undefined) {
+        console.warn(`⚠️ Перевод "${key}" не найден для языка ${currentLanguage}`);
+        str = translations['en']?.[key] || key;
+    }
+
+    // Если это функция — вызываем с аргументами
+    if (typeof str === 'function') {
+        return str(...args);
+    }
+
+    // Если строка — возвращаем как есть
+    return str;
+}
+
+// 👇 Определение языка по IP — с fallback и защитой от ошибок
+async function detectLanguageByIP() {
+    // Если уже определено — не повторяем
+    const savedLang = localStorage.getItem('userLanguage');
+    if (savedLang) {
+        currentLanguage = savedLang;
+        return;
+    }
+
+    let countryCode = null;
+
+    // Попробуем ipapi.co
+    try {
+        const response = await fetch('https://ipapi.co/json/', {
+            method: 'GET',
+            mode: 'cors'
+        });
+        if (response.ok) {
+            const data = await response.json();
+            countryCode = data.country_code;
+            console.log(`🌍 Определена страна: ${countryCode}`);
+        }
+    } catch (e) {
+        console.warn('⚠️ ipapi.co недоступен:', e.message);
+    }
+
+    // Fallback: попробуем ipwho.is
+    if (!countryCode) {
+        try {
+            const response = await fetch('https://ipwho.is/', {
+                method: 'GET',
+                mode: 'cors'
+            });
+            if (response.ok) {
+                const data = await response.json();
+                countryCode = data.country_code;
+                console.log(`🌍 Определена страна (через ipwho.is): ${countryCode}`);
+            }
+        } catch (e) {
+            console.warn('⚠️ ipwho.is недоступен:', e.message);
+        }
+    }
+
+    // Если всё ещё не определено — ставим английский
+    currentLanguage = countryCode === 'RU' ? 'ru' : 'en';
+
+    // Сохраняем выбор
+    try {
+        localStorage.setItem('userLanguage', currentLanguage);
+        console.log(`🌐 Установлен язык: ${currentLanguage}`);
+    } catch (e) {
+        console.error('❌ Не удалось сохранить язык в localStorage:', e);
+    }
+}
+
+// 👇 Функция для получения дерева категорий с учётом текущего языка
+function getCategoryTree() {
+    return {
+        [t('watched')]: {},
+        [t('categories')]: {
+            [t('news')]: "https://iptv-org.github.io/iptv/categories/news.m3u",
+            [t('sports')]: "https://iptv-org.github.io/iptv/categories/sports.m3u",
+            [t('football')]: "https://iptv-org.github.io/iptv/categories/football.m3u",
+            [t('basketball')]: "https://iptv-org.github.io/iptv/categories/basketball.m3u",
+            [t('tennis')]: "https://iptv-org.github.io/iptv/categories/tennis.m3u",
+            [t('movies')]: "https://iptv-org.github.io/iptv/categories/movies.m3u",
+            [t('action')]: "https://iptv-org.github.io/iptv/categories/action.m3u",
+            [t('comedy')]: "https://iptv-org.github.io/iptv/categories/comedy.m3u",
+            [t('drama')]: "https://iptv-org.github.io/iptv/categories/drama.m3u",
+            [t('entertainment')]: "https://iptv-org.github.io/iptv/categories/entertainment.m3u",
+            [t('documentary')]: "https://iptv-org.github.io/iptv/categories/documentary.m3u",
+            [t('kids')]: "https://iptv-org.github.io/iptv/categories/kids.m3u",
+            [t('music')]: "https://iptv-org.github.io/iptv/categories/music.m3u",
+            [t('pop')]: "https://iptv-org.github.io/iptv/categories/pop.m3u",
+            [t('rock')]: "https://iptv-org.github.io/iptv/categories/rock.m3u",
+            [t('hiphop')]: "https://iptv-org.github.io/iptv/categories/hiphop.m3u"
+        },
+        [t('countries')]: {
+            [t('russia')]: "https://iptv-org.github.io/iptv/countries/ru.m3u",
+            [t('usa')]: "https://iptv-org.github.io/iptv/countries/us.m3u",
+            [t('uk')]: "https://iptv-org.github.io/iptv/countries/gb.m3u",
+            [t('germany')]: "https://iptv-org.github.io/iptv/countries/de.m3u",
+            [t('france')]: "https://iptv-org.github.io/iptv/countries/fr.m3u",
+            [t('italy')]: "https://iptv-org.github.io/iptv/countries/it.m3u",
+            [t('spain')]: "https://iptv-org.github.io/iptv/countries/es.m3u",
+            [t('china')]: "https://iptv-org.github.io/iptv/countries/cn.m3u",
+            [t('japan')]: "https://iptv-org.github.io/iptv/countries/jp.m3u",
+            [t('korea')]: "https://iptv-org.github.io/iptv/countries/kr.m3u",
+            [t('india')]: "https://iptv-org.github.io/iptv/countries/in.m3u",
+            [t('brazil')]: "https://iptv-org.github.io/iptv/countries/br.m3u",
+            [t('canada')]: "https://iptv-org.github.io/iptv/countries/ca.m3u",
+            [t('australia')]: "https://iptv-org.github.io/iptv/countries/au.m3u"
+        },
+        [t('languages')]: {
+            [t('russian')]: "https://iptv-org.github.io/iptv/languages/rus.m3u",
+            [t('english')]: "https://iptv-org.github.io/iptv/languages/eng.m3u",
+            [t('spanish')]: "https://iptv-org.github.io/iptv/languages/spa.m3u",
+            [t('french')]: "https://iptv-org.github.io/iptv/languages/fra.m3u",
+            [t('german')]: "https://iptv-org.github.io/iptv/languages/deu.m3u",
+            [t('italian')]: "https://iptv-org.github.io/iptv/languages/ita.m3u",
+            [t('portuguese')]: "https://iptv-org.github.io/iptv/languages/por.m3u",
+            [t('chinese')]: "https://iptv-org.github.io/iptv/languages/zho.m3u",
+            [t('japanese')]: "https://iptv-org.github.io/iptv/languages/jpn.m3u",
+            [t('korean')]: "https://iptv-org.github.io/iptv/languages/kor.m3u",
+            [t('arabic')]: "https://iptv-org.github.io/iptv/languages/ara.m3u",
+            [t('turkish')]: "https://iptv-org.github.io/iptv/languages/tur.m3u",
+            [t('hindi')]: "https://iptv-org.github.io/iptv/languages/hin.m3u"
+        }
+    };
+}
 
 // Закрытие модального окна
 closeModal.addEventListener('click', function() {
@@ -402,7 +684,7 @@ async function initApp() {
 
     try {
         // 👇 Определяем язык асинхронно, без блокировки
-        detectLanguageByIP().catch(e => {
+        await detectLanguageByIP().catch(e => {
             console.error('❌ Ошибка определения языка:', e);
             currentLanguage = 'en';
             try { localStorage.setItem('userLanguage', currentLanguage); } catch {}
@@ -411,6 +693,8 @@ async function initApp() {
         // 👇 Загружаем последний плейлист
         let lastMain = localStorage.getItem('lastMainCategory');
         let lastSub = localStorage.getItem('lastSubcategory');
+
+        const categoryTree = getCategoryTree();
 
         if (lastMain && lastSub && categoryTree[lastMain] && categoryTree[lastMain][lastSub]) {
             currentMainCategory = lastMain;
@@ -459,6 +743,7 @@ function debounce(func, wait) {
 // Отображение главных категорий
 function renderMainCategories() {
     mainCategoriesPanel.innerHTML = '';
+    const categoryTree = getCategoryTree(); // 👈 Получаем актуальное дерево
     const mainCategories = Object.keys(categoryTree);
     
     mainCategories.forEach((cat, index) => {
@@ -487,6 +772,7 @@ function renderSubCategories() {
     subCategoriesPanel.innerHTML = '';
     subCategoriesPanel.style.display = 'none';
     
+    const categoryTree = getCategoryTree(); // 👈 Получаем актуальное дерево
     if (!categoryTree[currentMainCategory]) return;
     const subcategories = Object.keys(categoryTree[currentMainCategory]);
     
@@ -519,6 +805,7 @@ function renderSubCategories() {
 function selectMainCategory(categoryName, index) {
     currentMainCategory = categoryName;
     currentMainCategoryIndex = index;
+    const categoryTree = getCategoryTree(); // 👈 Получаем актуальное дерево
     const firstSub = categoryTree[categoryName] ? Object.keys(categoryTree[categoryName])[0] : '';
     currentSubcategory = firstSub || '';
     currentSubCategoryIndex = 0;
@@ -571,6 +858,8 @@ function updateSubCategoryActive() {
 
 // Загрузка и отображение каналов
 async function loadAndRenderChannels(mainCategory, subcategory) {
+    const categoryTree = getCategoryTree(); // 👈 Получаем актуальное дерево
+
     if (mainCategory === t('watched')) {
         initialLoader.style.display = 'none';
         let watched;
@@ -1043,6 +1332,7 @@ document.addEventListener('keydown', function(e) {
             } else if (navigationState === 'channels' && document.activeElement.classList.contains('channel-card')) {
                 const card = document.activeElement;
                 const index = parseInt(card.dataset.index);
+                const categoryTree = getCategoryTree(); // 👈 Получаем актуальное дерево
                 const list = currentMainCategory === t('watched')
                     ? JSON.parse(localStorage.getItem('watchedChannels') || '[]')
                     : loadedPlaylists[categoryTree[currentMainCategory][currentSubcategory]] || [];

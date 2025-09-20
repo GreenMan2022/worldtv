@@ -12,7 +12,7 @@ document.addEventListener('DOMContentLoaded', function() {
 // Load playlists from external config
 async function loadPlaylistsFromConfig() {
     try {
-        const response = await fetch('playlists.json');
+        const response = await fetch('/playlists.json');
         if (!response.ok) return;
         
         const config = await response.json();

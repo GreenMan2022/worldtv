@@ -165,25 +165,20 @@ const translations = {
     }
 };
 
-// 👇 Безопасная функция перевода — БЕЗ spread-оператора (совместимость со старыми браузерами)
-function t(key) {
-    var dict = translations[currentLanguage] || translations['en'];
-    var str = dict[key];
+// 👇 Безопасная функция перевода — принимает аргументы
+function t(key, ...args) {
+    const dict = translations[currentLanguage] || translations['en'];
+    let str = dict[key];
 
     // Если перевод не найден — fallback на английский или ключ
     if (str === undefined) {
-        console.warn('⚠️ Перевод "' + key + '" не найден для языка ' + currentLanguage);
-        str = translations['en'] && translations['en'][key] ? translations['en'][key] : key;
+        console.warn(`⚠️ Перевод "${key}" не найден для языка ${currentLanguage}`);
+        str = translations['en']?.[key] || key;
     }
 
-    // Если это функция — вызываем с аргументами (передаём arguments)
+    // Если это функция — вызываем с аргументами
     if (typeof str === 'function') {
-        // Передаём все аргументы, кроме первого (key)
-        var args = [];
-        for (var i = 1; i < arguments.length; i++) {
-            args.push(arguments[i]);
-        }
-        return str.apply(null, args);
+        return str(...args);
     }
 
     // Если строка — возвращаем как есть

@@ -573,10 +573,11 @@ function addToBlacklist(url) {
 
 // Открытие полноэкранного плеера
 function openFullScreenPlayer(name, url, group, logo) {
-    // 👇 Просмотренные: Сброс предыдущего состояния
-    if (watchTimer) clearInterval(watchTimer);
-    watchedSeconds = 0;
-    isWatching = false;
+    // 👇 Просмотренные: Сброс предыдущего таймера
+    if (watchTimer) {
+        clearTimeout(watchTimer);
+        watchTimer = null;
+    }
 
     playerModal.style.display = 'flex';
     videoPlayerElement.src = '';
@@ -594,18 +595,72 @@ function openFullScreenPlayer(name, url, group, logo) {
         }
     }, 30000);
 
-    // 👇 Просмотренные: Функция для добавления в просмотренные
-    const tryAddToWatched = () => {
-        if (watchedSeconds >= 60) {
-            addToWatched(name, url, group, logo);
-            console.log(`✅ Канал "${name}" добавлен в "Просмотренные" (просмотрено ${watchedSeconds} сек)`);
-            // Останавливаем таймер после добавления
-            if (watchTimer) {
-                clearInterval(watchTimer);
-                watchTimer = null;
+    // 👇 Просмотренные: Запускаем таймер на 60 секунд СРАЗУ при открытии
+    watchTimer = setTimeout(() => {
+        addToWatched(name, url, group, logo);
+        console.log(`✅ Канал "${name}" добавлен в "Просмотренные" (плеер был открыт 60+ секунд)`);
+        watchTimer = null; // Очищаем, чтобы не дублировать
+    }, 60000); // 60 секунд
+
+    if (Hls.isSupported()) {
+        const hls = new Hls();
+        hls.loadSource(url);
+        hls.attachMedia(videoPlayerElement);
+        
+        hls.on(Hls.Events.MANIFEST_PARSED, () => {
+            clearTimeout(timeoutId);
+            manifestLoaded = true;
+            videoPlayerElement.play().catch(e => {
+                console.log("Autoplay blocked:", e);
+                showToast("Нажмите на видео для воспроизведения");
+            });
+            setTimeout(() => requestNativeFullscreen(), 1000);
+        });
+        
+        hls.on(Hls.Events.ERROR, (event, data) => {
+            if (data.fatal) {
+                clearTimeout(timeoutId);
+                if (watchTimer) clearTimeout(watchTimer); // 👈 Сброс при ошибке
+                showToast('Канал недоступен');
+                addToBlacklist(url);
+                playerModal.style.display = 'none';
             }
+        });
+    } else if (videoPlayerElement.canPlayType('application/vnd.apple.mpegurl')) {
+        videoPlayerElement.src = url;
+        videoPlayerElement.addEventListener('loadedmetadata', () => {
+            clearTimeout(timeoutId);
+            manifestLoaded = true;
+            videoPlayerElement.play().catch(e => {
+                console.log("Autoplay blocked:", e);
+                showToast("Нажмите на видео для воспроизведения");
+            });
+            setTimeout(() => requestNativeFullscreen(), 1000);
+        });
+        videoPlayerElement.addEventListener('error', () => {
+            clearTimeout(timeoutId);
+            if (watchTimer) clearTimeout(watchTimer); // 👈 Сброс при ошибке
+            showToast('Канал недоступен');
+            addToBlacklist(url);
+            playerModal.style.display = 'none';
+        });
+    } else {
+        clearTimeout(timeoutId);
+        showToast('Формат не поддерживается');
+        playerModal.style.display = 'none';
+    }
+
+    // 👇 Просмотренные: Очистка таймера при закрытии
+    const originalCloseModalClick = closeModal.onclick;
+    closeModal.onclick = function() {
+        if (watchTimer) {
+            clearTimeout(watchTimer);
+            watchTimer = null;
+            console.log("❌ Таймер сброшен — канал НЕ добавлен (закрыто до 60 сек)");
         }
+        originalCloseModalClick.call(this);
     };
+}
 
     // 👇 Просмотренные: Запуск отслеживания времени просмотра
     const startWatchingTimer = () => {

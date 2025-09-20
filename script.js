@@ -116,10 +116,22 @@ function showToast(message) {
     }, 3000);
 }
 
-// 👇 Просмотренные: Добавление в localStorage
+// 👇 Просмотренные: Добавление в localStorage — с защитой от ошибок
 function addToWatched(name, url, group, logo) {
-    let watched = JSON.parse(localStorage.getItem('watchedChannels') || '[]');
-    
+    // Безопасное получение массива из localStorage
+    let watched;
+    try {
+        const raw = localStorage.getItem('watchedChannels');
+        watched = raw ? JSON.parse(raw) : [];
+        if (!Array.isArray(watched)) {
+            console.warn('⚠️ watchedChannels не массив — сброс');
+            watched = [];
+        }
+    } catch (e) {
+        console.error('❌ Ошибка парсинга watchedChannels:', e);
+        watched = [];
+    }
+
     // Проверка дубликатов
     if (watched.some(item => item.url === url)) {
         console.log(`ℹ️ Канал "${name}" уже в "Просмотренные"`);
@@ -128,8 +140,14 @@ function addToWatched(name, url, group, logo) {
 
     // Добавляем
     watched.push({ name, url, group, logo });
-    localStorage.setItem('watchedChannels', JSON.stringify(watched));
-    console.log(`✅ Канал "${name}" добавлен в "Просмотренные"`);
+    try {
+        localStorage.setItem('watchedChannels', JSON.stringify(watched));
+        console.log(`✅ Канал "${name}" добавлен в "Просмотренные"`);
+    } catch (e) {
+        console.error('❌ Не удалось сохранить в localStorage:', e);
+        showToast('Ошибка сохранения');
+        return;
+    }
 
     // Если сейчас открыта категория "Просмотренные" — обновляем
     if (currentMainCategory === 'Просмотренные') {

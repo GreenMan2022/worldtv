@@ -1302,6 +1302,15 @@ function updateSubCategoryActive() {
 
 // Загрузка и отображение каналов
 async function loadAndRenderChannels(mainCategory, subcategory) {
+    // 👇 Фикс: Очищаем интервал "Прямо сейчас" при уходе
+    if (currentMainCategory === 'Прямо сейчас' && mainCategory !== 'Прямо сейчас' && window.watchingNowInterval) {
+        clearInterval(window.watchingNowInterval);
+        window.watchingNowInterval = null;
+        if (document.getElementById('reloadTimer')) {
+            document.getElementById('reloadTimer').remove();
+        }
+    }
+  
     if (mainCategory === 'Просмотренные') {
         initialLoader.style.display = 'none';
         let watched;
@@ -1557,6 +1566,13 @@ function renderChannels(channelsToRender) {
         channelCard.appendChild(infoContainer);
 
         channelCard.addEventListener('focus', function() {
+            if (window.watchingNowInterval && currentMainCategory !== 'Прямо сейчас') {
+                clearInterval(window.watchingNowInterval);
+                window.watchingNowInterval = null;
+                if (document.getElementById('reloadTimer')) {
+                    document.getElementById('reloadTimer').remove();
+                }
+            }
             currentChannelIndex = parseInt(this.dataset.index);
             if (focusTimer) clearTimeout(focusTimer);
 
@@ -2090,7 +2106,11 @@ function initApp() {
         showToast(translateText("Ошибка приложения"));
     }
 }
-
+// 👇 Очищаем интервал при закрытии вкладки
+window.addEventListener('beforeunload', () => {
+    if (window.watchingNowInterval) clearInterval(window.watchingNowInterval);
+    if (window.watchingNowTimerInterval) clearInterval(window.watchingNowTimerInterval);
+});
 // Запуск приложения
 document.addEventListener('DOMContentLoaded', () => {
     initApp();

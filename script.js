@@ -27,54 +27,55 @@ let watchStartTime = null;        // timestamp открытия плеера
 // Структура плейлистов
 const categoryTree = {
   "Просмотренные": {},
+  "Свой плейлист": {}, // ← ДОБАВЛЕНО
   "Категории": {
-    "Новости": "https://iptv-org.github.io/iptv/categories/news.m3u",
-    "Спорт": "https://iptv-org.github.io/iptv/categories/sports.m3u",
-    "Футбол": "https://iptv-org.github.io/iptv/categories/football.m3u",
-    "Баскетбол": "https://iptv-org.github.io/iptv/categories/basketball.m3u",
-    "Теннис": "https://iptv-org.github.io/iptv/categories/tennis.m3u",
-    "Кино": "https://iptv-org.github.io/iptv/categories/movies.m3u",
-    "Боевики": "https://iptv-org.github.io/iptv/categories/action.m3u",
-    "Комедии": "https://iptv-org.github.io/iptv/categories/comedy.m3u",
-    "Драмы": "https://iptv-org.github.io/iptv/categories/drama.m3u",
-    "Развлечения": "https://iptv-org.github.io/iptv/categories/entertainment.m3u",
-    "Документальные": "https://iptv-org.github.io/iptv/categories/documentary.m3u",
-    "Детские": "https://iptv-org.github.io/iptv/categories/kids.m3u",
-    "Музыка": "https://iptv-org.github.io/iptv/categories/music.m3u",
-    "Поп": "https://iptv-org.github.io/iptv/categories/pop.m3u",
-    "Рок": "https://iptv-org.github.io/iptv/categories/rock.m3u",
-    "Хип-хоп": "https://iptv-org.github.io/iptv/categories/hiphop.m3u"
+    "Новости": "https://iptv-org.github.io/iptv/categories/news.m3u  ",
+    "Спорт": "https://iptv-org.github.io/iptv/categories/sports.m3u  ",
+    "Футбол": "https://iptv-org.github.io/iptv/categories/football.m3u  ",
+    "Баскетбол": "https://iptv-org.github.io/iptv/categories/basketball.m3u  ",
+    "Теннис": "https://iptv-org.github.io/iptv/categories/tennis.m3u  ",
+    "Кино": "https://iptv-org.github.io/iptv/categories/movies.m3u  ",
+    "Боевики": "https://iptv-org.github.io/iptv/categories/action.m3u  ",
+    "Комедии": "https://iptv-org.github.io/iptv/categories/comedy.m3u  ",
+    "Драмы": "https://iptv-org.github.io/iptv/categories/drama.m3u  ",
+    "Развлечения": "https://iptv-org.github.io/iptv/categories/entertainment.m3u  ",
+    "Документальные": "https://iptv-org.github.io/iptv/categories/documentary.m3u  ",
+    "Детские": "https://iptv-org.github.io/iptv/categories/kids.m3u  ",
+    "Музыка": "https://iptv-org.github.io/iptv/categories/music.m3u  ",
+    "Поп": "https://iptv-org.github.io/iptv/categories/pop.m3u  ",
+    "Рок": "https://iptv-org.github.io/iptv/categories/rock.m3u  ",
+    "Хип-хоп": "https://iptv-org.github.io/iptv/categories/hiphop.m3u  "
   },
   "Страны": {
-    "Россия": "https://iptv-org.github.io/iptv/countries/ru.m3u",
-    "США": "https://iptv-org.github.io/iptv/countries/us.m3u",
-    "Великобритания": "https://iptv-org.github.io/iptv/countries/gb.m3u",
-    "Германия": "https://iptv-org.github.io/iptv/countries/de.m3u",
-    "Франция": "https://iptv-org.github.io/iptv/countries/fr.m3u",
-    "Италия": "https://iptv-org.github.io/iptv/countries/it.m3u",
-    "Испания": "https://iptv-org.github.io/iptv/countries/es.m3u",
-    "Китай": "https://iptv-org.github.io/iptv/countries/cn.m3u",
-    "Япония": "https://iptv-org.github.io/iptv/countries/jp.m3u",
-    "Корея": "https://iptv-org.github.io/iptv/countries/kr.m3u",
-    "Индия": "https://iptv-org.github.io/iptv/countries/in.m3u",
-    "Бразилия": "https://iptv-org.github.io/iptv/countries/br.m3u",
-    "Канада": "https://iptv-org.github.io/iptv/countries/ca.m3u",
-    "Австралия": "https://iptv-org.github.io/iptv/countries/au.m3u"
+    "Россия": "https://iptv-org.github.io/iptv/countries/ru.m3u  ",
+    "США": "https://iptv-org.github.io/iptv/countries/us.m3u  ",
+    "Великобритания": "https://iptv-org.github.io/iptv/countries/gb.m3u  ",
+    "Германия": "https://iptv-org.github.io/iptv/countries/de.m3u  ",
+    "Франция": "https://iptv-org.github.io/iptv/countries/fr.m3u  ",
+    "Италия": "https://iptv-org.github.io/iptv/countries/it.m3u  ",
+    "Испания": "https://iptv-org.github.io/iptv/countries/es.m3u  ",
+    "Китай": "https://iptv-org.github.io/iptv/countries/cn.m3u  ",
+    "Япония": "https://iptv-org.github.io/iptv/countries/jp.m3u  ",
+    "Корея": "https://iptv-org.github.io/iptv/countries/kr.m3u  ",
+    "Индия": "https://iptv-org.github.io/iptv/countries/in.m3u  ",
+    "Бразилия": "https://iptv-org.github.io/iptv/countries/br.m3u  ",
+    "Канада": "https://iptv-org.github.io/iptv/countries/ca.m3u  ",
+    "Австралия": "https://iptv-org.github.io/iptv/countries/au.m3u  "
   },
   "Языки": {
-    "Русский": "https://iptv-org.github.io/iptv/languages/rus.m3u",
-    "Английский": "https://iptv-org.github.io/iptv/languages/eng.m3u",
-    "Испанский": "https://iptv-org.github.io/iptv/languages/spa.m3u",
-    "Французский": "https://iptv-org.github.io/iptv/languages/fra.m3u",
-    "Немецкий": "https://iptv-org.github.io/iptv/languages/deu.m3u",
-    "Итальянский": "https://iptv-org.github.io/iptv/languages/ita.m3u",
-    "Португальский": "https://iptv-org.github.io/iptv/languages/por.m3u",
-    "Китайский": "https://iptv-org.github.io/iptv/languages/zho.m3u",
-    "Японский": "https://iptv-org.github.io/iptv/languages/jpn.m3u",
-    "Корейский": "https://iptv-org.github.io/iptv/languages/kor.m3u",
-    "Арабский": "https://iptv-org.github.io/iptv/languages/ara.m3u",
-    "Турецкий": "https://iptv-org.github.io/iptv/languages/tur.m3u",
-    "Хинди": "https://iptv-org.github.io/iptv/languages/hin.m3u"
+    "Русский": "https://iptv-org.github.io/iptv/languages/rus.m3u  ",
+    "Английский": "https://iptv-org.github.io/iptv/languages/eng.m3u  ",
+    "Испанский": "https://iptv-org.github.io/iptv/languages/spa.m3u  ",
+    "Французский": "https://iptv-org.github.io/iptv/languages/fra.m3u  ",
+    "Немецкий": "https://iptv-org.github.io/iptv/languages/deu.m3u  ",
+    "Итальянский": "https://iptv-org.github.io/iptv/languages/ita.m3u  ",
+    "Португальский": "https://iptv-org.github.io/iptv/languages/por.m3u  ",
+    "Китайский": "https://iptv-org.github.io/iptv/languages/zho.m3u  ",
+    "Японский": "https://iptv-org.github.io/iptv/languages/jpn.m3u  ",
+    "Корейский": "https://iptv-org.github.io/iptv/languages/kor.m3u  ",
+    "Арабский": "https://iptv-org.github.io/iptv/languages/ara.m3u  ",
+    "Турецкий": "https://iptv-org.github.io/iptv/languages/tur.m3u  ",
+    "Хинди": "https://iptv-org.github.io/iptv/languages/hin.m3u  "
   }
 };
 
@@ -154,6 +155,86 @@ function addToWatched(name, url, group, logo) {
         loadAndRenderChannels('Просмотренные', '');
     }
 }
+
+// 👇 Свой плейлист: Загрузка по ссылке
+async function loadPlaylistFromURL() {
+    const urlInput = document.getElementById('playlistURL');
+    const url = urlInput.value.trim();
+    if (!url) {
+        showToast('Введите ссылку');
+        return;
+    }
+
+    initialLoader.style.display = 'flex';
+    try {
+        const content = await fetchM3U(url);
+        const channels = parseM3UContent(content, 'Свой плейлист');
+        localStorage.setItem('customPlaylist', JSON.stringify(channels));
+        showToast('Плейлист загружен!');
+        loadAndRenderChannels('Свой плейлист', '');
+    } catch (err) {
+        console.error('Ошибка загрузки по URL:', err);
+        showToast('Не удалось загрузить плейлист');
+    } finally {
+        initialLoader.style.display = 'none';
+    }
+}
+
+// 👇 Свой плейлист: Показать интерфейс загрузки
+function showCustomPlaylistUploadUI() {
+    channelsContainer.innerHTML = `
+        <div style="padding: 40px; text-align: center; color: #aaa; width: 100%;">
+            <h3>Загрузите свой плейлист</h3>
+            <p>Поддерживается формат M3U</p>
+            
+            <div style="margin: 30px 0; display: flex; flex-direction: column; gap: 15px; align-items: center;">
+                <input type="file" id="uploadM3UFile" accept=".m3u,.m3u8" style="display: none;">
+                <button onclick="document.getElementById('uploadM3UFile').click()" 
+                        style="padding: 12px 24px; background: #ff375f; color: white; border: none; border-radius: 8px; cursor: pointer;">
+                    Загрузить файл
+                </button>
+                
+                <div style="width: 100%; max-width: 400px;">
+                    <input type="text" id="playlistURL" 
+                           placeholder="https://example.com/playlist.m3u" 
+                           style="width: 100%; padding: 10px; border-radius: 6px; border: 1px solid #444; background: #222; color: white; margin-bottom: 10px;">
+                    <button onclick="loadPlaylistFromURL()" 
+                            style="width: 100%; padding: 10px; background: #ff5e41; color: white; border: none; border-radius: 6px; cursor: pointer;">
+                        Загрузить по ссылке
+                    </button>
+                </div>
+
+                <button onclick="localStorage.removeItem('customPlaylist'); showCustomPlaylistUploadUI();" 
+                        style="margin-top: 10px; padding: 8px 16px; background: #555; color: white; border: none; border-radius: 6px; cursor: pointer;">
+                    Очистить и загрузить заново
+                </button>
+            </div>
+        </div>
+    `;
+
+    // Обработчик загрузки файла
+    const fileInput = document.getElementById('uploadM3UFile');
+    fileInput.addEventListener('change', async function(e) {
+        const file = e.target.files[0];
+        if (!file) return;
+        
+        const reader = new FileReader();
+        reader.onload = async function(event) {
+            try {
+                const content = event.target.result;
+                const channels = parseM3UContent(content, 'Свой плейлист');
+                localStorage.setItem('customPlaylist', JSON.stringify(channels));
+                showToast('Плейлист загружен!');
+                loadAndRenderChannels('Свой плейлист', '');
+            } catch (err) {
+                console.error('Ошибка загрузки файла:', err);
+                showToast('Ошибка загрузки файла');
+            }
+        };
+        reader.readAsText(file);
+    });
+}
+
 // Инициализация приложения
 function initApp() {
     const safetyTimeout = setTimeout(() => {
@@ -305,6 +386,31 @@ async function loadAndRenderChannels(mainCategory, subcategory) {
             localStorage.setItem('watchedChannels', '[]');
         }
         renderChannels(watched);
+        return;
+    }
+
+    // 👇 Свой плейлист: загрузка из localStorage
+    if (mainCategory === 'Свой плейлист') {
+        initialLoader.style.display = 'none';
+        let customPlaylist;
+        try {
+            const raw = localStorage.getItem('customPlaylist');
+            customPlaylist = raw ? JSON.parse(raw) : [];
+            if (!Array.isArray(customPlaylist)) {
+                console.warn('⚠️ customPlaylist не массив — сброс');
+                customPlaylist = [];
+                localStorage.removeItem('customPlaylist');
+            }
+        } catch (e) {
+            console.error('❌ Ошибка парсинга customPlaylist:', e);
+            customPlaylist = [];
+            localStorage.removeItem('customPlaylist');
+        }
+        renderChannels(customPlaylist);
+        // 👇 Если плейлист пуст — показать интерфейс загрузки
+        if (customPlaylist.length === 0) {
+            showCustomPlaylistUploadUI();
+        }
         return;
     }
 
@@ -760,9 +866,14 @@ document.addEventListener('keydown', function(e) {
             } else if (navigationState === 'channels' && document.activeElement.classList.contains('channel-card')) {
                 const card = document.activeElement;
                 const index = parseInt(card.dataset.index);
-                const list = currentMainCategory === 'Просмотренные'
-                    ? JSON.parse(localStorage.getItem('watchedChannels') || '[]')
-                    : loadedPlaylists[categoryTree[currentMainCategory][currentSubcategory]] || [];
+                let list;
+                if (currentMainCategory === 'Просмотренные') {
+                    list = JSON.parse(localStorage.getItem('watchedChannels') || '[]');
+                } else if (currentMainCategory === 'Свой плейлист') {
+                    list = JSON.parse(localStorage.getItem('customPlaylist') || '[]');
+                } else {
+                    list = loadedPlaylists[categoryTree[currentMainCategory][currentSubcategory]] || [];
+                }
                 if (index >= 0 && index < list.length) {
                     const channel = list[index];
                     openFullScreenPlayer(channel.name, channel.url, channel.group, channel.logo);

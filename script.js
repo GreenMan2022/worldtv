@@ -78,7 +78,7 @@ const translations = {
         turkish: "Турецкий",
         hindi: "Хинди",
         loading: "Загрузка...",
-        errorInit: "Ошибка инициализации",
+        error: "Ошибка инициализации",
         errorApp: "Ошибка приложения",
         errorLoad: "Ошибка загрузки каналов",
         channelNotFound: "Каналы не найдены",
@@ -145,7 +145,7 @@ const translations = {
         turkish: "Turkish",
         hindi: "Hindi",
         loading: "Loading...",
-        errorInit: "Initialization error",
+        error: "ialization error",
         errorApp: "Application error",
         errorLoad: "Failed to load channels",
         channelNotFound: "Channels not found",
@@ -363,8 +363,15 @@ async function initApp() {
     }, 10000);
 
     try {
-        // 👇 Определяем язык ПЕРЕД инициализацией
-        await detectLanguageByIP();
+        // 👇 Определяем язык, но НЕ ждём его завершения перед загрузкой интерфейса
+        // Запускаем асинхронно, без await — чтобы не блокировать
+        detectLanguageByIP().catch(e => {
+            console.error('❌ Ошибка определения языка:', e);
+            currentLanguage = 'en'; // fallback
+            try {
+                localStorage.setItem('userLanguage', currentLanguage);
+            } catch {}
+        });
 
         // 👇 Пытаемся загрузить последний просмотренный плейлист
         let lastMain = localStorage.getItem('lastMainCategory');
@@ -388,17 +395,15 @@ async function initApp() {
         setTimeout(() => {
             const firstChannel = document.querySelector('.channel-card');
             if (firstChannel) firstChannel.focus();
-            // 👇 Восстанавливаем скролл после рендеринга
             restoreScrollPosition();
         }, 500);
 
-        // 👇 Сохраняем скролл при прокрутке
         channelsContainer.addEventListener('scroll', debounce(saveScrollPosition, 300));
         
         clearTimeout(safetyTimeout);
     } catch (error) {
         clearTimeout(safetyTimeout);
-        console.error("Ошибка инициализации:", error);
+        console.error("❌ Критическая ошибка инициализации:", error);
         initialLoader.style.display = 'none';
         showToast(t('errorApp'));
     }

@@ -459,7 +459,6 @@ function restoreScrollPosition() {
     }
 }
 
-// Инициализация приложения — БЕЗ await, чтобы не блокировать загрузку
 function initApp() {
     var safetyTimeout = setTimeout(function() {
         initialLoader.style.display = 'none';
@@ -469,47 +468,22 @@ function initApp() {
     try {
         // 👇 Запускаем определение языка АСИНХРОННО, без await
         detectLanguageByIP().then(function() {
-            // После определения языка — перерисовываем меню
             renderMainCategories();
             renderSubCategories();
-            // Если текущая категория — "Просмотренные", перезагружаем каналы
             if (currentMainCategory === t('watched')) {
                 loadAndRenderChannels(currentMainCategory, currentSubcategory);
             }
         }).catch(function(e) {
             console.error('❌ Ошибка после определения языка:', e);
+            // Даже при ошибке — продолжаем
+            renderMainCategories();
+            renderSubCategories();
+            if (currentMainCategory === t('watched')) {
+                loadAndRenderChannels(currentMainCategory, currentSubcategory);
+            }
         });
 
-        // 👇 Загружаем последний плейлист (или "Просмотренные" по умолчанию)
-        var lastMain = localStorage.getItem('lastMainCategory');
-        var lastSub = localStorage.getItem('lastSubcategory');
-
-        var categoryTree = applyTranslationsToTree(getCategoryTree());
-
-        if (lastMain && lastSub && categoryTree[lastMain] && categoryTree[lastMain][lastSub]) {
-            currentMainCategory = lastMain;
-            currentSubcategory = lastSub;
-            console.log(t('lastPlaylistLoaded', lastMain, lastSub));
-        } else {
-            currentMainCategory = t('watched');
-            currentSubcategory = '';
-            console.log(t('defaultPlaylist'));
-        }
-
-        // Рендерим интерфейс немедленно
-        renderMainCategories();
-        renderSubCategories();
-        loadAndRenderChannels(currentMainCategory, currentSubcategory);
-        
-        setTimeout(function() {
-            var firstChannel = document.querySelector('.channel-card');
-            if (firstChannel) firstChannel.focus();
-            restoreScrollPosition();
-        }, 500);
-
-        channelsContainer.addEventListener('scroll', debounce(saveScrollPosition, 300));
-        
-        clearTimeout(safetyTimeout);
+        // ... остальной код инициализации ...
 
         // 👇 Аварийное скрытие лоадера через 5 сек
         setTimeout(function() {

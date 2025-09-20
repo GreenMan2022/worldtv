@@ -9,7 +9,7 @@ const initialLoader = document.getElementById('initialLoader');
 const toastContainer = document.getElementById('toastContainer');
 
 // Глобальные переменные
-let currentMainCategory = 'Просмотренные'; // 👇 Просмотренные: Стартуем с этой категории
+let currentMainCategory = 'Просмотренные';
 let currentSubcategory = '';
 let currentMainCategoryIndex = 0;
 let currentSubCategoryIndex = 0;
@@ -18,10 +18,12 @@ let currentMiniPlayer = null;
 let miniPlayers = new Map();
 let focusTimer = null;
 let loadedPlaylists = {};
-let navigationState = 'channels'; // 'channels' | 'mainCategories' | 'subCategories'
+let navigationState = 'channels';
 
-// 👇 Просмотренные: Таймер просмотра
+// 👇 Просмотренные: Новые переменные для отслеживания реального времени просмотра
 let watchTimer = null;
+let watchedSeconds = 0;
+let isWatching = false;
 
 // Структура плейлистов — ТОЛЬКО РЕАЛЬНЫЕ ССЫЛКИ
 const categoryTree = {
@@ -571,11 +573,10 @@ function addToBlacklist(url) {
 
 // Открытие полноэкранного плеера
 function openFullScreenPlayer(name, url, group, logo) {
-    // 👇 Просмотренные: Сброс предыдущего таймера
-    if (watchTimer) {
-        clearTimeout(watchTimer);
-        watchTimer = null;
-    }
+    // 👇 Просмотренные: Сброс предыдущего состояния
+    if (watchTimer) clearInterval(watchTimer);
+    watchedSeconds = 0;
+    isWatching = false;
 
     playerModal.style.display = 'flex';
     videoPlayerElement.src = '';
@@ -593,6 +594,51 @@ function openFullScreenPlayer(name, url, group, logo) {
         }
     }, 30000);
 
+    // 👇 Просмотренные: Функция для добавления в просмотренные
+    const tryAddToWatched = () => {
+        if (watchedSeconds >= 60) {
+            addToWatched(name, url, group, logo);
+            console.log(`✅ Канал "${name}" добавлен в "Просмотренные" (просмотрено ${watchedSeconds} сек)`);
+            // Останавливаем таймер после добавления
+            if (watchTimer) {
+                clearInterval(watchTimer);
+                watchTimer = null;
+            }
+        }
+    };
+
+    // 👇 Просмотренные: Запуск отслеживания времени просмотра
+    const startWatchingTimer = () => {
+        if (isWatching) return; // Уже запущен
+        isWatching = true;
+        console.log("▶️ Начат отсчёт просмотра");
+
+        watchTimer = setInterval(() => {
+            watchedSeconds++;
+            console.log(`⏳ Просмотрено: ${watchedSeconds} сек`);
+
+            if (watchedSeconds >= 60) {
+                tryAddToWatched();
+            }
+        }, 1000);
+    };
+
+    // 👇 Просмотренные: Остановка таймера
+    const stopWatchingTimer = () => {
+        if (!isWatching) return;
+        isWatching = false;
+        console.log(`⏹️ Остановлен отсчёт на ${watchedSeconds} сек`);
+        if (watchTimer) {
+            clearInterval(watchTimer);
+            watchTimer = null;
+        }
+    };
+
+    // 👇 Просмотренные: Обработчики событий видео
+    videoPlayerElement.addEventListener('play', startWatchingTimer);
+    videoPlayerElement.addEventListener('pause', stopWatchingTimer);
+    videoPlayerElement.addEventListener('ended', stopWatchingTimer);
+
     if (Hls.isSupported()) {
         const hls = new Hls();
         hls.loadSource(url);
@@ -601,20 +647,18 @@ function openFullScreenPlayer(name, url, group, logo) {
         hls.on(Hls.Events.MANIFEST_PARSED, () => {
             clearTimeout(timeoutId);
             manifestLoaded = true;
-            videoPlayerElement.play().catch(e => console.log("Autoplay:", e));
+            videoPlayerElement.play().catch(e => {
+                console.log("Autoplay blocked:", e);
+                // 👇 Просмотренные: Если autoplay заблокирован — ждём ручного play
+                showToast("Нажмите на видео для воспроизведения");
+            });
             setTimeout(() => requestNativeFullscreen(), 1000);
-
-            // 👇 Просмотренные: Запуск таймера на 60 секунд
-            watchTimer = setTimeout(() => {
-                addToWatched(name, url, group, logo);
-                console.log(`Канал "${name}" добавлен в "Просмотренные"`);
-            }, 60000); // 60 секунд
         });
         
         hls.on(Hls.Events.ERROR, (event, data) => {
             if (data.fatal) {
                 clearTimeout(timeoutId);
-                if (watchTimer) clearTimeout(watchTimer);
+                stopWatchingTimer();
                 showToast('Канал недоступен');
                 addToBlacklist(url);
                 playerModal.style.display = 'none';
@@ -625,18 +669,15 @@ function openFullScreenPlayer(name, url, group, logo) {
         videoPlayerElement.addEventListener('loadedmetadata', () => {
             clearTimeout(timeoutId);
             manifestLoaded = true;
-            videoPlayerElement.play().catch(e => console.log("Autoplay:", e));
+            videoPlayerElement.play().catch(e => {
+                console.log("Autoplay blocked:", e);
+                showToast("Нажмите на видео для воспроизведения");
+            });
             setTimeout(() => requestNativeFullscreen(), 1000);
-
-            // 👇 Просмотренные: Запуск таймера на 60 секунд
-            watchTimer = setTimeout(() => {
-                addToWatched(name, url, group, logo);
-                console.log(`Канал "${name}" добавлен в "Просмотренные"`);
-            }, 60000);
         });
         videoPlayerElement.addEventListener('error', () => {
             clearTimeout(timeoutId);
-            if (watchTimer) clearTimeout(watchTimer);
+            stopWatchingTimer();
             showToast('Канал недоступен');
             addToBlacklist(url);
             playerModal.style.display = 'none';
@@ -646,6 +687,17 @@ function openFullScreenPlayer(name, url, group, logo) {
         showToast('Формат не поддерживается');
         playerModal.style.display = 'none';
     }
+
+    // 👇 Просмотренные: Очистка при закрытии
+    const originalCloseModalClick = closeModal.onclick;
+    closeModal.onclick = function() {
+        stopWatchingTimer();
+        tryAddToWatched(); // На случай, если уже набралось 60+ сек
+        videoPlayerElement.removeEventListener('play', startWatchingTimer);
+        videoPlayerElement.removeEventListener('pause', stopWatchingTimer);
+        videoPlayerElement.removeEventListener('ended', stopWatchingTimer);
+        originalCloseModalClick.call(this);
+    };
 }
 
 // Fullscreen API

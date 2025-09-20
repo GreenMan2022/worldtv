@@ -9,7 +9,7 @@ const initialLoader = document.getElementById('initialLoader');
 const toastContainer = document.getElementById('toastContainer');
 
 // Глобальные переменные
-let currentMainCategory = 'Категории';
+let currentMainCategory = 'Просмотренные';
 let currentSubcategory = '';
 let currentMainCategoryIndex = 0;
 let currentSubCategoryIndex = 0;
@@ -18,10 +18,15 @@ let currentMiniPlayer = null;
 let miniPlayers = new Map();
 let focusTimer = null;
 let loadedPlaylists = {};
-let navigationState = 'channels'; // 'channels' | 'mainCategories' | 'subCategories'
+let navigationState = 'channels';
 
-// Структура плейлистов — ТОЛЬКО РЕАЛЬНЫЕ ССЫЛКИ
+// 👇 Просмотренные: Новые переменные
+let currentWatchedChannel = null; // { name, url, group, logo }
+let watchStartTime = null;        // timestamp открытия плеера
+
+// Структура плейлистов
 const categoryTree = {
+  "Просмотренные": {},
   "Категории": {
     "Новости": "https://iptv-org.github.io/iptv/categories/news.m3u",
     "Спорт": "https://iptv-org.github.io/iptv/categories/sports.m3u",
@@ -78,6 +83,25 @@ closeModal.addEventListener('click', function() {
     playerModal.style.display = 'none';
     videoPlayerElement.pause();
     videoPlayerElement.src = '';
+
+    // 👇 Просмотренные: Проверка времени при закрытии
+    if (currentWatchedChannel && watchStartTime) {
+        const watchedSeconds = Math.floor((Date.now() - watchStartTime) / 1000);
+        console.log(`📺 Просмотрено: ${watchedSeconds} секунд`);
+
+        if (watchedSeconds >= 60) {
+            addToWatched(
+                currentWatchedChannel.name,
+                currentWatchedChannel.url,
+                currentWatchedChannel.group,
+                currentWatchedChannel.logo
+            );
+        }
+
+        // Сброс
+        currentWatchedChannel = null;
+        watchStartTime = null;
+    }
 });
 
 // Показать уведомление
@@ -92,6 +116,27 @@ function showToast(message) {
     }, 3000);
 }
 
+// 👇 Просмотренные: Добавление в localStorage
+function addToWatched(name, url, group, logo) {
+    let watched = JSON.parse(localStorage.getItem('watchedChannels') || '[]');
+    
+    // Проверка дубликатов
+    if (watched.some(item => item.url === url)) {
+        console.log(`ℹ️ Канал "${name}" уже в "Просмотренные"`);
+        return;
+    }
+
+    // Добавляем
+    watched.push({ name, url, group, logo });
+    localStorage.setItem('watchedChannels', JSON.stringify(watched));
+    console.log(`✅ Канал "${name}" добавлен в "Просмотренные"`);
+
+    // Если сейчас открыта категория "Просмотренные" — обновляем
+    if (currentMainCategory === 'Просмотренные') {
+        loadAndRenderChannels('Просмотренные', '');
+    }
+}
+
 // Инициализация приложения
 function initApp() {
     const safetyTimeout = setTimeout(() => {
@@ -100,10 +145,7 @@ function initApp() {
     }, 10000);
 
     try {
-        currentMainCategory = 'Категории';
-        const firstSub = Object.keys(categoryTree['Категории'])[0];
-        currentSubcategory = firstSub || '';
-        
+        currentMainCategory = 'Просмотренные';
         renderMainCategories();
         renderSubCategories();
         loadAndRenderChannels(currentMainCategory, currentSubcategory);
@@ -125,7 +167,6 @@ function initApp() {
 // Отображение главных категорий
 function renderMainCategories() {
     mainCategoriesPanel.innerHTML = '';
-    
     const mainCategories = Object.keys(categoryTree);
     
     mainCategories.forEach((cat, index) => {
@@ -137,17 +178,11 @@ function renderMainCategories() {
             currentMainCategoryIndex = index;
         }
         
-        btn.addEventListener('click', () => {
-            selectMainCategory(cat, index);
-        });
-        
-        // Обработка Enter и Пробела
+        btn.addEventListener('click', () => selectMainCategory(cat, index));
         btn.addEventListener('keydown', function(e) {
-            if (e.key === 'ArrowLeft' || e.key === 'ArrowRight') {
+            if (e.key === 'Enter' || e.key === ' ') {
                 e.preventDefault();
-            } else if (e.key === 'Enter' || e.key === ' ') {
-                e.preventDefault();
-                this.click(); // Явно вызываем click
+                this.click();
             }
         });
         
@@ -161,7 +196,6 @@ function renderSubCategories() {
     subCategoriesPanel.style.display = 'none';
     
     if (!categoryTree[currentMainCategory]) return;
-    
     const subcategories = Object.keys(categoryTree[currentMainCategory]);
     
     subcategories.forEach((subcat, index) => {
@@ -173,17 +207,11 @@ function renderSubCategories() {
             currentSubCategoryIndex = index;
         }
         
-        btn.addEventListener('click', () => {
-            selectSubcategory(subcat, index);
-        });
-        
-        // Обработка Enter и Пробела
+        btn.addEventListener('click', () => selectSubcategory(subcat, index));
         btn.addEventListener('keydown', function(e) {
-            if (e.key === 'ArrowLeft' || e.key === 'ArrowRight') {
+            if (e.key === 'Enter' || e.key === ' ') {
                 e.preventDefault();
-            } else if (e.key === 'Enter' || e.key === ' ') {
-                e.preventDefault();
-                this.click(); // Явно вызываем click
+                this.click();
             }
         });
         
@@ -204,12 +232,9 @@ function selectMainCategory(categoryName, index) {
     currentSubCategoryIndex = 0;
     renderSubCategories();
     
-    // Фокус на кнопку
     setTimeout(() => {
         const buttons = mainCategoriesPanel.querySelectorAll('.category-btn');
-        if (buttons[index]) {
-            buttons[index].focus();
-        }
+        if (buttons[index]) buttons[index].focus();
     }, 100);
 }
 
@@ -219,7 +244,6 @@ function selectSubcategory(subcategoryName, index) {
     currentSubCategoryIndex = index;
     loadAndRenderChannels(currentMainCategory, currentSubcategory);
     
-    // Фокус на канал
     setTimeout(() => {
         const firstChannel = document.querySelector('.channel-card');
         if (firstChannel) firstChannel.focus();
@@ -230,11 +254,8 @@ function selectSubcategory(subcategoryName, index) {
 function updateMainCategoryActive() {
     const buttons = mainCategoriesPanel.querySelectorAll('.category-btn');
     buttons.forEach((btn, i) => {
-        if (i === currentMainCategoryIndex) {
-            btn.classList.add('active');
-        } else {
-            btn.classList.remove('active');
-        }
+        if (i === currentMainCategoryIndex) btn.classList.add('active');
+        else btn.classList.remove('active');
     });
 }
 
@@ -242,16 +263,21 @@ function updateMainCategoryActive() {
 function updateSubCategoryActive() {
     const buttons = subCategoriesPanel.querySelectorAll('.subcategory-btn');
     buttons.forEach((btn, i) => {
-        if (i === currentSubCategoryIndex) {
-            btn.classList.add('active');
-        } else {
-            btn.classList.remove('active');
-        }
+        if (i === currentSubCategoryIndex) btn.classList.add('active');
+        else btn.classList.remove('active');
     });
 }
 
 // Загрузка и отображение каналов
 async function loadAndRenderChannels(mainCategory, subcategory) {
+    // 👇 Просмотренные: Обработка
+    if (mainCategory === 'Просмотренные') {
+        initialLoader.style.display = 'none';
+        const watched = JSON.parse(localStorage.getItem('watchedChannels') || '[]');
+        renderChannels(watched);
+        return;
+    }
+
     if (!categoryTree[mainCategory] || !categoryTree[mainCategory][subcategory]) {
         renderChannels([]);
         return;
@@ -261,19 +287,10 @@ async function loadAndRenderChannels(mainCategory, subcategory) {
     initialLoader.style.display = 'flex';
     
     try {
-        let channels = [];
-        
-        if (loadedPlaylists[url]) {
-            channels = loadedPlaylists[url];
-        } else {
-            const content = await fetchM3U(url);
-            channels = parseM3UContent(content, subcategory);
-            loadedPlaylists[url] = channels;
-        }
-        
+        let channels = loadedPlaylists[url] || await fetchAndCachePlaylist(url, subcategory);
         renderChannels(channels);
     } catch (error) {
-        console.error("Ошибка загрузки плейлиста:", error);
+        console.error("Ошибка загрузки:", error);
         showToast("Ошибка загрузки каналов");
         renderChannels([]);
     } finally {
@@ -285,7 +302,13 @@ async function loadAndRenderChannels(mainCategory, subcategory) {
     }
 }
 
-// Остальные функции без изменений
+// Загрузка и кэширование плейлиста
+async function fetchAndCachePlaylist(url, group) {
+    const content = await fetchM3U(url);
+    const channels = parseM3UContent(content, group);
+    loadedPlaylists[url] = channels;
+    return channels;
+}
 
 // Загрузка M3U
 async function fetchM3U(url) {
@@ -311,12 +334,7 @@ function parseM3UContent(content, assignedCategory) {
                 const logoMatch = infoLine.match(/tvg-logo="([^"]*)"/);
                 const logo = logoMatch ? logoMatch[1] : '';
                 
-                channels.push({
-                    name,
-                    url: urlLine.trim(),
-                    group: assignedCategory,
-                    logo
-                });
+                channels.push({ name, url: urlLine.trim(), group: assignedCategory, logo });
             }
         }
     }
@@ -343,7 +361,6 @@ function renderChannels(channelsToRender) {
     
     channelsToRender.forEach((channel, index) => {
         const groupIcon = getGroupIcon(channel.group);
-        
         const channelCard = document.createElement('div');
         channelCard.className = 'channel-card';
         channelCard.setAttribute('tabindex', '0');
@@ -369,13 +386,10 @@ function renderChannels(channelsToRender) {
         const miniPlayer = createMiniPlayer(channel.url);
         mediaContainer.appendChild(miniPlayer);
         
-        // Информация о канале
+        // Информация
         const infoContainer = document.createElement('div');
         infoContainer.className = 'channel-info';
-        infoContainer.innerHTML = `
-            <h3>${channel.name}</h3>
-            <p>${channel.group}</p>
-        `;
+        infoContainer.innerHTML = `<h3>${channel.name}</h3><p>${channel.group}</p>`;
         
         channelCard.appendChild(mediaContainer);
         channelCard.appendChild(infoContainer);
@@ -383,7 +397,6 @@ function renderChannels(channelsToRender) {
         // Фокус
         channelCard.addEventListener('focus', function() {
             currentChannelIndex = parseInt(this.dataset.index);
-            
             if (focusTimer) clearTimeout(focusTimer);
             
             if (currentMiniPlayer && currentMiniPlayer !== miniPlayer) {
@@ -410,11 +423,7 @@ function renderChannels(channelsToRender) {
         
         // Блюр
         channelCard.addEventListener('blur', function() {
-            if (focusTimer) {
-                clearTimeout(focusTimer);
-                focusTimer = null;
-            }
-            
+            if (focusTimer) clearTimeout(focusTimer);
             setTimeout(() => {
                 if (!channelCard.contains(document.activeElement)) {
                     miniPlayer.style.display = 'none';
@@ -425,12 +434,12 @@ function renderChannels(channelsToRender) {
             }, 100);
         });
         
-        // Клик и Enter
-        channelCard.addEventListener('click', () => openFullScreenPlayer(channel.name, channel.url));
+        // Открытие плеера
+        channelCard.addEventListener('click', () => openFullScreenPlayer(channel.name, channel.url, channel.group, channel.logo));
         channelCard.addEventListener('keydown', (e) => {
             if (e.key === 'Enter') {
                 e.preventDefault();
-                openFullScreenPlayer(channel.name, channel.url);
+                openFullScreenPlayer(channel.name, channel.url, channel.group, channel.logo);
             }
         });
         
@@ -438,10 +447,9 @@ function renderChannels(channelsToRender) {
     });
 }
 
-// Создание контейнера мини-плеера
+// Создание мини-плеера
 function createMiniPlayer(url) {
     if (miniPlayers.has(url)) return miniPlayers.get(url);
-
     const container = document.createElement('div');
     container.className = 'mini-player';
     container.dataset.url = url;
@@ -490,13 +498,10 @@ function initializeMiniPlayer(video, url, miniPlayer, icon) {
             if (data.fatal && data.type === Hls.ErrorTypes.NETWORK_ERROR) {
                 networkErrorOccurred = true;
                 clearTimeout(timeoutId);
-                if (data.details === 'manifestLoadError' || data.details === 'manifestLoadTimeOut' ||
-                    (data.response && (data.response.code >= 400 || data.response.code === 0))) {
-                    handleStreamError(url, miniPlayer);
-                    addToBlacklist(url);
-                    miniPlayer.style.display = 'none';
-                    icon.style.display = 'block';
-                }
+                handleStreamError(url, miniPlayer);
+                addToBlacklist(url);
+                miniPlayer.style.display = 'none';
+                icon.style.display = 'block';
             }
         });
     } else if (video.canPlayType('application/vnd.apple.mpegurl')) {
@@ -508,21 +513,18 @@ function initializeMiniPlayer(video, url, miniPlayer, icon) {
         });
         video.addEventListener('error', () => {
             clearTimeout(timeoutId);
-            const error = video.error;
-            if (error && (error.code === error.MEDIA_ERR_SRC_NOT_SUPPORTED || error.code === error.MEDIA_ERR_NETWORK)) {
-                handleStreamError(url, miniPlayer);
-                addToBlacklist(url);
-                miniPlayer.style.display = 'none';
-                icon.style.display = 'block';
-            }
+            handleStreamError(url, miniPlayer);
+            addToBlacklist(url);
+            miniPlayer.style.display = 'none';
+            icon.style.display = 'block';
         });
     }
 }
 
-// Обработка ошибки
+// Обработка ошибки потока
 function handleStreamError(url, container) {
     showToast('Канал недоступен');
-    console.error("Ошибка:", url);
+    console.error("Ошибка потока:", url);
     const icon = container.parentElement.querySelector('i');
     if (icon) icon.style.display = 'block';
     container.style.display = 'none';
@@ -537,8 +539,12 @@ function addToBlacklist(url) {
     }
 }
 
-// Открытие полноэкранного плеера
-function openFullScreenPlayer(name, url) {
+// 👇 Просмотренные: Открытие полноэкранного плеера
+function openFullScreenPlayer(name, url, group, logo) {
+    // 👇 Запоминаем канал и время открытия
+    currentWatchedChannel = { name, url, group, logo };
+    watchStartTime = Date.now();
+
     playerModal.style.display = 'flex';
     videoPlayerElement.src = '';
     videoPlayerElement.load();
@@ -563,7 +569,10 @@ function openFullScreenPlayer(name, url) {
         hls.on(Hls.Events.MANIFEST_PARSED, () => {
             clearTimeout(timeoutId);
             manifestLoaded = true;
-            videoPlayerElement.play().catch(e => console.log("Autoplay:", e));
+            videoPlayerElement.play().catch(e => {
+                console.log("Autoplay blocked:", e);
+                showToast("Нажмите на видео для воспроизведения");
+            });
             setTimeout(() => requestNativeFullscreen(), 1000);
         });
         
@@ -580,7 +589,10 @@ function openFullScreenPlayer(name, url) {
         videoPlayerElement.addEventListener('loadedmetadata', () => {
             clearTimeout(timeoutId);
             manifestLoaded = true;
-            videoPlayerElement.play().catch(e => console.log("Autoplay:", e));
+            videoPlayerElement.play().catch(e => {
+                console.log("Autoplay blocked:", e);
+                showToast("Нажмите на видео для воспроизведения");
+            });
             setTimeout(() => requestNativeFullscreen(), 1000);
         });
         videoPlayerElement.addEventListener('error', () => {
@@ -622,47 +634,28 @@ function getGroupIcon(group) {
 // Перемещение фокуса
 function moveFocus(direction) {
     if (navigationState === 'channels') {
-        const channelCards = document.querySelectorAll('.channel-card');
-        if (channelCards.length === 0) return;
-        
-        const currentIndex = Array.from(channelCards).indexOf(document.activeElement);
-        let nextIndex = currentIndex;
-        
+        const cards = document.querySelectorAll('.channel-card');
+        if (cards.length === 0) return;
+        const currentIndex = Array.from(cards).indexOf(document.activeElement);
         const cols = Math.floor(channelsContainer.offsetWidth / 280) || 1;
-        
+        let nextIndex = currentIndex;
+
         switch(direction) {
-            case 'right':
-                nextIndex = (currentIndex + 1) % channelCards.length;
-                break;
-            case 'left':
-                nextIndex = (currentIndex - 1 + channelCards.length) % channelCards.length;
-                break;
-            case 'down':
-                nextIndex = (currentIndex + cols) % channelCards.length;
-                if (nextIndex >= channelCards.length) nextIndex = channelCards.length - 1;
-                break;
-            case 'up':
-                nextIndex = (currentIndex - cols + channelCards.length) % channelCards.length;
-                break;
+            case 'right': nextIndex = (currentIndex + 1) % cards.length; break;
+            case 'left': nextIndex = (currentIndex - 1 + cards.length) % cards.length; break;
+            case 'down': nextIndex = (currentIndex + cols) % cards.length; break;
+            case 'up': nextIndex = (currentIndex - cols + cards.length) % cards.length; break;
         }
-        
-        if (nextIndex >= 0 && nextIndex < channelCards.length) {
-            channelCards[nextIndex].focus();
+
+        if (nextIndex >= 0 && nextIndex < cards.length) {
+            cards[nextIndex].focus();
         }
     } else if (navigationState === 'mainCategories') {
         const buttons = mainCategoriesPanel.querySelectorAll('.category-btn');
         if (buttons.length === 0) return;
-        
-        let nextIndex;
-        
-        if (direction === 'right') {
-            nextIndex = (currentMainCategoryIndex + 1) % buttons.length;
-        } else if (direction === 'left') {
-            nextIndex = (currentMainCategoryIndex - 1 + buttons.length) % buttons.length;
-        } else {
-            return;
-        }
-        
+        let nextIndex = direction === 'right'
+            ? (currentMainCategoryIndex + 1) % buttons.length
+            : (currentMainCategoryIndex - 1 + buttons.length) % buttons.length;
         currentMainCategoryIndex = nextIndex;
         currentMainCategory = buttons[nextIndex].textContent;
         updateMainCategoryActive();
@@ -670,17 +663,9 @@ function moveFocus(direction) {
     } else if (navigationState === 'subCategories') {
         const buttons = subCategoriesPanel.querySelectorAll('.subcategory-btn');
         if (buttons.length === 0) return;
-        
-        let nextIndex;
-        
-        if (direction === 'right') {
-            nextIndex = (currentSubCategoryIndex + 1) % buttons.length;
-        } else if (direction === 'left') {
-            nextIndex = (currentSubCategoryIndex - 1 + buttons.length) % buttons.length;
-        } else {
-            return;
-        }
-        
+        let nextIndex = direction === 'right'
+            ? (currentSubCategoryIndex + 1) % buttons.length
+            : (currentSubCategoryIndex - 1 + buttons.length) % buttons.length;
         currentSubCategoryIndex = nextIndex;
         currentSubcategory = buttons[nextIndex].textContent;
         updateSubCategoryActive();
@@ -688,7 +673,7 @@ function moveFocus(direction) {
     }
 }
 
-// Основной обработчик клавиш
+// Обработчик клавиш
 document.addEventListener('keydown', function(e) {
     if (playerModal.style.display === 'flex') {
         if (e.key === 'Escape') closeModal.click();
@@ -699,46 +684,35 @@ document.addEventListener('keydown', function(e) {
         e.preventDefault();
     }
 
-    if (e.key === 'ArrowLeft' || e.key === 'ArrowRight') {
-        moveFocus(e.key === 'ArrowRight' ? 'right' : 'left');
-        return;
-    }
-
     switch(e.key) {
+        case 'ArrowLeft':
+        case 'ArrowRight':
+            moveFocus(e.key === 'ArrowRight' ? 'right' : 'left');
+            break;
         case 'ArrowUp':
             navigationState = 'mainCategories';
             mainCategoriesPanel.style.display = 'flex';
             subCategoriesPanel.style.display = 'none';
-            
             setTimeout(() => {
                 const buttons = mainCategoriesPanel.querySelectorAll('.category-btn');
                 if (buttons[currentMainCategoryIndex]) {
                     buttons[currentMainCategoryIndex].focus();
-                } else if (buttons.length > 0) {
-                    currentMainCategoryIndex = 0;
-                    buttons[0].focus();
-                    currentMainCategory = buttons[0].textContent;
-                    updateMainCategoryActive();
                 }
             }, 100);
             break;
-            
         case 'ArrowDown':
             navigationState = 'channels';
             mainCategoriesPanel.style.display = 'flex';
             subCategoriesPanel.style.display = 'none';
-            
             setTimeout(() => {
                 const firstChannel = document.querySelector('.channel-card');
                 if (firstChannel) firstChannel.focus();
             }, 100);
             break;
-            
         case 'Enter':
             if (navigationState === 'mainCategories') {
                 navigationState = 'subCategories';
                 subCategoriesPanel.style.display = 'flex';
-                
                 setTimeout(() => {
                     const buttons = subCategoriesPanel.querySelectorAll('.subcategory-btn');
                     if (buttons.length > 0) {
@@ -751,25 +725,20 @@ document.addEventListener('keydown', function(e) {
             } else if (navigationState === 'subCategories') {
                 const buttons = subCategoriesPanel.querySelectorAll('.subcategory-btn');
                 if (buttons[currentSubCategoryIndex]) {
-                    // Явно вызываем обработчик
                     selectSubcategory(buttons[currentSubCategoryIndex].textContent, currentSubCategoryIndex);
-                } else if (buttons.length > 0) {
-                    selectSubcategory(buttons[0].textContent, 0);
                 }
-            } else if (navigationState === 'channels') {
-                if (document.activeElement.classList.contains('channel-card')) {
-                    const card = document.activeElement;
-                    const index = parseInt(card.dataset.index);
-                    const url = categoryTree[currentMainCategory][currentSubcategory];
-                    const channels = loadedPlaylists[url] || [];
-                    if (index >= 0 && index < channels.length) {
-                        const channel = channels[index];
-                        openFullScreenPlayer(channel.name, channel.url);
-                    }
+            } else if (navigationState === 'channels' && document.activeElement.classList.contains('channel-card')) {
+                const card = document.activeElement;
+                const index = parseInt(card.dataset.index);
+                const list = currentMainCategory === 'Просмотренные'
+                    ? JSON.parse(localStorage.getItem('watchedChannels') || '[]')
+                    : loadedPlaylists[categoryTree[currentMainCategory][currentSubcategory]] || [];
+                if (index >= 0 && index < list.length) {
+                    const channel = list[index];
+                    openFullScreenPlayer(channel.name, channel.url, channel.group, channel.logo);
                 }
             }
             break;
-            
         case 'Escape':
             if (navigationState === 'subCategories') {
                 navigationState = 'mainCategories';

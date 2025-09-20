@@ -27,9 +27,7 @@ let watchStartTime = null;        // timestamp открытия плеера
 // Структура плейлистов
 const categoryTree = {
   "Просмотренные": {},
-  "Свой плейлист": {
-    "Загрузить по ссылке": "#" // ← подменю для загрузки
-  },
+  "Свой плейлист": {}, // ← без подкатегорий — рендерим кастомный UI в подменю
   "Категории": {
     "Новости": "https://iptv-org.github.io/iptv/categories/news.m3u  ",
     "Спорт": "https://iptv-org.github.io/iptv/categories/sports.m3u  ",
@@ -164,11 +162,11 @@ async function loadPlaylistFromURL() {
     const url = urlInput.value.trim();
     if (!url) {
         showToast('Введите ссылку');
+        urlInput.focus();
         return;
     }
 
     initialLoader.style.display = 'flex';
-    channelsContainer.innerHTML = ''; // Очищаем контейнер
 
     try {
         const content = await fetchM3U(url);
@@ -182,50 +180,85 @@ async function loadPlaylistFromURL() {
         localStorage.setItem('customPlaylist', JSON.stringify(channels));
         showToast(`✅ Загружено ${channels.length} каналов`);
 
-        // 👇 Обновляем состояние и рендерим
-        currentMainCategory = 'Свой плейлист';
-        currentSubcategory = ''; // Нет активной подкатегории, кроме "Загрузить по ссылке"
-
+        // 👇 Рендерим каналы
         renderChannels(channels);
 
         // Фокус на первом канале
         setTimeout(() => {
             const firstChannel = document.querySelector('.channel-card');
             if (firstChannel) firstChannel.focus();
+            navigationState = 'channels';
         }, 100);
 
     } catch (err) {
         console.error('Ошибка загрузки по URL:', err);
         showToast('❌ Не удалось загрузить плейлист');
-        showCustomPlaylistUploadUI(); // Возвращаем интерфейс загрузки
     } finally {
         initialLoader.style.display = 'none';
     }
 }
 
-// 👇 Показать интерфейс загрузки своего плейлиста ПО ССЫЛКЕ
-function showCustomPlaylistUploadUI() {
-    channelsContainer.innerHTML = `
-        <div style="padding: 40px; text-align: center; color: #aaa; width: 100%;">
-            <h3>Загрузите плейлист по ссылке</h3>
-            <p>Поддерживается формат M3U</p>
-            
-            <div style="margin: 30px 0; display: flex; flex-direction: column; gap: 15px; align-items: center; width: 100%; max-width: 400px;">
-                <input type="text" id="playlistURL" 
-                       placeholder="https://example.com/playlist.m3u" 
-                       style="width: 100%; padding: 12px; border-radius: 8px; border: 1px solid #444; background: #222; color: white; font-size: 14px;">
-                <button onclick="loadPlaylistFromURL()" 
-                        style="width: 100%; padding: 12px; background: linear-gradient(90deg, #ff375f, #ff5e41); color: white; border: none; border-radius: 8px; cursor: pointer; font-weight: 500;">
-                    Загрузить плейлист
-                </button>
-            </div>
-        </div>
-    `;
+// 👇 Отображаем кастомное подменю для "Свой плейлист"
+function renderCustomPlaylistSubmenu() {
+    subCategoriesPanel.innerHTML = '';
+    subCategoriesPanel.style.display = 'flex';
 
-    // Фокус на поле ввода
+    // Создаём контейнер для инпута и кнопки
+    const wrapper = document.createElement('div');
+    wrapper.style.display = 'flex';
+    wrapper.style.gap = '10px';
+    wrapper.style.alignItems = 'center';
+    wrapper.style.padding = '0 10px';
+
+    // Поле ввода
+    const input = document.createElement('input');
+    input.id = 'playlistURL';
+    input.type = 'text';
+    input.placeholder = 'https://example.com/playlist.m3u';
+    input.style.padding = '8px 12px';
+    input.style.borderRadius = '6px';
+    input.style.border = '1px solid #444';
+    input.style.background = '#222';
+    input.style.color = 'white';
+    input.style.fontSize = '13px';
+    input.style.outline = 'none';
+    input.setAttribute('tabindex', '0');
+
+    // Кнопка
+    const button = document.createElement('button');
+    button.textContent = 'Загрузить';
+    button.style.padding = '8px 16px';
+    button.style.borderRadius = '6px';
+    button.style.border = 'none';
+    button.style.background = 'linear-gradient(90deg, #ff375f, #ff5e41)';
+    button.style.color = 'white';
+    button.style.cursor = 'pointer';
+    button.style.fontSize = '13px';
+    button.setAttribute('tabindex', '0');
+
+    button.addEventListener('click', loadPlaylistFromURL);
+    button.addEventListener('keydown', function(e) {
+        if (e.key === 'Enter' || e.key === ' ') {
+            e.preventDefault();
+            this.click();
+        }
+    });
+
+    input.addEventListener('keydown', function(e) {
+        if (e.key === 'Enter') {
+            e.preventDefault();
+            loadPlaylistFromURL();
+        }
+    });
+
+    wrapper.appendChild(input);
+    wrapper.appendChild(button);
+    subCategoriesPanel.appendChild(wrapper);
+
+    // Фокус на инпуте
     setTimeout(() => {
-        const input = document.getElementById('playlistURL');
-        if (input) input.focus();
+        input.focus();
+        navigationState = 'customInput';
     }, 100);
 }
 
@@ -282,8 +315,13 @@ function renderMainCategories() {
     });
 }
 
-// Отображение подкатегорий
+// Отображение подкатегорий (или кастомного UI)
 function renderSubCategories() {
+    if (currentMainCategory === 'Свой плейлист') {
+        renderCustomPlaylistSubmenu();
+        return;
+    }
+
     subCategoriesPanel.innerHTML = '';
     subCategoriesPanel.style.display = 'none';
     
@@ -319,13 +357,16 @@ function renderSubCategories() {
 function selectMainCategory(categoryName, index) {
     currentMainCategory = categoryName;
     currentMainCategoryIndex = index;
-    const firstSub = categoryTree[categoryName] ? Object.keys(categoryTree[categoryName])[0] : '';
-    currentSubcategory = firstSub || '';
+    currentSubcategory = '';
     currentSubCategoryIndex = 0;
+
     renderSubCategories();
 
-    // 👇 Если категория без подкатегорий — сразу грузим
-    if (!categoryTree[categoryName] || Object.keys(categoryTree[categoryName]).length === 0) {
+    if (categoryName === 'Свой плейлист') {
+        // Загружаем сохранённый плейлист, если есть
+        loadAndRenderChannels('Свой плейлист', '');
+        navigationState = 'customInput'; // Фокус будет установлен в renderCustomPlaylistSubmenu
+    } else if (!categoryTree[categoryName] || Object.keys(categoryTree[categoryName]).length === 0) {
         loadAndRenderChannels(currentMainCategory, currentSubcategory);
     }
 
@@ -335,23 +376,16 @@ function selectMainCategory(categoryName, index) {
     }, 100);
 }
 
-// Выбор подкатегории
+// Выбор подкатегории (для остальных категорий)
 function selectSubcategory(subcategoryName, index) {
     currentSubcategory = subcategoryName;
     currentSubCategoryIndex = index;
-
-    // 👇 Если выбрана "Загрузить по ссылке" — показываем интерфейс загрузки, а не пытаемся загрузить каналы
-    if (currentMainCategory === 'Свой плейлист' && subcategoryName === 'Загрузить по ссылке') {
-        showCustomPlaylistUploadUI();
-        return;
-    }
-
-    // 👇 Для всех остальных — стандартная загрузка
     loadAndRenderChannels(currentMainCategory, currentSubcategory);
 
     setTimeout(() => {
         const firstChannel = document.querySelector('.channel-card');
         if (firstChannel) firstChannel.focus();
+        navigationState = 'channels';
     }, 100);
 }
 
@@ -399,7 +433,6 @@ async function loadAndRenderChannels(mainCategory, subcategory) {
     // 👇 Свой плейлист: загрузка из localStorage
     if (mainCategory === 'Свой плейлист') {
         initialLoader.style.display = 'none';
-        channelsContainer.innerHTML = '';
 
         let customPlaylist;
         try {
@@ -416,21 +449,14 @@ async function loadAndRenderChannels(mainCategory, subcategory) {
             localStorage.removeItem('customPlaylist');
         }
 
-        if (customPlaylist.length > 0) {
-            renderChannels(customPlaylist);
+        renderChannels(customPlaylist);
 
-            // Фокус на первом канале
-            setTimeout(() => {
-                const firstChannel = document.querySelector('.channel-card');
-                if (firstChannel) firstChannel.focus();
-            }, 100);
-        } else {
-            // 👇 Если плейлиста нет — показываем подсказку
+        if (customPlaylist.length === 0) {
             channelsContainer.innerHTML = `
                 <div style="color:#aaa; padding:60px 20px; text-align:center; font-size:16px;">
                     <i class="fas fa-list" style="font-size:48px; margin-bottom:20px;"></i><br>
                     Плейлист не загружен.<br>
-                    Перейдите в подменю и выберите «Загрузить по ссылке».
+                    Введите ссылку выше и нажмите “Загрузить”.
                 </div>`;
         }
 
@@ -510,10 +536,10 @@ function filterBlacklistedChannels(channelsList) {
 function renderChannels(channelsToRender) {
     channelsContainer.innerHTML = '';
     
-    if (channelsToRender.length === 0) {
+    if (channelsToRender.length === 0 && initialLoader.style.display === 'none') {
         channelsContainer.innerHTML = `
             <div style="color:#aaa; padding:40px; text-align:center">
-                ${initialLoader.style.display === 'none' ? 'Каналы не найдены' : 'Загрузка...'}
+                Каналы не найдены
             </div>`;
         return;
     }
@@ -803,13 +829,39 @@ function moveFocus(direction) {
             case 'right': nextIndex = (currentIndex + 1) % cards.length; break;
             case 'left': nextIndex = (currentIndex - 1 + cards.length) % cards.length; break;
             case 'down': nextIndex = (currentIndex + cols) % cards.length; break;
-            case 'up': nextIndex = (currentIndex - cols + cards.length) % cards.length; break;
+            case 'up': {
+                nextIndex = (currentIndex - cols + cards.length) % cards.length;
+                // 👇 Если выходим вверх из каналов — переходим в подменю
+                if (nextIndex >= currentIndex) { // обернулись
+                    if (currentMainCategory === 'Свой плейлист') {
+                        const input = document.getElementById('playlistURL');
+                        if (input) {
+                            input.focus();
+                            navigationState = 'customInput';
+                            return;
+                        }
+                    } else {
+                        navigationState = 'subCategories';
+                        subCategoriesPanel.style.display = 'flex';
+                        setTimeout(() => {
+                            const buttons = subCategoriesPanel.querySelectorAll('.subcategory-btn');
+                            if (buttons.length > 0) {
+                                buttons[0].focus();
+                                currentSubCategoryIndex = 0;
+                            }
+                        }, 100);
+                        return;
+                    }
+                }
+                break;
+            }
         }
 
         if (nextIndex >= 0 && nextIndex < cards.length) {
             cards[nextIndex].focus();
         }
-    } else if (navigationState === 'mainCategories') {
+    } 
+    else if (navigationState === 'mainCategories') {
         const buttons = mainCategoriesPanel.querySelectorAll('.category-btn');
         if (buttons.length === 0) return;
         let nextIndex = direction === 'right'
@@ -819,7 +871,8 @@ function moveFocus(direction) {
         currentMainCategory = buttons[nextIndex].textContent;
         updateMainCategoryActive();
         buttons[nextIndex].focus();
-    } else if (navigationState === 'subCategories') {
+    } 
+    else if (navigationState === 'subCategories') {
         const buttons = subCategoriesPanel.querySelectorAll('.subcategory-btn');
         if (buttons.length === 0) return;
         let nextIndex = direction === 'right'
@@ -829,6 +882,32 @@ function moveFocus(direction) {
         currentSubcategory = buttons[nextIndex].textContent;
         updateSubCategoryActive();
         buttons[nextIndex].focus();
+    }
+    else if (navigationState === 'customInput') {
+        const input = document.getElementById('playlistURL');
+        const button = subCategoriesPanel.querySelector('button');
+        if (!input || !button) return;
+
+        if (direction === 'right') {
+            button.focus();
+        } else if (direction === 'left') {
+            input.focus();
+        } else if (direction === 'down') {
+            const firstChannel = document.querySelector('.channel-card');
+            if (firstChannel) {
+                firstChannel.focus();
+                navigationState = 'channels';
+            }
+        } else if (direction === 'up') {
+            navigationState = 'mainCategories';
+            mainCategoriesPanel.style.display = 'flex';
+            setTimeout(() => {
+                const buttons = mainCategoriesPanel.querySelectorAll('.category-btn');
+                if (buttons[currentMainCategoryIndex]) {
+                    buttons[currentMainCategoryIndex].focus();
+                }
+            }, 100);
+        }
     }
 }
 
@@ -849,42 +928,94 @@ document.addEventListener('keydown', function(e) {
             moveFocus(e.key === 'ArrowRight' ? 'right' : 'left');
             break;
         case 'ArrowUp':
-            navigationState = 'mainCategories';
-            mainCategoriesPanel.style.display = 'flex';
-            subCategoriesPanel.style.display = 'none';
-            setTimeout(() => {
-                const buttons = mainCategoriesPanel.querySelectorAll('.category-btn');
-                if (buttons[currentMainCategoryIndex]) {
-                    buttons[currentMainCategoryIndex].focus();
+            if (navigationState === 'channels') {
+                if (currentMainCategory === 'Свой плейлист') {
+                    const input = document.getElementById('playlistURL');
+                    if (input) {
+                        input.focus();
+                        navigationState = 'customInput';
+                    }
+                } else {
+                    navigationState = 'subCategories';
+                    subCategoriesPanel.style.display = 'flex';
+                    setTimeout(() => {
+                        const buttons = subCategoriesPanel.querySelectorAll('.subcategory-btn');
+                        if (buttons.length > 0) {
+                            buttons[0].focus();
+                            currentSubCategoryIndex = 0;
+                        }
+                    }, 100);
                 }
-            }, 100);
+            } else if (navigationState === 'subCategories' || navigationState === 'customInput') {
+                navigationState = 'mainCategories';
+                mainCategoriesPanel.style.display = 'flex';
+                setTimeout(() => {
+                    const buttons = mainCategoriesPanel.querySelectorAll('.category-btn');
+                    if (buttons[currentMainCategoryIndex]) {
+                        buttons[currentMainCategoryIndex].focus();
+                    }
+                }, 100);
+            }
             break;
         case 'ArrowDown':
-            navigationState = 'channels';
-            mainCategoriesPanel.style.display = 'flex';
-            subCategoriesPanel.style.display = 'none';
-            setTimeout(() => {
-                const firstChannel = document.querySelector('.channel-card');
-                if (firstChannel) firstChannel.focus();
-            }, 100);
+            if (navigationState === 'mainCategories') {
+                if (currentMainCategory === 'Свой плейлист') {
+                    const input = document.getElementById('playlistURL');
+                    if (input) {
+                        input.focus();
+                        navigationState = 'customInput';
+                    }
+                } else {
+                    navigationState = 'subCategories';
+                    subCategoriesPanel.style.display = 'flex';
+                    setTimeout(() => {
+                        const buttons = subCategoriesPanel.querySelectorAll('.subcategory-btn');
+                        if (buttons.length > 0) {
+                            buttons[0].focus();
+                            currentSubCategoryIndex = 0;
+                        }
+                    }, 100);
+                }
+            } else if (navigationState === 'subCategories' || navigationState === 'customInput') {
+                navigationState = 'channels';
+                setTimeout(() => {
+                    const firstChannel = document.querySelector('.channel-card');
+                    if (firstChannel) firstChannel.focus();
+                }, 100);
+            }
             break;
         case 'Enter':
             if (navigationState === 'mainCategories') {
-                navigationState = 'subCategories';
-                subCategoriesPanel.style.display = 'flex';
-                setTimeout(() => {
-                    const buttons = subCategoriesPanel.querySelectorAll('.subcategory-btn');
-                    if (buttons.length > 0) {
-                        buttons[0].focus();
-                        currentSubCategoryIndex = 0;
-                        currentSubcategory = buttons[0].textContent;
-                        updateSubCategoryActive();
+                if (currentMainCategory === 'Свой плейлист') {
+                    const input = document.getElementById('playlistURL');
+                    if (input) {
+                        input.focus();
+                        navigationState = 'customInput';
                     }
-                }, 100);
+                } else {
+                    navigationState = 'subCategories';
+                    subCategoriesPanel.style.display = 'flex';
+                    setTimeout(() => {
+                        const buttons = subCategoriesPanel.querySelectorAll('.subcategory-btn');
+                        if (buttons.length > 0) {
+                            buttons[0].focus();
+                            currentSubCategoryIndex = 0;
+                            currentSubcategory = buttons[0].textContent;
+                            updateSubCategoryActive();
+                        }
+                    }, 100);
+                }
             } else if (navigationState === 'subCategories') {
                 const buttons = subCategoriesPanel.querySelectorAll('.subcategory-btn');
                 if (buttons[currentSubCategoryIndex]) {
                     selectSubcategory(buttons[currentSubCategoryIndex].textContent, currentSubCategoryIndex);
+                }
+            } else if (navigationState === 'customInput') {
+                const active = document.activeElement;
+                if (active.id === 'playlistURL') {
+                    loadPlaylistFromURL();
+                } else if (active.tagName === 'BUTTON') {
+                    active.click();
                 }
             } else if (navigationState === 'channels' && document.activeElement.classList.contains('channel-card')) {
                 const card = document.activeElement;
@@ -904,7 +1035,7 @@ document.addEventListener('keydown', function(e) {
             }
             break;
         case 'Escape':
-            if (navigationState === 'subCategories') {
+            if (navigationState === 'subCategories' || navigationState === 'customInput') {
                 navigationState = 'mainCategories';
                 setTimeout(() => {
                     const buttons = mainCategoriesPanel.querySelectorAll('.category-btn');

@@ -78,7 +78,7 @@ const translations = {
         turkish: "Турецкий",
         hindi: "Хинди",
         loading: "Загрузка...",
-        error: "Ошибка инициализации",
+        errorInit: "Ошибка инициализации",
         errorApp: "Ошибка приложения",
         errorLoad: "Ошибка загрузки каналов",
         channelNotFound: "Каналы не найдены",
@@ -145,7 +145,7 @@ const translations = {
         turkish: "Turkish",
         hindi: "Hindi",
         loading: "Loading...",
-        error: "ialization error",
+        errorInit: "Initialization error",
         errorApp: "Application error",
         errorLoad: "Failed to load channels",
         channelNotFound: "Channels not found",
@@ -165,16 +165,27 @@ const translations = {
     }
 };
 
-// Функция получения перевода
+// 👇 Безопасная функция перевода — принимает аргументы
 function t(key, ...args) {
-    let str = translations[currentLanguage][key] || key;
+    const dict = translations[currentLanguage] || translations['en'];
+    let str = dict[key];
+
+    // Если перевод не найден — fallback на английский или ключ
+    if (str === undefined) {
+        console.warn(`⚠️ Перевод "${key}" не найден для языка ${currentLanguage}`);
+        str = translations['en']?.[key] || key;
+    }
+
+    // Если это функция — вызываем с аргументами
     if (typeof str === 'function') {
         return str(...args);
     }
+
+    // Если строка — возвращаем как есть
     return str;
 }
 
-// 👇 Определение языка по IP
+// 👇 Определение языка по IP — с fallback и защитой от ошибок
 async function detectLanguageByIP() {
     // Если уже определено — не повторяем
     const savedLang = localStorage.getItem('userLanguage');
@@ -183,22 +194,49 @@ async function detectLanguageByIP() {
         return;
     }
 
+    let countryCode = null;
+
+    // Попробуем ipapi.co
     try {
-        showToast(t('determiningLocation'));
-        const response = await fetch('https://ipapi.co/json/');
-        const data = await response.json();
-        const countryCode = data.country_code;
-
-        // Если Россия — русский, иначе английский
-        currentLanguage = countryCode === 'RU' ? 'ru' : 'en';
-
-        // Сохраняем выбор
-        localStorage.setItem('userLanguage', currentLanguage);
-        console.log(`🌐 Определён язык: ${currentLanguage} (страна: ${countryCode})`);
+        const response = await fetch('https://ipapi.co/json/', {
+            method: 'GET',
+            mode: 'cors'
+        });
+        if (response.ok) {
+            const data = await response.json();
+            countryCode = data.country_code;
+            console.log(`🌍 Определена страна: ${countryCode}`);
+        }
     } catch (e) {
-        console.error('❌ Не удалось определить язык по IP:', e);
-        currentLanguage = 'en'; // fallback
+        console.warn('⚠️ ipapi.co недоступен:', e.message);
+    }
+
+    // Fallback: попробуем ipwho.is
+    if (!countryCode) {
+        try {
+            const response = await fetch('https://ipwho.is/', {
+                method: 'GET',
+                mode: 'cors'
+            });
+            if (response.ok) {
+                const data = await response.json();
+                countryCode = data.country_code;
+                console.log(`🌍 Определена страна (через ipwho.is): ${countryCode}`);
+            }
+        } catch (e) {
+            console.warn('⚠️ ipwho.is недоступен:', e.message);
+        }
+    }
+
+    // Если всё ещё не определено — ставим английский
+    currentLanguage = countryCode === 'RU' ? 'ru' : 'en';
+
+    // Сохраняем выбор
+    try {
         localStorage.setItem('userLanguage', currentLanguage);
+        console.log(`🌐 Установлен язык: ${currentLanguage}`);
+    } catch (e) {
+        console.error('❌ Не удалось сохранить язык в localStorage:', e);
     }
 }
 
@@ -308,14 +346,14 @@ function addToWatched(name, url, group, logo) {
     }
 
     if (watched.some(item => item.url === url)) {
-        console.log(t('alreadyInWatched')(name));
+        console.log(t('alreadyInWatched', name));
         return;
     }
 
     watched.push({ name, url, group, logo });
     try {
         localStorage.setItem('watchedChannels', JSON.stringify(watched));
-        console.log(t('addToWatchedSuccess')(name));
+        console.log(t('addToWatchedSuccess', name));
     } catch (e) {
         console.error('❌ Не удалось сохранить в localStorage:', e);
         showToast('Ошибка сохранения');
@@ -363,25 +401,21 @@ async function initApp() {
     }, 10000);
 
     try {
-        // 👇 Определяем язык, но НЕ ждём его завершения перед загрузкой интерфейса
-        // Запускаем асинхронно, без await — чтобы не блокировать
+        // 👇 Определяем язык асинхронно, без блокировки
         detectLanguageByIP().catch(e => {
             console.error('❌ Ошибка определения языка:', e);
-            currentLanguage = 'en'; // fallback
-            try {
-                localStorage.setItem('userLanguage', currentLanguage);
-            } catch {}
+            currentLanguage = 'en';
+            try { localStorage.setItem('userLanguage', currentLanguage); } catch {}
         });
 
-        // 👇 Пытаемся загрузить последний просмотренный плейлист
+        // 👇 Загружаем последний плейлист
         let lastMain = localStorage.getItem('lastMainCategory');
         let lastSub = localStorage.getItem('lastSubcategory');
 
-        // Проверяем, что данные существуют и категория всё ещё доступна
         if (lastMain && lastSub && categoryTree[lastMain] && categoryTree[lastMain][lastSub]) {
             currentMainCategory = lastMain;
             currentSubcategory = lastSub;
-            console.log(t('lastPlaylistLoaded')(lastMain, lastSub));
+            console.log(t('lastPlaylistLoaded', lastMain, lastSub));
         } else {
             currentMainCategory = t('watched');
             currentSubcategory = '';
@@ -504,7 +538,7 @@ function selectSubcategory(subcategoryName, index) {
     try {
         localStorage.setItem('lastMainCategory', currentMainCategory);
         localStorage.setItem('lastSubcategory', subcategoryName);
-        console.log(t('playlistSaved')(currentMainCategory, subcategoryName));
+        console.log(t('playlistSaved', currentMainCategory, subcategoryName));
     } catch (e) {
         console.error(t('saveError'), e);
     }
@@ -577,7 +611,6 @@ async function loadAndRenderChannels(mainCategory, subcategory) {
         setTimeout(() => {
             const firstChannel = document.querySelector('.channel-card');
             if (firstChannel) firstChannel.focus();
-            // 👇 Восстанавливаем скролл после загрузки каналов
             restoreScrollPosition();
         }, 100);
     }

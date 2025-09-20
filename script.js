@@ -94,7 +94,8 @@ var translations = {
         parseError: '❌ Ошибка парсинга watchedChannels:',
         resetPlaylist: 'Последний плейлист сброшен',
         scrollRestored: 'Позиция прокрутки восстановлена',
-        determiningLocation: 'Определение вашего местоположения...'
+        determiningLocation: 'Определение вашего местоположения...',
+        languageToggle: 'Сменить язык'
     },
     en: {
         categories: "Categories",
@@ -161,7 +162,8 @@ var translations = {
         parseError: '❌ Error parsing watchedChannels:',
         resetPlaylist: 'Last playlist reset',
         scrollRestored: 'Scroll position restored',
-        determiningLocation: 'Detecting your location...'
+        determiningLocation: 'Detecting your location...',
+        languageToggle: 'Change Language'
     }
 };
 
@@ -352,6 +354,21 @@ function applyTranslationsToTree(tree) {
     return translatedTree;
 }
 
+// 👇 Функция смены языка
+function switchLanguage() {
+    currentLanguage = currentLanguage === 'ru' ? 'en' : 'ru';
+    try {
+        localStorage.setItem('userLanguage', currentLanguage);
+    } catch (e) {
+        console.error('❌ Не удалось сохранить язык:', e);
+    }
+    // Перерисовываем всё
+    renderMainCategories();
+    renderSubCategories();
+    loadAndRenderChannels(currentMainCategory, currentSubcategory);
+    showToast(t('languageToggle'));
+}
+
 // Закрытие модального окна
 closeModal.addEventListener('click', function() {
     playerModal.style.display = 'none';
@@ -459,6 +476,7 @@ function restoreScrollPosition() {
     }
 }
 
+// Инициализация приложения — БЕЗ await, чтобы не блокировать загрузку
 function initApp() {
     var safetyTimeout = setTimeout(function() {
         initialLoader.style.display = 'none';
@@ -475,7 +493,6 @@ function initApp() {
             }
         }).catch(function(e) {
             console.error('❌ Ошибка после определения языка:', e);
-            // Даже при ошибке — продолжаем
             renderMainCategories();
             renderSubCategories();
             if (currentMainCategory === t('watched')) {
@@ -483,7 +500,36 @@ function initApp() {
             }
         });
 
-        // ... остальной код инициализации ...
+        // 👇 Загружаем последний плейлист (или "Просмотренные" по умолчанию)
+        var lastMain = localStorage.getItem('lastMainCategory');
+        var lastSub = localStorage.getItem('lastSubcategory');
+
+        var categoryTree = applyTranslationsToTree(getCategoryTree());
+
+        if (lastMain && lastSub && categoryTree[lastMain] && categoryTree[lastMain][lastSub]) {
+            currentMainCategory = lastMain;
+            currentSubcategory = lastSub;
+            console.log(t('lastPlaylistLoaded', lastMain, lastSub));
+        } else {
+            currentMainCategory = t('watched');
+            currentSubcategory = '';
+            console.log(t('defaultPlaylist'));
+        }
+
+        // Рендерим интерфейс немедленно
+        renderMainCategories();
+        renderSubCategories();
+        loadAndRenderChannels(currentMainCategory, currentSubcategory);
+        
+        setTimeout(function() {
+            var firstChannel = document.querySelector('.channel-card');
+            if (firstChannel) firstChannel.focus();
+            restoreScrollPosition();
+        }, 500);
+
+        channelsContainer.addEventListener('scroll', debounce(saveScrollPosition, 300));
+        
+        clearTimeout(safetyTimeout);
 
         // 👇 Аварийное скрытие лоадера через 5 сек
         setTimeout(function() {
@@ -547,6 +593,20 @@ function renderMainCategories() {
         
         mainCategoriesPanel.appendChild(btn);
     }
+
+    // 👇 Добавляем кнопку смены языка в конец
+    var langBtn = document.createElement('button');
+    langBtn.className = 'category-btn';
+    langBtn.textContent = currentLanguage === 'ru' ? '🇬🇧 EN' : '🇷🇺 RU';
+    langBtn.style.backgroundColor = '#555';
+    langBtn.addEventListener('click', switchLanguage);
+    langBtn.addEventListener('keydown', function(e) {
+        if (e.key === 'Enter' || e.key === ' ') {
+            e.preventDefault();
+            switchLanguage();
+        }
+    });
+    mainCategoriesPanel.appendChild(langBtn);
 }
 
 // Отображение подкатегорий

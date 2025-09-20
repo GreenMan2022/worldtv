@@ -27,7 +27,9 @@ let watchStartTime = null;        // timestamp открытия плеера
 // Структура плейлистов
 const categoryTree = {
   "Просмотренные": {},
-  "Свой плейлист": {}, // ← ДОБАВЛЕНО
+  "Свой плейлист": {
+    "Загрузить по ссылке": "#" // ← подменю для загрузки
+  },
   "Категории": {
     "Новости": "https://iptv-org.github.io/iptv/categories/news.m3u  ",
     "Спорт": "https://iptv-org.github.io/iptv/categories/sports.m3u  ",
@@ -156,7 +158,7 @@ function addToWatched(name, url, group, logo) {
     }
 }
 
-// 👇 Свой плейлист: Загрузка по ссылке
+// 👇 Загрузка плейлиста по URL
 async function loadPlaylistFromURL() {
     const urlInput = document.getElementById('playlistURL');
     const url = urlInput.value.trim();
@@ -166,73 +168,65 @@ async function loadPlaylistFromURL() {
     }
 
     initialLoader.style.display = 'flex';
+    channelsContainer.innerHTML = ''; // Очищаем контейнер
+
     try {
         const content = await fetchM3U(url);
         const channels = parseM3UContent(content, 'Свой плейлист');
+
+        if (channels.length === 0) {
+            throw new Error('Плейлист пуст или не содержит поддерживаемых каналов');
+        }
+
+        // 👇 Сохраняем в localStorage
         localStorage.setItem('customPlaylist', JSON.stringify(channels));
-        showToast('Плейлист загружен!');
-        loadAndRenderChannels('Свой плейлист', '');
+        showToast(`✅ Загружено ${channels.length} каналов`);
+
+        // 👇 Обновляем состояние и рендерим
+        currentMainCategory = 'Свой плейлист';
+        currentSubcategory = ''; // Нет активной подкатегории, кроме "Загрузить по ссылке"
+
+        renderChannels(channels);
+
+        // Фокус на первом канале
+        setTimeout(() => {
+            const firstChannel = document.querySelector('.channel-card');
+            if (firstChannel) firstChannel.focus();
+        }, 100);
+
     } catch (err) {
         console.error('Ошибка загрузки по URL:', err);
-        showToast('Не удалось загрузить плейлист');
+        showToast('❌ Не удалось загрузить плейлист');
+        showCustomPlaylistUploadUI(); // Возвращаем интерфейс загрузки
     } finally {
         initialLoader.style.display = 'none';
     }
 }
 
-// 👇 Свой плейлист: Показать интерфейс загрузки
+// 👇 Показать интерфейс загрузки своего плейлиста ПО ССЫЛКЕ
 function showCustomPlaylistUploadUI() {
     channelsContainer.innerHTML = `
         <div style="padding: 40px; text-align: center; color: #aaa; width: 100%;">
-            <h3>Загрузите свой плейлист</h3>
+            <h3>Загрузите плейлист по ссылке</h3>
             <p>Поддерживается формат M3U</p>
             
-            <div style="margin: 30px 0; display: flex; flex-direction: column; gap: 15px; align-items: center;">
-                <input type="file" id="uploadM3UFile" accept=".m3u,.m3u8" style="display: none;">
-                <button onclick="document.getElementById('uploadM3UFile').click()" 
-                        style="padding: 12px 24px; background: #ff375f; color: white; border: none; border-radius: 8px; cursor: pointer;">
-                    Загрузить файл
-                </button>
-                
-                <div style="width: 100%; max-width: 400px;">
-                    <input type="text" id="playlistURL" 
-                           placeholder="https://example.com/playlist.m3u" 
-                           style="width: 100%; padding: 10px; border-radius: 6px; border: 1px solid #444; background: #222; color: white; margin-bottom: 10px;">
-                    <button onclick="loadPlaylistFromURL()" 
-                            style="width: 100%; padding: 10px; background: #ff5e41; color: white; border: none; border-radius: 6px; cursor: pointer;">
-                        Загрузить по ссылке
-                    </button>
-                </div>
-
-                <button onclick="localStorage.removeItem('customPlaylist'); showCustomPlaylistUploadUI();" 
-                        style="margin-top: 10px; padding: 8px 16px; background: #555; color: white; border: none; border-radius: 6px; cursor: pointer;">
-                    Очистить и загрузить заново
+            <div style="margin: 30px 0; display: flex; flex-direction: column; gap: 15px; align-items: center; width: 100%; max-width: 400px;">
+                <input type="text" id="playlistURL" 
+                       placeholder="https://example.com/playlist.m3u" 
+                       style="width: 100%; padding: 12px; border-radius: 8px; border: 1px solid #444; background: #222; color: white; font-size: 14px;">
+                <button onclick="loadPlaylistFromURL()" 
+                        style="width: 100%; padding: 12px; background: linear-gradient(90deg, #ff375f, #ff5e41); color: white; border: none; border-radius: 8px; cursor: pointer; font-weight: 500;">
+                    Загрузить плейлист
                 </button>
             </div>
         </div>
     `;
 
-    // Обработчик загрузки файла
-    const fileInput = document.getElementById('uploadM3UFile');
-    fileInput.addEventListener('change', async function(e) {
-        const file = e.target.files[0];
-        if (!file) return;
-        
-        const reader = new FileReader();
-        reader.onload = async function(event) {
-            try {
-                const content = event.target.result;
-                const channels = parseM3UContent(content, 'Свой плейлист');
-                localStorage.setItem('customPlaylist', JSON.stringify(channels));
-                showToast('Плейлист загружен!');
-                loadAndRenderChannels('Свой плейлист', '');
-            } catch (err) {
-                console.error('Ошибка загрузки файла:', err);
-                showToast('Ошибка загрузки файла');
-            }
-        };
-        reader.readAsText(file);
-    });
+    // Фокус на поле ввода
+    setTimeout(() => {
+        const input = document.getElementById('playlistURL');
+        if (input) input.focus();
+    }, 100);
 }
 
 // Инициализация приложения
@@ -325,12 +319,12 @@ function renderSubCategories() {
 function selectMainCategory(categoryName, index) {
     currentMainCategory = categoryName;
     currentMainCategoryIndex = index;
-    currentSubcategory = '';
+    const firstSub = categoryTree[categoryName] ? Object.keys(categoryTree[categoryName])[0] : '';
+    currentSubcategory = firstSub || '';
     currentSubCategoryIndex = 0;
-
     renderSubCategories();
 
-    // 👇 Сразу загружаем каналы, если выбрана категория без подкатегорий (например, "Просмотренные" или "Свой плейлист")
+    // 👇 Если категория без подкатегорий — сразу грузим
     if (!categoryTree[categoryName] || Object.keys(categoryTree[categoryName]).length === 0) {
         loadAndRenderChannels(currentMainCategory, currentSubcategory);
     }
@@ -345,8 +339,16 @@ function selectMainCategory(categoryName, index) {
 function selectSubcategory(subcategoryName, index) {
     currentSubcategory = subcategoryName;
     currentSubCategoryIndex = index;
+
+    // 👇 Если выбрана "Загрузить по ссылке" — показываем интерфейс загрузки, а не пытаемся загрузить каналы
+    if (currentMainCategory === 'Свой плейлист' && subcategoryName === 'Загрузить по ссылке') {
+        showCustomPlaylistUploadUI();
+        return;
+    }
+
+    // 👇 Для всех остальных — стандартная загрузка
     loadAndRenderChannels(currentMainCategory, currentSubcategory);
-    
+
     setTimeout(() => {
         const firstChannel = document.querySelector('.channel-card');
         if (firstChannel) firstChannel.focus();
@@ -397,6 +399,8 @@ async function loadAndRenderChannels(mainCategory, subcategory) {
     // 👇 Свой плейлист: загрузка из localStorage
     if (mainCategory === 'Свой плейлист') {
         initialLoader.style.display = 'none';
+        channelsContainer.innerHTML = '';
+
         let customPlaylist;
         try {
             const raw = localStorage.getItem('customPlaylist');
@@ -411,11 +415,25 @@ async function loadAndRenderChannels(mainCategory, subcategory) {
             customPlaylist = [];
             localStorage.removeItem('customPlaylist');
         }
-        renderChannels(customPlaylist);
-        // 👇 Если плейлист пуст — показать интерфейс загрузки
-        if (customPlaylist.length === 0) {
-            showCustomPlaylistUploadUI();
+
+        if (customPlaylist.length > 0) {
+            renderChannels(customPlaylist);
+
+            // Фокус на первом канале
+            setTimeout(() => {
+                const firstChannel = document.querySelector('.channel-card');
+                if (firstChannel) firstChannel.focus();
+            }, 100);
+        } else {
+            // 👇 Если плейлиста нет — показываем подсказку
+            channelsContainer.innerHTML = `
+                <div style="color:#aaa; padding:60px 20px; text-align:center; font-size:16px;">
+                    <i class="fas fa-list" style="font-size:48px; margin-bottom:20px;"></i><br>
+                    Плейлист не загружен.<br>
+                    Перейдите в подменю и выберите «Загрузить по ссылке».
+                </div>`;
         }
+
         return;
     }
 

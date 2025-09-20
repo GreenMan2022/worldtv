@@ -325,11 +325,16 @@ function renderSubCategories() {
 function selectMainCategory(categoryName, index) {
     currentMainCategory = categoryName;
     currentMainCategoryIndex = index;
-    const firstSub = categoryTree[categoryName] ? Object.keys(categoryTree[categoryName])[0] : '';
-    currentSubcategory = firstSub || '';
+    currentSubcategory = '';
     currentSubCategoryIndex = 0;
+
     renderSubCategories();
-    
+
+    // 👇 Сразу загружаем каналы, если выбрана категория без подкатегорий (например, "Просмотренные" или "Свой плейлист")
+    if (!categoryTree[categoryName] || Object.keys(categoryTree[categoryName]).length === 0) {
+        loadAndRenderChannels(currentMainCategory, currentSubcategory);
+    }
+
     setTimeout(() => {
         const buttons = mainCategoriesPanel.querySelectorAll('.category-btn');
         if (buttons[index]) buttons[index].focus();

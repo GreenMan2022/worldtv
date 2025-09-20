@@ -24,6 +24,22 @@ let navigationState = 'channels';
 let currentWatchedChannel = null; // { name, url, group, logo }
 let watchStartTime = null;        // timestamp открытия плеера
 
+// 👇 Firebase: Инициализация
+const firebaseConfig = {
+  apiKey: "AIzaSyD9mAjCqyhJix9Tiyr-vQXWj-Mejysws44",
+  authDomain: "tv-channels-watching.firebaseapp.com",
+  databaseURL: "https://tv-channels-watching-default-rtdb.firebaseio.com",
+  projectId: "tv-channels-watching",
+  storageBucket: "tv-channels-watching.firebasestorage.app",
+  messagingSenderId: "625169237639",
+  appId: "1:625169237639:web:beeed9dc2d424aeb269a22",
+  measurementId: "G-B1HFTLJ7BM"
+};
+
+// Инициализируем Firebase
+const app = firebase.initializeApp(firebaseConfig);
+const database = firebase.database();
+
 // Структура плейлистов
 const categoryTree = {
   "Просмотренные": {},

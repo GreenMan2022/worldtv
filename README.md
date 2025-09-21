@@ -1,7 +1,12 @@
-EN: 📺 World TV Web — Global IPTV Browser
+EN: 
+📺 World TV Web — Global IPTV Browser
+
 Free. No registration. No ads.
+
 Watch thousands of TV channels from around the world — directly in your browser.
+
 Control with remote, keyboard, or touchscreen.
+
 Full support for HLS, mini-previews, favorites, global trending, and custom playlists. 
 
 🌍 Features

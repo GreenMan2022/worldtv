@@ -1384,6 +1384,11 @@ function selectSubcategory(subcategoryName, index) {
 
 // Выбор главной категории
 function selectMainCategory(categoryName, index) {
+    function selectMainCategory(categoryName, index) {
+    // 👇 Сбрасываем кэш подкатегорий "Смотрят" при уходе из этого раздела
+    if (currentMainCategory === 'Смотрят') {
+        window.watchingBySubcategory = null;
+    }
     if (currentMainCategory === 'Прямо сейчас' && window.watchingNowInterval) {
         clearInterval(window.watchingNowInterval);
         window.watchingNowInterval = null;

@@ -1350,6 +1350,38 @@ function renderSubCategories() {
     }
 }
 
+// 👇 Выбор подкатегории (обновленная версия)
+function selectSubcategory(subcategoryName, index) {
+    // Очищаем интервал для "Прямо сейчас", если он активен
+    if (currentMainCategory === 'Прямо сейчас' && window.watchingNowInterval) {
+        clearInterval(window.watchingNowInterval);
+        window.watchingNowInterval = null;
+        if (document.getElementById('reloadTimer')) {
+            document.getElementById('reloadTimer').remove();
+        }
+    }
+
+    // Устанавливаем выбранную подкатегорию
+    currentSubcategory = subcategoryName;
+    currentSubCategoryIndex = index;
+
+    // 👇 Ключевая логика: для "Смотрят" используем кэшированные данные
+    if (currentMainCategory === 'Смотрят' && window.watchingBySubcategory) {
+        const channelsToShow = window.watchingBySubcategory[subcategoryName] || [];
+        renderChannels(channelsToShow);
+    } else {
+        // 👇 Для всех остальных разделов — стандартная загрузка
+        loadAndRenderChannels(currentMainCategory, currentSubcategory);
+    }
+
+    // Переключаем фокус на каналы
+    setTimeout(() => {
+        const firstChannel = document.querySelector('.channel-card');
+        if (firstChannel) firstChannel.focus();
+        navigationState = 'channels';
+    }, 100);
+}
+
 // Выбор главной категории
 function selectMainCategory(categoryName, index) {
     if (currentMainCategory === 'Прямо сейчас' && window.watchingNowInterval) {

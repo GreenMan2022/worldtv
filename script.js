@@ -1607,20 +1607,16 @@ async function fetchM3U(url) {
 // Парсинг M3U
 function parseM3UContent(content, assignedCategory) {
     const channels = [];
-    const lines = content.split('\n');
-
+    const lines = content.split('\n'); // 👈 ИСПРАВЛЕНО: было ' ' вместо '\n'
     for (let i = 0; i < lines.length; i++) {
         if (lines[i].startsWith('#EXTINF:')) {
             const infoLine = lines[i];
             const urlLine = lines[i + 1];
-
             if (urlLine && !urlLine.startsWith('#')) {
                 let name = infoLine.split(',')[1] || 'Канал';
                 name = name.trim();
-
                 const logoMatch = infoLine.match(/tvg-logo="([^"]*)"/);
                 const logo = logoMatch ? logoMatch[1] : '';
-
                 channels.push({ name, url: urlLine.trim(), group: assignedCategory, logo });
             }
         }

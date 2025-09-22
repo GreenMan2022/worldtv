@@ -1653,6 +1653,25 @@ async function loadAndRenderChannels(mainCategory, subcategory) {
         return;
     }
     // 👇 Свой плейлист
+        if (mainCategory === 'Глобальный плейлист') {
+        initialLoader.style.display = 'flex';
+        try {
+            const url = categoryTree['Глобальный плейлист'];
+            let channels = loadedPlaylists[url] || await fetchAndCachePlaylist(url, translateText('Глобальный плейлист'));
+            renderChannels(channels);
+        } catch (error) {
+            console.error("Ошибка загрузки глобального плейлиста:", error);
+            showToast(translateText("Ошибка загрузки каналов"));
+            renderChannels([]);
+        } finally {
+            initialLoader.style.display = 'none';
+            setTimeout(() => {
+                const firstChannel = document.querySelector('.channel-card');
+                if (firstChannel) firstChannel.focus();
+            }, 100);
+        }
+        return;
+    }
     if (mainCategory === 'Свой плейлист') {
         initialLoader.style.display = 'none';
         let customPlaylist;

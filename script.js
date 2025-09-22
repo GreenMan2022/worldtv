@@ -2243,3 +2243,55 @@ window.addEventListener('beforeunload', () => {
 document.addEventListener('DOMContentLoaded', () => {
     initApp();
 });
+
+// ============= MOUSE WHEEL SCROLL FOR HORIZONTAL MENUS =============
+
+function initMouseWheelScroll() {
+    const scrollContainers = [
+        document.getElementById('mainCategoriesPanel'),
+        document.getElementById('subCategoriesPanel')
+    ];
+
+    scrollContainers.forEach(container => {
+        if (!container) return;
+
+        // Отключаем вертикальный скролл, включаем горизонтальный через колесо
+        container.addEventListener('wheel', function(e) {
+            if (e.deltaY === 0) return; // Только если есть вертикальное движение
+
+            e.preventDefault(); // Отменяем стандартный скролл
+
+            // Прокручиваем по горизонтали
+            const scrollAmount = e.deltaY; // Чем сильнее жмёшь — тем быстрее
+            this.scrollLeft += scrollAmount;
+
+            // Опционально: добавим плавность (если хочешь — раскомментируй)
+            // this.scrollTo({
+            //     left: this.scrollLeft + scrollAmount,
+            //     behavior: 'smooth'
+            // });
+        }, { passive: false }); // passive: false обязательно, чтобы работал preventDefault
+
+        // Опционально: добавим класс при наведении, чтобы показать, что можно скроллить
+        container.addEventListener('mouseenter', () => {
+            container.style.cursor = 'grab';
+        });
+        container.addEventListener('mousedown', () => {
+            container.style.cursor = 'grabbing';
+        });
+        container.addEventListener('mouseup', () => {
+            container.style.cursor = 'grab';
+        });
+        container.addEventListener('mouseleave', () => {
+            container.style.cursor = 'default';
+        });
+    });
+}
+
+// Запускаем после инициализации приложения
+document.addEventListener('DOMContentLoaded', () => {
+    // ... твой initApp() и initLanguageSwitcher() уже здесь
+
+    // Добавляем поддержку мыши
+    initMouseWheelScroll();
+});

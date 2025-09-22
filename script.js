@@ -1321,7 +1321,7 @@ function renderWatchingSubcategories(subcategoryMap) {
 
     // Сортируем подкатегории по количеству каналов (по убыванию)
     const sortedSubcategories = Object.keys(subcategoryMap).sort((a, b) => {
-        return subcategoryMap[b].length - subcategoryMap[a].length;
+        return a.localeCompare(b, currentLanguage === 'ru' ? 'ru-RU' : 'en-US');
     });
 
     sortedSubcategories.forEach((subcat, index) => {

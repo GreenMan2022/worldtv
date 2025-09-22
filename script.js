@@ -1687,7 +1687,9 @@ async function loadAndRenderChannels(mainCategory, subcategory) {
         initialLoader.style.display = 'flex';
         try {
             const url = categoryTree['Глобальный плейлист'];
+            console.log("Загружаем глобальный плейлист из:", url); // 👈 ДОБАВЛЯЕМ ЛОГ
             let channels = loadedPlaylists[url] || await fetchAndCachePlaylist(url, translateText('Глобальный плейлист'));
+            console.log("Загружено каналов:", channels.length); // 👈 ДОБАВЛЯЕМ ЛОГ
             renderChannels(channels);
         } catch (error) {
             console.error("❌ Ошибка загрузки глобального плейлиста:", error);

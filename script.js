@@ -1350,45 +1350,8 @@ function renderSubCategories() {
     }
 }
 
-// 👇 Выбор подкатегории (обновленная версия)
-function selectSubcategory(subcategoryName, index) {
-    // Очищаем интервал для "Прямо сейчас", если он активен
-    if (currentMainCategory === 'Прямо сейчас' && window.watchingNowInterval) {
-        clearInterval(window.watchingNowInterval);
-        window.watchingNowInterval = null;
-        if (document.getElementById('reloadTimer')) {
-            document.getElementById('reloadTimer').remove();
-        }
-    }
-
-    // Устанавливаем выбранную подкатегорию
-    currentSubcategory = subcategoryName;
-    currentSubCategoryIndex = index;
-
-    // 👇 Ключевая логика: для "Смотрят" используем кэшированные данные
-    if (currentMainCategory === 'Смотрят' && window.watchingBySubcategory) {
-        const channelsToShow = window.watchingBySubcategory[subcategoryName] || [];
-        renderChannels(channelsToShow);
-    } else {
-        // 👇 Для всех остальных разделов — стандартная загрузка
-        loadAndRenderChannels(currentMainCategory, currentSubcategory);
-    }
-
-    // Переключаем фокус на каналы
-    setTimeout(() => {
-        const firstChannel = document.querySelector('.channel-card');
-        if (firstChannel) firstChannel.focus();
-        navigationState = 'channels';
-    }, 100);
-}
-
 // Выбор главной категории
 function selectMainCategory(categoryName, index) {
-    function selectMainCategory(categoryName, index) {
-    // 👇 Сбрасываем кэш подкатегорий "Смотрят" при уходе из этого раздела
-    if (currentMainCategory === 'Смотрят') {
-        window.watchingBySubcategory = null;
-    }
     if (currentMainCategory === 'Прямо сейчас' && window.watchingNowInterval) {
         clearInterval(window.watchingNowInterval);
         window.watchingNowInterval = null;
@@ -1533,66 +1496,43 @@ async function loadAndRenderChannels(mainCategory, subcategory) {
         return;
     }
 
-// 👇 Смотрят (с подкатегориями)
-if (mainCategory === 'Смотрят') {
-    initialLoader.style.display = 'flex';
-    channelsContainer.innerHTML = '';
-    try {
-        const snapshot = await database.ref('watching').get();
-        let watching = [];
-        if (snapshot.exists()) {
-            watching = Object.values(snapshot.val()).filter(channel => {
-                return (Date.now() - channel.lastWatched) < 24 * 60 * 60 * 1000;
-            });
-            watching.sort((a, b) => b.views - a.views);
-        }
+    // 👇 Смотрят
+    if (mainCategory === 'Смотрят') {
+        initialLoader.style.display = 'flex';
+        channelsContainer.innerHTML = '';
 
-        // 👇 Создаем динамические подкатегории на основе поля `group`
-        const subcategoryMap = {};
-        watching.forEach(channel => {
-            const group = channel.group || translateText('Не определено');
-            if (!subcategoryMap[group]) {
-                subcategoryMap[group] = [];
+        try {
+            const snapshot = await database.ref('watching').get();
+            let watching = [];
+
+            if (snapshot.exists()) {
+                watching = Object.values(snapshot.val()).filter(channel => {
+                    return (Date.now() - channel.lastWatched) < 24 * 60 * 60 * 1000;
+                });
+                watching.sort((a, b) => b.views - a.views);
             }
-            subcategoryMap[group].push(channel);
-        });
 
-        // 👇 Сохраняем сгруппированные данные для быстрого доступа
-        window.watchingBySubcategory = subcategoryMap;
-
-        // 👇 Если выбрана конкретная подкатегория — рендерим только ее каналы
-        if (currentSubcategory) {
-            renderChannels(subcategoryMap[currentSubcategory] || []);
-        } else {
-            // 👇 Иначе рендерим все каналы
             renderChannels(watching);
+
+            if (watching.length === 0) {
+                channelsContainer.innerHTML = `
+                    <div style="color:#aaa; padding:60px 20px; text-align:center; font-size:16px;">
+                        <i class="fas fa-users" style="font-size:48px; margin-bottom:20px;"></i><br>
+                        ${translateText("Пока никто в мире не смотрит...")}<br>
+                        ${translateText("Включите канал на 60+ сек — и вы первым появитесь здесь!")}
+                    </div>`;
+            }
+
+        } catch (error) {
+            console.error("❌ Ошибка загрузки из Firebase:", error);
+            showToast(translateText("Ошибка загрузки рейтинга"));
+            channelsContainer.innerHTML = `<div style="color:#aaa; padding:40px; text-align:center">${translateText("Не удалось загрузить")}</div>`;
+        } finally {
+            initialLoader.style.display = 'none';
         }
 
-        // 👇 Обновляем панель подкатегорий — КЛЮЧЕВОЕ ИЗМЕНЕНИЕ
-        renderWatchingSubcategories(subcategoryMap);
-
-        // 👇 Сообщение, если каналы не найдены
-        if (watching.length === 0) {
-            channelsContainer.innerHTML = `
-                <div style="color:#aaa; padding:60px 20px; text-align:center; font-size:16px;">
-                    <i class="fas fa-users" style="font-size:48px; margin-bottom:20px;"></i><br>
-                    ${translateText("Пока никто в мире не смотрит...")}<br>
-                    ${translateText("Включите канал на 60+ сек — и вы первым появитесь здесь!")}
-                </div>`;
-        }
-    } catch (error) {
-        console.error("❌ Ошибка загрузки из Firebase:", error);
-        showToast(translateText("Ошибка загрузки рейтинга"));
-        channelsContainer.innerHTML = `<div style="color:#aaa; padding:40px; text-align:center">${translateText("Не удалось загрузить")}</div>`;
-    } finally {
-        initialLoader.style.display = 'none';
-        setTimeout(() => {
-            const firstChannel = document.querySelector('.channel-card');
-            if (firstChannel) firstChannel.focus();
-        }, 100);
+        return;
     }
-    return;
-}
 
     // 👇 Свой плейлист
     if (mainCategory === 'Свой плейлист') {

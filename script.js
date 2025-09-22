@@ -580,7 +580,7 @@ const categoryTree = {
   "Прямо сейчас": {},
   "Смотрят": {},
   "Свой плейлист": {},
-  "Глобальный плейлист": "https://iptv-org.github.io/iptv/index.m3u", 
+  "Глобальный плейлист": "https://iptv-org.github.io/iptv/index.m3u",
   "Категории": {
     "Авто": "https://iptv-org.github.io/iptv/categories/auto.m3u  ",
     "Анимация": "https://iptv-org.github.io/iptv/categories/animation.m3u  ",

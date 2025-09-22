@@ -1682,27 +1682,6 @@ async function loadAndRenderChannels(mainCategory, subcategory) {
         }
         return;
     }
-
-        // 👇 Глобальный плейлист
-    if (mainCategory === 'Глобальный плейлист') {
-        initialLoader.style.display = 'flex';
-        try {
-            const url = categoryTree['Глобальный плейлист'];
-            let channels = loadedPlaylists[url] || await fetchAndCachePlaylist(url, translateText('Глобальный плейлист'));
-            renderChannels(channels);
-        } catch (error) {
-            console.error("Ошибка загрузки глобального плейлиста:", error);
-            showToast(translateText("Ошибка загрузки каналов"));
-            renderChannels([]);
-        } finally {
-            initialLoader.style.display = 'none';
-            setTimeout(() => {
-                const firstChannel = document.querySelector('.channel-card');
-                if (firstChannel) firstChannel.focus();
-            }, 100);
-        }
-        return;
-    }
     // 👇 Глобальный плейлист
     if (mainCategory === 'Глобальный плейлист') {
         initialLoader.style.display = 'flex';
@@ -1711,7 +1690,7 @@ async function loadAndRenderChannels(mainCategory, subcategory) {
             let channels = loadedPlaylists[url] || await fetchAndCachePlaylist(url, translateText('Глобальный плейлист'));
             renderChannels(channels);
         } catch (error) {
-            console.error("Ошибка загрузки глобального плейлиста:", error);
+            console.error("❌ Ошибка загрузки глобального плейлиста:", error);
             showToast(translateText("Ошибка загрузки каналов"));
             renderChannels([]);
         } finally {

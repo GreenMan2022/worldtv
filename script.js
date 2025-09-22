@@ -65,6 +65,7 @@ const translations = {
     },
   en: {
       // Основные интерфейсные элементы и сообщения
+      "Глобальный плейлист": "Global Playlist",
       "Просмотренные": "Watched",
       "Прямо сейчас": "Watching Now",
       "Смотрят": "Most Watched",

@@ -1382,6 +1382,7 @@ function selectMainCategory(categoryName, index) {
 }
 
 // 👇 Выбор подкатегории (обновленная версия)
+// 👇 Выбор подкатегории (обновленная версия для "Смотрят")
 function selectSubcategory(subcategoryName, index) {
     // Очищаем интервал для "Прямо сейчас", если он активен
     if (currentMainCategory === 'Прямо сейчас' && window.watchingNowInterval) {
@@ -1495,7 +1496,8 @@ async function loadAndRenderChannels(mainCategory, subcategory) {
         return;
     }
     // 👇 Смотрят
-    if (mainCategory === 'Смотрят') {
+    // 👇 Смотрят (с подкатегориями)
+if (mainCategory === 'Смотрят') {
     initialLoader.style.display = 'flex';
     channelsContainer.innerHTML = '';
     try {
@@ -1529,8 +1531,35 @@ async function loadAndRenderChannels(mainCategory, subcategory) {
             renderChannels(watching);
         }
 
-        // 👇 Обновляем панель подкатегорий
-        renderWatchingSubcategories(subcategoryMap);
+        // 👇 Отображаем подкатегории, отсортированные по алфавиту
+        const sortedSubcategories = Object.keys(subcategoryMap).sort((a, b) => {
+            return a.localeCompare(b, currentLanguage === 'ru' ? 'ru-RU' : 'en-US');
+        });
+
+        subCategoriesPanel.innerHTML = '';
+        subCategoriesPanel.style.display = 'none';
+
+        sortedSubcategories.forEach((subcat, idx) => {
+            const btn = document.createElement('button');
+            btn.className = 'subcategory-btn';
+            btn.textContent = `${translateText(subcat)} (${subcategoryMap[subcat].length})`;
+            if (subcat === currentSubcategory) {
+                btn.classList.add('active');
+                currentSubCategoryIndex = idx;
+            }
+            btn.addEventListener('click', () => selectSubcategory(subcat, idx));
+            btn.addEventListener('keydown', function(e) {
+                if (e.key === 'Enter' || e.key === ' ') {
+                    e.preventDefault();
+                    this.click();
+                }
+            });
+            subCategoriesPanel.appendChild(btn);
+        });
+
+        if (sortedSubcategories.length > 0) {
+            subCategoriesPanel.style.display = 'flex';
+        }
 
         // 👇 Сообщение, если каналы не найдены
         if (watching.length === 0) {

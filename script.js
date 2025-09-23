@@ -1331,7 +1331,6 @@ function renderMainCategories() {
     });
     mainCategoriesPanel.appendChild(checkFlag);
 } // <-- ЭТА ЗАКРЫВАЮЩАЯ СКОБКА БЫЛА УДАЛЕНА ПО ОШИБКЕ!
-
 // Отображение подкатегорий (или кастомного UI)
 function renderSubCategories() {
     if (currentMainCategory === 'Свой плейлист') {

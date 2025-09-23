@@ -9,6 +9,25 @@ const initialLoader = document.getElementById('initialLoader');
 const toastContainer = document.getElementById('toastContainer');
 
 // 👇 Firebase: Инициализация
+const firebaseConfig = {
+  apiKey: "AIzaSyD9mAjCqyhJix9Tiyr-vQXWj-Mejysws44",
+  authDomain: "tv-channels-watching.firebaseapp.com",
+  databaseURL: "https://tv-channels-watching-default-rtdb.firebaseio.com",
+  projectId: "tv-channels-watching",
+  storageBucket: "tv-channels-watching.firebasestorage.app",
+  messagingSenderId: "625169237639",
+  appId: "1:625169237639:web:beeed9dc2d424aeb269a22",
+  measurementId: "G-B1HFTLJ7BM"
+};
+const app = firebase.initializeApp(firebaseConfig);
+const database = firebase.database();
+
+// 👇 Язык интерфейса
+let currentLanguage = localStorage.getItem('appLanguage') || 'ru';
+// 👇 Флаг проверки каналов
+let checkChannelsOnLoad = localStorage.getItem('checkChannelsOnLoad') === 'true';
+
+// 👇 Словарь переводов (ЗАМЕНИТЕ ЭТОТ БЛОК НА СВОЙ)
 const translations = {
     ru: {
         "Просмотренные": "Просмотренные",
@@ -536,19 +555,6 @@ const translations = {
       "Западная Европа": "Western Europe",
       "Всемирный": "Worldwide"
   }
-};
-const app = firebase.initializeApp(firebaseConfig);
-const database = firebase.database();
-
-// 👇 Язык интерфейса
-let currentLanguage = localStorage.getItem('appLanguage') || 'ru';
-// 👇 Флаг проверки каналов
-let checkChannelsOnLoad = localStorage.getItem('checkChannelsOnLoad') === 'true';
-
-// 👇 Словарь переводов (ЗАМЕНИТЕ ЭТОТ БЛОК НА СВОЙ)
-const translations = {
-    ru: {},
-    en: {}
 };
 
 // Функция перевода

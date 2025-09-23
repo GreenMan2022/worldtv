@@ -1309,7 +1309,7 @@ function renderMainCategories() {
         }
     });
     mainCategoriesPanel.appendChild(enFlag);
-}
+  
         // 👇 Добавляем флажок "Проверять каналы"
     const spacer2 = document.createElement('div');
     spacer2.style.width = '20px';

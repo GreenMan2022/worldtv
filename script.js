@@ -1878,9 +1878,7 @@ async function fetchM3U(url) {
 // Парсинг M3U
 function parseM3UContent(content, assignedCategory) {
     const channels = [];
-    const lines = content.split('
-'); // 👈 ИСПРАВЛЕНО: было ' ' вместо '
-'
+    const lines = content.split('\n'); // 👈 ИСПРАВЛЕНО: было ' ' вместо '
     for (let i = 0; i < lines.length; i++) {
         if (lines[i].startsWith('#EXTINF:')) {
             const infoLine = lines[i];

@@ -1314,7 +1314,6 @@ function renderMainCategories() {
     const spacer2 = document.createElement('div');
     spacer2.style.width = '20px';
     mainCategoriesPanel.appendChild(spacer2);
-
     const checkFlag = document.createElement('button');
     checkFlag.className = 'category-btn';
     // 👇 Используем translateText для получения переведенного текста
@@ -1331,6 +1330,7 @@ function renderMainCategories() {
         }
     });
     mainCategoriesPanel.appendChild(checkFlag);
+} // <-- ЭТА ЗАКРЫВАЮЩАЯ СКОБКА БЫЛА УДАЛЕНА ПО ОШИБКЕ!
 
 // Отображение подкатегорий (или кастомного UI)
 function renderSubCategories() {

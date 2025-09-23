@@ -30,6 +30,7 @@ let checkChannelsOnLoad = localStorage.getItem('checkChannelsOnLoad') === 'true'
 // 👇 Словарь переводов (ЗАМЕНИТЕ ЭТОТ БЛОК НА СВОЙ)
 const translations = {
     ru: {
+        "Проверять каналы": "Проверять каналы",
         "Просмотренные": "Просмотренные",
         "Прямо сейчас": "Прямо сейчас",
         "Смотрят": "Смотрят",
@@ -69,6 +70,7 @@ const translations = {
     },
   en: {
       // Основные интерфейсные элементы и сообщения
+      "Проверять каналы": "Check Channels",
       "Глобальный плейлист": "Global Playlist",
       "Просмотренные": "Watched",
       "Прямо сейчас": "Watching Now",
@@ -1240,6 +1242,7 @@ function toggleChannelCheck() {
     localStorage.setItem('checkChannelsOnLoad', checkChannelsOnLoad);
     const flags = mainCategoriesPanel.querySelectorAll('.category-btn');
     flags.forEach(flag => {
+        // 👇 Обновляем текст, используя translateText
         if (flag.textContent.includes(translateText('Проверять каналы'))) {
             flag.textContent = checkChannelsOnLoad ? '✅ ' + translateText('Проверять каналы') : '🔲 ' + translateText('Проверять каналы');
             flag.classList.toggle('active', checkChannelsOnLoad);
@@ -1307,13 +1310,14 @@ function renderMainCategories() {
     });
     mainCategoriesPanel.appendChild(enFlag);
 
-    // 👇 Добавляем флажок "Проверять каналы"
+        // 👇 Добавляем флажок "Проверять каналы"
     const spacer2 = document.createElement('div');
     spacer2.style.width = '20px';
     mainCategoriesPanel.appendChild(spacer2);
 
     const checkFlag = document.createElement('button');
     checkFlag.className = 'category-btn';
+    // 👇 Используем translateText для получения переведенного текста
     checkFlag.textContent = checkChannelsOnLoad ? '✅ ' + translateText('Проверять каналы') : '🔲 ' + translateText('Проверять каналы');
     checkFlag.style.minWidth = '140px';
     checkFlag.style.padding = '8px';
@@ -1327,7 +1331,6 @@ function renderMainCategories() {
         }
     });
     mainCategoriesPanel.appendChild(checkFlag);
-}
 
 // Отображение подкатегорий (или кастомного UI)
 function renderSubCategories() {

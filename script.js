@@ -1610,48 +1610,75 @@ function checkChannelAvailability(url) {
     });
 }
 
-// 👇 Загрузка и кэширование плейлиста с опциональной проверкой каналов
+// 👇 Загрузка и кэширование плейлиста с опциональной проверкой каналов (ОБНОВЛЕННАЯ ВЕРСИЯ)
 async function fetchAndCachePlaylist(url, group) {
     const content = await fetchM3U(url);
     let channels = parseM3UContent(content, group);
-
-    if (checkChannelsOnLoad && channels.length > 0) {
-        initialLoader.style.display = 'flex';
-        initialLoader.innerHTML = `
-            <div style="text-align:center; color:white;">
-                <div>${translateText("Проверка доступности...")}</div>
-                <div id="checkProgress" style="margin-top:10px;">0/${channels.length}</div>
-            </div>
-        `;
-        
-        const progressElement = document.getElementById('checkProgress');
-        const availableChannels = [];
-        let checkedCount = 0;
-
-        for (const channel of channels) {
-            checkedCount++;
-            if (progressElement) {
-                progressElement.textContent = `${checkedCount}/${channels.length}`;
-            }
-
-            const isAvailable = await checkChannelAvailability(channel.url);
-            if (isAvailable) {
-                availableChannels.push(channel);
-            } else {
-                console.log(`❌ Канал недоступен: ${channel.name}`);
-                addToBlacklist(channel.url);
-            }
-        }
-
-        channels = availableChannels;
-        console.log(`✅ Доступных каналов: ${channels.length} из ${checkedCount}`);
+    
+    // Если проверка не включена, просто отображаем все каналы
+    if (!checkChannelsOnLoad || channels.length === 0) {
+        loadedPlaylists[url] = channels;
+        renderChannels(channels);
+        return channels;
     }
 
-    loadedPlaylists[url] = channels;
-    initialLoader.style.display = 'none';
-    return channels;
-}
+    // 👇 Начинаем процесс проверки
+    initialLoader.style.display = 'flex';
+    initialLoader.innerHTML = `
+        <div style="text-align:center; color:white;">
+            <div>${translateText("Проверка доступности...")}</div>
+            <div id="checkProgress" style="margin-top:10px;">0/${channels.length}</div>
+        </div>
+    `;
+    const progressElement = document.getElementById('checkProgress');
 
+    // Создаем копию массива для отслеживания доступных каналов
+    let availableChannels = [];
+    let checkedCount = 0;
+
+    // Функция для обновления отображения
+    const updateDisplay = () => {
+        loadedPlaylists[url] = availableChannels; // Обновляем кэш
+        renderChannels(availableChannels); // Перерисовываем список
+        if (progressElement) {
+            progressElement.textContent = `${checkedCount}/${channels.length}`;
+        }
+    };
+
+    // Проверяем каждый канал асинхронно
+    for (const channel of channels) {
+        // Запускаем проверку, но не ждем ее завершения для следующего канала
+        checkChannelAvailability(channel.url)
+            .then(isAvailable => {
+                checkedCount++;
+                if (isAvailable) {
+                    availableChannels.push(channel);
+                } else {
+                    console.log(`❌ Канал недоступен: ${channel.name}`);
+                    addToBlacklist(channel.url);
+                }
+                // Обновляем интерфейс после каждой проверки
+                updateDisplay();
+            })
+            .catch(error => {
+                console.error(`Ошибка при проверке канала ${channel.name}:`, error);
+                checkedCount++;
+                updateDisplay();
+            });
+    }
+
+    // Ждем завершения всех проверок, чтобы убрать лоадер и вывести итог
+    await Promise.allSettled(channels.map(channel => checkChannelAvailability(channel.url)));
+    
+    console.log(`✅ Доступных каналов: ${availableChannels.length} из ${channels.length}`);
+    initialLoader.style.display = 'none';
+
+    // Финальное обновление (на случай, если какие-то обновления не прошли)
+    loadedPlaylists[url] = availableChannels;
+    renderChannels(availableChannels);
+
+    return availableChannels;
+}
 // Выбор главной категории
 function selectMainCategory(categoryName, index) {
     if (currentMainCategory === 'Смотрят') {

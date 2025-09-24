@@ -1617,7 +1617,7 @@ async function fetchM3U(url) {
     return await response.text();
 }
 
-// Парсинг M3U
+// Парсинг M3U с поддержкой tvg-group-title
 function parseM3UContent(content, assignedCategory) {
     const channels = [];
     const lines = content.split('\n');
@@ -1626,11 +1626,22 @@ function parseM3UContent(content, assignedCategory) {
             const infoLine = lines[i];
             const urlLine = lines[i + 1];
             if (urlLine && !urlLine.startsWith('#')) {
+                // Извлекаем название канала
                 let name = infoLine.split(',')[1] || 'Канал';
                 name = name.trim();
+
+                // Извлекаем логотип
                 const logoMatch = infoLine.match(/tvg-logo="([^"]*)"/);
                 const logo = logoMatch ? logoMatch[1] : '';
-                channels.push({ name, url: urlLine.trim(), group: assignedCategory, logo });
+
+                // 👇 Извлекаем группу из tvg-group-title, если есть
+                let group = assignedCategory; // по умолчанию — название плейлиста
+                const groupMatch = infoLine.match(/tvg-group-title="([^"]*)"/);
+                if (groupMatch && groupMatch[1]) {
+                    group = groupMatch[1].trim();
+                }
+
+                channels.push({ name, url: urlLine.trim(), group, logo });
             }
         }
     }

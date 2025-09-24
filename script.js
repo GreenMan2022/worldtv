@@ -1638,44 +1638,43 @@ async function fetchAndCachePlaylist(url, group) {
 
     // Функция для обновления отображения
     const updateDisplay = () => {
-        loadedPlaylists[url] = availableChannels; // Обновляем кэш
-        renderChannels(availableChannels); // Перерисовываем список
+        loadedPlaylists[url] = [...availableChannels]; // Обновляем кэш (клонируем массив)
+        renderChannels([...availableChannels]); // Перерисовываем список (клонируем массив)
         if (progressElement) {
             progressElement.textContent = `${checkedCount}/${channels.length}`;
         }
     };
 
-    // Проверяем каждый канал асинхронно
-    for (const channel of channels) {
-        // Запускаем проверку, но не ждем ее завершения для следующего канала
+    // Проверяем каждый канал асинхронно и НЕ ждем завершения предыдущего
+    channels.forEach(channel => {
+        // Запускаем проверку немедленно, без await
         checkChannelAvailability(channel.url)
             .then(isAvailable => {
                 checkedCount++;
                 if (isAvailable) {
-                    availableChannels.push(channel);
+                    availableChannels.push(channel); // Добавляем в список доступных
+                    updateDisplay(); // 👈 СРАЗУ обновляем интерфейс
                 } else {
                     console.log(`❌ Канал недоступен: ${channel.name}`);
                     addToBlacklist(channel.url);
                 }
-                // Обновляем интерфейс после каждой проверки
-                updateDisplay();
             })
             .catch(error => {
                 console.error(`Ошибка при проверке канала ${channel.name}:`, error);
                 checkedCount++;
-                updateDisplay();
+                updateDisplay(); // Обновляем прогресс даже при ошибке
             });
-    }
+    });
 
-    // Ждем завершения всех проверок, чтобы убрать лоадер и вывести итог
+    // Ждем завершения ВСЕХ проверок, чтобы убрать лоадер
     await Promise.allSettled(channels.map(channel => checkChannelAvailability(channel.url)));
     
     console.log(`✅ Доступных каналов: ${availableChannels.length} из ${channels.length}`);
     initialLoader.style.display = 'none';
 
     // Финальное обновление (на случай, если какие-то обновления не прошли)
-    loadedPlaylists[url] = availableChannels;
-    renderChannels(availableChannels);
+    loadedPlaylists[url] = [...availableChannels];
+    renderChannels([...availableChannels]);
 
     return availableChannels;
 }

@@ -70,6 +70,7 @@ const translations = {
     },
   en: {
       // Основные интерфейсные элементы и сообщения
+      "Проверка доступности...": "Checking availability...",
       "Проверять каналы": "Check Channels",
       "Глобальный плейлист": "Global Playlist",
       "Просмотренные": "Watched",

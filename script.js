@@ -24,11 +24,10 @@ const database = firebase.database();
 
 // 👇 Язык интерфейса
 let currentLanguage = localStorage.getItem('appLanguage') || 'ru';
-
 // 👇 Флаг проверки каналов
 let checkChannelsOnLoad = localStorage.getItem('checkChannelsOnLoad') === 'true';
 
-// 👇 Словарь переводов
+// 👇 Словарь переводов (ЗАМЕНИТЕ ЭТОТ БЛОК НА СВОЙ)
 const translations = {
     ru: {
         "Проверять каналы": "Проверять каналы",
@@ -36,15 +35,6 @@ const translations = {
         "Прямо сейчас": "Прямо сейчас",
         "Смотрят": "Смотрят",
         "Свой плейлист": "Свой плейлист",
-        "Пользовательские плейлисты": "Пользовательские плейлисты",
-        "Добавить в общую коллекцию": "Добавить в общую коллекцию",
-        "Плейлист успешно добавлен в общую коллекцию!": "Плейлист успешно добавлен в общую коллекцию!",
-        "Плейлист уже существует в коллекции.": "Плейлист уже существует в коллекции.",
-        "Ошибка при добавлении плейлиста в коллекцию": "Ошибка при добавлении плейлиста в коллекцию",
-        "Загрузка списка плейлистов...": "Загрузка списка плейлистов...",
-        "Плейлисты не найдены": "Плейлисты не найдены",
-        "Название плейлиста": "Название плейлиста",
-        "Введите название для вашего плейлиста": "Введите название для вашего плейлиста",
         "Категории": "Категории",
         "Страны": "Страны",
         "Языки": "Языки",
@@ -72,29 +62,25 @@ const translations = {
         "Введите ссылку": "Введите ссылку",
         "Язык изменён на Русский": "Язык изменён на Русский",
         "Language changed to English": "Язык изменён на Английский",
+        // 👇 Новые строки для "Случайный канал"
         "Случайный канал": "Случайный канал",
         "Не удалось найти доступный канал": "Не удалось найти доступный канал",
         "Попробуйте позже": "Попробуйте позже",
         "Еще один!": "Еще один!"
     },
   en: {
+      // Основные интерфейсные элементы и сообщения
+      "Проверка доступности...": "Checking availability...",
       "Проверять каналы": "Check Channels",
+      "Глобальный плейлист": "Global Playlist",
       "Просмотренные": "Watched",
       "Прямо сейчас": "Watching Now",
       "Смотрят": "Most Watched",
       "Свой плейлист": "Custom Playlist",
-      "Пользовательские плейлисты": "User Playlists",
-      "Добавить в общую коллекцию": "Add to Public Collection",
-      "Плейлист успешно добавлен в общую коллекцию!": "Playlist successfully added to public collection!",
-      "Плейлист уже существует в коллекции.": "Playlist already exists in the collection.",
-      "Ошибка при добавлении плейлиста в коллекцию": "Error adding playlist to collection",
-      "Загрузка списка плейлистов...": "Loading playlists...",
-      "Плейлисты не найдены": "Playlists not found",
-      "Название плейлиста": "Playlist Name",
-      "Введите название для вашего плейлиста": "Enter a name for your playlist",
       "Категории": "Categories",
       "Страны": "Countries",
       "Языки": "Languages",
+      "Регионы": "Regions",
       "Загрузите плейлист по ссылке": "Load playlist from URL",
       "Поддерживается формат M3U": "M3U format supported",
       "Загрузить плейлист": "Load Playlist",
@@ -119,10 +105,458 @@ const translations = {
       "Введите ссылку": "Enter URL",
       "Язык изменён на Русский": "Language changed to Russian",
       "Language changed to English": "Language changed to English",
+      // 👇 Новые строки для "Случайный канал"
       "Случайный канал": "Random Channel",
       "Не удалось найти доступный канал": "Failed to find an available channel",
       "Попробуйте позже": "Please try again later",
-      "Еще один!": "Another one!"
+      "Еще один!": "Another one!",
+      // Категории каналов
+      "Анимация": "Animation",
+      "Авто": "Auto",
+      "Бизнес": "Business",
+      "Классика": "Classic",
+      "Комедии": "Comedy",
+      "Кулинария": "Cooking",
+      "Культура": "Culture",
+      "Документальные": "Documentary",
+      "Образование": "Education",
+      "Развлечения": "Entertainment",
+      "Семейные": "Family",
+      "Общие": "General",
+      "Интерактивные": "Interactive",
+      "Детские": "Kids",
+      "Законодательные": "Legislative",
+      "Образ жизни": "Lifestyle",
+      "Кино": "Movies",
+      "Музыка": "Music",
+      "Новости": "News",
+      "Активный отдых": "Outdoor",
+      "Общественные": "Public",
+      "Релакс": "Relax",
+      "Религиозные": "Religious",
+      "Наука": "Science",
+      "Сериалы": "Series",
+      "Шопинг": "Shop",
+      "Спорт": "Sports",
+      "Путешествия": "Travel",
+      "Погода": "Weather",
+      "XXX": "XXX",
+      "Не определено": "Undefined",
+      // Страны
+      "Афганистан": "Afghanistan",
+      "Албания": "Albania",
+      "Алжир": "Algeria",
+      "Андорра": "Andorra",
+      "Ангола": "Angola",
+      "Аргентина": "Argentina",
+      "Армения": "Armenia",
+      "Аруба": "Aruba",
+      "Австралия": "Australia",
+      "Австрия": "Austria",
+      "Азербайджан": "Azerbaijan",
+      "Багамы": "Bahamas",
+      "Бахрейн": "Bahrain",
+      "Бангладеш": "Bangladesh",
+      "Барбадос": "Barbados",
+      "Беларусь": "Belarus",
+      "Бельгия": "Belgium",
+      "Бенин": "Benin",
+      "Бермуды": "Bermuda",
+      "Бутан": "Bhutan",
+      "Боливия": "Bolivia",
+      "Бонайре": "Bonaire",
+      "Босния и Герцеговина": "Bosnia and Herzegovina",
+      "Бразилия": "Brazil",
+      "Британские Виргинские острова": "British Virgin Islands",
+      "Бруней": "Brunei",
+      "Болгария": "Bulgaria",
+      "Буркина-Фасо": "Burkina Faso",
+      "Камбоджа": "Cambodia",
+      "Камерун": "Cameroon",
+      "Канада": "Canada",
+      "Кабо-Верде": "Cape Verde",
+      "Чад": "Chad",
+      "Чили": "Chile",
+      "Китай": "China",
+      "Колумбия": "Colombia",
+      "Коста-Рика": "Costa Rica",
+      "Хорватия": "Croatia",
+      "Куба": "Cuba",
+      "Кюрасао": "Curacao",
+      "Кипр": "Cyprus",
+      "Чехия": "Czech Republic",
+      "Демократическая Республика Конго": "Democratic Republic of the Congo",
+      "Дания": "Denmark",
+      "Джибути": "Djibouti",
+      "Доминиканская Республика": "Dominican Republic",
+      "Эквадор": "Ecuador",
+      "Египет": "Egypt",
+      "Сальвадор": "El Salvador",
+      "Экваториальная Гвинея": "Equatorial Guinea",
+      "Эритрея": "Eritrea",
+      "Эстония": "Estonia",
+      "Эфиопия": "Ethiopia",
+      "Фарерские острова": "Faroe Islands",
+      "Финляндия": "Finland",
+      "Франция": "France",
+      "Французская Полинезия": "French Polynesia",
+      "Габон": "Gabon",
+      "Гамбия": "Gambia",
+      "Грузия": "Georgia",
+      "Германия": "Germany",
+      "Гана": "Ghana",
+      "Греция": "Greece",
+      "Гваделупа": "Guadeloupe",
+      "Гуам": "Guam",
+      "Гватемала": "Guatemala",
+      "Гернси": "Guernsey",
+      "Гвинея": "Guinea",
+      "Гайана": "Guyana",
+      "Гаити": "Haiti",
+      "Гондурас": "Honduras",
+      "Гонконг": "Hong Kong",
+      "Венгрия": "Hungary",
+      "Исландия": "Iceland",
+      "Индия": "India",
+      "Индонезия": "Indonesia",
+      "Иран": "Iran",
+      "Ирак": "Iraq",
+      "Ирландия": "Ireland",
+      "Израиль": "Israel",
+      "Италия": "Italy",
+      "Кот-д'Ивуар": "Ivory Coast",
+      "Ямайка": "Jamaica",
+      "Япония": "Japan",
+      "Иордания": "Jordan",
+      "Казахстан": "Kazakhstan",
+      "Кения": "Kenya",
+      "Косово": "Kosovo",
+      "Кувейт": "Kuwait",
+      "Киргизия": "Kyrgyzstan",
+      "Лаос": "Laos",
+      "Латвия": "Latvia",
+      "Ливан": "Lebanon",
+      "Либерия": "Liberia",
+      "Ливия": "Libya",
+      "Лихтенштейн": "Liechtenstein",
+      "Литва": "Lithuania",
+      "Люксембург": "Luxembourg",
+      "Макао": "Macao",
+      "Малайзия": "Malaysia",
+      "Мальдивы": "Maldives",
+      "Мали": "Mali",
+      "Мальта": "Malta",
+      "Мартиника": "Martinique",
+      "Мавритания": "Mauritania",
+      "Маврикий": "Mauritius",
+      "Мексика": "Mexico",
+      "Молдова": "Moldova",
+      "Монако": "Monaco",
+      "Монголия": "Mongolia",
+      "Черногория": "Montenegro",
+      "Марокко": "Morocco",
+      "Мозамбик": "Mozambique",
+      "Мьянма": "Myanmar",
+      "Намибия": "Namibia",
+      "Непал": "Nepal",
+      "Нидерланды": "Netherlands",
+      "Новая Зеландия": "New Zealand",
+      "Никарагуа": "Nicaragua",
+      "Нигер": "Niger",
+      "Нигерия": "Nigeria",
+      "Северная Корея": "North Korea",
+      "Северная Македония": "North Macedonia",
+      "Норвегия": "Norway",
+      "Оман": "Oman",
+      "Пакистан": "Pakistan",
+      "Палестина": "Palestine",
+      "Панама": "Panama",
+      "Папуа — Новая Гвинея": "Papua New Guinea",
+      "Парагвай": "Paraguay",
+      "Перу": "Peru",
+      "Филиппины": "Philippines",
+      "Польша": "Poland",
+      "Португалия": "Portugal",
+      "Пуэрто-Рико": "Puerto Rico",
+      "Катар": "Qatar",
+      "Республика Конго": "Republic of the Congo",
+      "Реюньон": "Reunion",
+      "Румыния": "Romania",
+      "Россия": "Russia",
+      "Руанда": "Rwanda",
+      "Сент-Китс и Невис": "Saint Kitts and Nevis",
+      "Сент-Люсия": "Saint Lucia",
+      "Самоа": "Samoa",
+      "Сан-Марино": "San Marino",
+      "Саудовская Аравия": "Saudi Arabia",
+      "Сенегал": "Senegal",
+      "Сербия": "Serbia",
+      "Сингапур": "Singapore",
+      "Синт-Мартен": "Sint Maarten",
+      "Словакия": "Slovakia",
+      "Словения": "Slovenia",
+      "Сомали": "Somalia",
+      "Южная Африка": "South Africa",
+      "Южная Корея": "South Korea",
+      "Испания": "Spain",
+      "Шри-Ланка": "Sri Lanka",
+      "Судан": "Sudan",
+      "Суринам": "Suriname",
+      "Швеция": "Sweden",
+      "Швейцария": "Switzerland",
+      "Сирия": "Syria",
+      "Тайвань": "Taiwan",
+      "Таджикистан": "Tajikistan",
+      "Танзания": "Tanzania",
+      "Таиланд": "Thailand",
+      "Того": "Togo",
+      "Тринидад и Тобаго": "Trinidad and Tobago",
+      "Тунис": "Tunisia",
+      "Турция": "Turkiye",
+      "Туркменистан": "Turkmenistan",
+      "Американские Виргинские острова": "U.S. Virgin Islands",
+      "Уганда": "Uganda",
+      "Украина": "Ukraine",
+      "ОАЭ": "United Arab Emirates",
+      "Великобритания": "United Kingdom",
+      "США": "United States",
+      "Уругвай": "Uruguay",
+      "Узбекистан": "Uzbekistan",
+      "Ватикан": "Vatican City",
+      "Венесуэла": "Venezuela",
+      "Вьетнам": "Vietnam",
+      "Западная Сахара": "Western Sahara",
+      "Йемен": "Yemen",
+      "Зимбабве": "Zimbabwe",
+      "Международные": "International",
+      // Языки
+      "Аколи": "Acoli",
+      "Адхола": "Adhola",
+      "Афар": "Afar",
+      "Африкаанс": "Afrikaans",
+      "Албанский": "Albanian",
+      "Алжирский жестовый": "Algerian Sign Language",
+      "Алур": "Alur",
+      "Амхарский": "Amharic",
+      "Арабский": "Arabic",
+      "Армянский": "Armenian",
+      "Ассамский": "Assamese",
+      "Ассирийский неоарамейский": "Assyrian Neo-Aramaic",
+      "Айизо гбе": "Ayizo Gbe",
+      "Аймара": "Aymara",
+      "Азербайджанский": "Azerbaijani",
+      "Баатонум": "Baatonum",
+      "Бамбара": "Bambara",
+      "Башкирский": "Bashkir",
+      "Баскский": "Basque",
+      "Белорусский": "Belarusian",
+      "Бенгальский": "Bengali",
+      "Бходжпури": "Bhojpuri",
+      "Боснийский": "Bosnian",
+      "Болгарский": "Bulgarian",
+      "Бирманский": "Burmese",
+      "Каталанский": "Catalan",
+      "Центральный атлас тамазигхт": "Central Atlas Tamazight",
+      "Центральный курдский": "Central Kurdish",
+      "Ченуа": "Chenoua",
+      "Чхаттисгархи": "Chhattisgarhi",
+      "Чига": "Chiga",
+      "Китайский": "Chinese",
+      "Хорватский": "Croatian",
+      "Чешский": "Czech",
+      "Датский": "Danish",
+      "Дари (Парси)": "Dari (Parsi)",
+      "Денди (Бенин)": "Dendi (Benin)",
+      "Дханвар (Непал)": "Dhanwar (Nepal)",
+      "Дивехи": "Dhivehi",
+      "Дхолуо": "Dholuo",
+      "Димили": "Dimili",
+      "Голландский": "Dutch",
+      "Дьюла": "Dyula",
+      "Египетский арабский": "Egyptian Arabic",
+      "Английский": "English",
+      "Эстонский": "Estonian",
+      "Эве": "Ewe",
+      "Фарерский": "Faroese",
+      "Фаталика": "Fataleka",
+      "Филиппинский": "Filipino",
+      "Финский": "Finnish",
+      "Фон": "Fon",
+      "Французский": "French",
+      "Фулах": "Fulah",
+      "Гэльский": "Gaelic",
+      "Ганда": "Ganda",
+      "Ген": "Gen",
+      "Грузинский": "Georgian",
+      "Немецкий": "German",
+      "Гикую": "Gikuyu",
+      "Гоан Конкани": "Goan Konkani",
+      "Греческий": "Greek",
+      "Гваделупский креольский французский": "Guadeloupean Creole French",
+      "Гуджарати": "Gujarati",
+      "Гун": "Gun",
+      "Гаитянский": "Haitian",
+      "Хауса": "Hausa",
+      "Иврит": "Hebrew",
+      "Хинди": "Hindi",
+      "Хмонг": "Hmong",
+      "Венгерский": "Hungarian",
+      "Исландский": "Icelandic",
+      "Индонезийский": "Indonesian",
+      "Инуктитут": "Inuktitut",
+      "Ирландский": "Irish",
+      "Исекири": "Isekiri",
+      "Итальянский": "Italian",
+      "Японский": "Japanese",
+      "Яванский": "Javanese",
+      "Кабийе": "Kabiyè",
+      "Кабильский": "Kabyle",
+      "Каннада": "Kannada",
+      "Капампанган": "Kapampangan",
+      "Казахский": "Kazakh",
+      "Кхмерский": "Khmer",
+      "Хорасани-турецкий": "Khorasani Turkish",
+      "Киньяруанда": "Kinyarwanda",
+      "Киргизский": "Kirghiz",
+      "Китуба (Конго)": "Kituba (Congo)",
+      "Конго": "Kongo",
+      "Конкани (макроязык)": "Konkani (macrolanguage)",
+      "Корейский": "Korean",
+      "Кумам": "Kumam",
+      "Курдский": "Kurdish",
+      "Ланго (Уганда)": "Lango (Uganda)",
+      "Лаосский": "Lao",
+      "Латинский": "Latin",
+      "Латышский": "Latvian",
+      "Люксембургский": "Luxembourgish",
+      "Лингала": "Lingala",
+      "Литовский": "Lithuanian",
+      "Луба-Лулуа": "Luba-Lulua",
+      "Лушай": "Lushai",
+      "Македонский": "Macedonian",
+      "Малайский": "Malay",
+      "Малаялам": "Malayalam",
+      "Мальтийский": "Maltese",
+      "Мандарин китайский": "Mandarin Chinese",
+      "Мандинка": "Mandinka",
+      "Маори": "Maori",
+      "Маратхи": "Marathi",
+      "Минь Нань китайский": "Min Nan Chinese",
+      "Монгольский": "Mongolian",
+      "Черногорский": "Montenegrin",
+      "Морисьен": "Morisyen",
+      "Марокканский жестовый": "Moroccan Sign Language",
+      "Мосси": "Mossi",
+      "Микенский греческий": "Mycenaean Greek",
+      "Непальский": "Nepali",
+      "Норвежский": "Norwegian",
+      "Ньянколе": "Nyankole",
+      "Ньоро": "Nyoro",
+      "Ория (макроязык)": "Oriya (macrolanguage)",
+      "Панджаби": "Punjabi",
+      "Папьяменто": "Papiamento",
+      "Пушту": "Pashto",
+      "Персидский": "Persian",
+      "Польский": "Polish",
+      "Португальский": "Portuguese",
+      "Пулаар": "Pulaar",
+      "Кечуа": "Quechua",
+      "Румынский": "Romanian",
+      "Русский": "Russian",
+      "Сент-Люсийский креольский французский": "Saint Lucian Creole French",
+      "Самоанский": "Samoan",
+      "Сантальский": "Santali",
+      "Сербский": "Serbian",
+      "Сербо-хорватский": "Serbo-Croatian",
+      "Сингальский": "Sinhala",
+      "Словацкий": "Slovak",
+      "Словенский": "Slovenian",
+      "Сомалийский": "Somali",
+      "Южноафриканский жестовый": "South African Sign Language",
+      "Южный ндебеле": "South Ndebele",
+      "Испанский": "Spanish",
+      "Стандартный арабский": "Standard Arabic",
+      "Суахили": "Swahili",
+      "Свати": "Swati",
+      "Шведский": "Swedish",
+      "Тачавит": "Tachawit",
+      "Ташелхит": "Tachelhit",
+      "Тагальский": "Tagalog",
+      "Таитянский": "Tahitian",
+      "Таджикский": "Tajik",
+      "Тамашек": "Tamashek",
+      "Тамильский": "Tamil",
+      "Тарифит": "Tarifit",
+      "Татарский": "Tatar",
+      "Телугу": "Telugu",
+      "Тайский": "Thai",
+      "Тибетский": "Tibetan",
+      "Тигре": "Tigre",
+      "Тигринья": "Tigrinya",
+      "Торо": "Tooro",
+      "Цонга": "Tsonga",
+      "Тумзабт": "Tumzabt",
+      "Турецкий": "Turkish",
+      "Туркменский": "Turkmen",
+      "Уйгурский": "Uighur",
+      "Украинский": "Ukrainian",
+      "Урду": "Urdu",
+      "Узбекский": "Uzbek",
+      "Венда": "Venda",
+      "Вьетнамский": "Vietnamese",
+      "Валлийский": "Welsh",
+      "Западно-фризский": "Western Frisian",
+      "Волоф": "Wolof",
+      "Коса": "Xhosa",
+      "Якутский": "Yakut",
+      "Йоруба": "Yoruba",
+      "Юкатек Майя": "Yucatec Maya",
+      "Юэ китайский": "Yue Chinese",
+      "Зарма": "Zarma",
+      "Зулу": "Zulu",
+      // Регионы
+      "Африка": "Africa",
+      "Америка": "Americas",
+      "Арабский мир": "Arab world",
+      "Азия": "Asia",
+      "Азиатско-Тихоокеанский регион": "Asia-Pacific",
+      "АСЕАН": "Association of Southeast Asian Nations",
+      "Балканы": "Balkan",
+      "Бенилюкс": "Benelux",
+      "Карибы": "Caribbean",
+      "Центральная Америка": "Central America",
+      "Центральная и Восточная Европа": "Central and Eastern Europe",
+      "Центральная Азия": "Central Asia",
+      "Центральная Европа": "Central Europe",
+      "СНГ": "Commonwealth of Independent States",
+      "Восточная Африка": "East Africa",
+      "Восточная Азия": "East Asia",
+      "Европа": "Europe",
+      "Европа, Ближний Восток и Африка": "Europe, the Middle East and Africa",
+      "Европейский союз": "European Union",
+      "Совет сотрудничества арабских государств Персидского залива": "Gulf Cooperation Council",
+      "Испаноязычная Америка": "Hispanic America",
+      "Латинская Америка": "Latin America",
+      "Латинская Америка и Карибы": "Latin America and the Caribbean",
+      "Магриб": "Maghreb",
+      "Ближний Восток": "Middle East",
+      "Ближний Восток и Северная Африка": "Middle East and North Africa",
+      "Страны Северной Европы": "Nordics",
+      "Северная Америка": "North America",
+      "Северная Америка (континент)": "Northern America",
+      "Северная Европа": "Northern Europe",
+      "Океания": "Oceania",
+      "Южная Америка": "South America",
+      "Южная Азия": "South Asia",
+      "Юго-Восточная Азия": "Southeast Asia",
+      "Южная Африка": "Southern Africa",
+      "Южная Европа": "Southern Europe",
+      "Африка к югу от Сахары": "Sub-Saharan Africa",
+      "Организация Объединённых Наций": "United Nations",
+      "Западная Африка": "West Africa",
+      "Западная Азия": "West Asia",
+      "Западная Европа": "Western Europe",
+      "Всемирный": "Worldwide"
   }
 };
 
@@ -147,18 +581,14 @@ let navigationState = 'channels';
 let currentWatchedChannel = null; // { name, url, group, logo }
 let watchStartTime = null;        // timestamp открытия плеера
 
-// 👇 Дерево категорий
+// 👇 Дерево категорий (ЗАМЕНИТЕ ЭТОТ БЛОК НА СВОЙ)
 const categoryTree = {
   "Просмотренные": {},
   "Прямо сейчас": {},
   "Смотрят": {},
   "Свой плейлист": {},
-  "Пользовательские плейлисты": {}, // <-- ЗАМЕНЕНО
-  "Случайный канал": {},
-  "Категории": {},
-  "Страны": {},
-  "Языки": {},
-  "Регионы": {},
+  "Глобальный плейлист": "https://iptv-org.github.io/iptv/index.m3u",
+  "Случайный канал": {}, // <-- НОВАЯ КАТЕГОРИЯ
   "Категории": {
     "Авто": "https://iptv-org.github.io/iptv/categories/auto.m3u  ",
     "Анимация": "https://iptv-org.github.io/iptv/categories/animation.m3u  ",
@@ -705,7 +1135,7 @@ async function addToWatching(name, url, group, logo) {
     }
 }
 
-// 👇 Загрузка плейлиста по URL (обновленная версия с опцией добавления в коллекцию)
+// 👇 Загрузка плейлиста по URL
 async function loadPlaylistFromURL() {
     const urlInput = document.getElementById('playlistURL');
     const url = urlInput.value.trim();
@@ -721,16 +1151,8 @@ async function loadPlaylistFromURL() {
         if (channels.length === 0) {
             throw new Error('Плейлист пуст или не содержит поддерживаемых каналов');
         }
-
-        // Сохраняем плейлист локально как и раньше
         localStorage.setItem('customPlaylist', JSON.stringify(channels));
         showToast(translateText('Плейлист загружен!'));
-
-        // 👇 НОВОЕ: Предлагаем добавить плейлист в общую коллекцию
-        if (confirm(translateText('Добавить в общую коллекцию') + '? ' + translateText('Название плейлиста') + ': ' + extractPlaylistName(url))) {
-            await addToPublicPlaylists(url, extractPlaylistName(url), channels.length);
-        }
-
         renderChannels(channels);
         setTimeout(() => {
             const firstChannel = document.querySelector('.channel-card');
@@ -742,52 +1164,6 @@ async function loadPlaylistFromURL() {
         showToast(translateText('Не удалось загрузить плейлист'));
     } finally {
         initialLoader.style.display = 'none';
-    }
-}
-
-// Вспомогательная функция для извлечения имени плейлиста из URL
-function extractPlaylistName(url) {
-    try {
-        const decoded = decodeURIComponent(url);
-        const parts = decoded.split('/');
-        let name = parts[parts.length - 1].split('?')[0].split('#')[0];
-        if (name.endsWith('.m3u') || name.endsWith('.m3u8')) {
-            name = name.substring(0, name.lastIndexOf('.'));
-        }
-        return name || 'Custom Playlist';
-    } catch (e) {
-        return 'Custom Playlist';
-    }
-}
-
-// 👇 НОВАЯ ФУНКЦИЯ: Добавление плейлиста в Firebase
-async function addToPublicPlaylists(url, name, channelCount) {
-    try {
-        // Создаем уникальный ключ на основе URL
-        const key = url.replace(/[^a-zA-Z0-9]/g, '_').substring(0, 100);
-        const now = Date.now();
-
-        // Проверяем, не существует ли уже такой плейлист
-        const snapshot = await database.ref('publicPlaylists/' + key).get();
-        if (snapshot.exists()) {
-            showToast(translateText('Плейлист уже существует в коллекции.'));
-            return;
-        }
-
-        // Добавляем новую запись
-        await database.ref('publicPlaylists/' + key).set({
-            name: name,
-            url: url,
-            channelCount: channelCount,
-            addedAt: now,
-            addedBy: 'anonymous'
-        });
-
-        showToast(translateText('Плейлист успешно добавлен в общую коллекцию!'));
-        console.log(`✅ Плейлист "${name}" добавлен в общую коллекцию.`);
-    } catch (error) {
-        console.error("❌ Ошибка при добавлении плейлиста в коллекцию:", error);
-        showToast(translateText('Ошибка при добавлении плейлиста в коллекцию'));
     }
 }
 
@@ -867,6 +1243,7 @@ function toggleChannelCheck() {
     localStorage.setItem('checkChannelsOnLoad', checkChannelsOnLoad);
     const flags = mainCategoriesPanel.querySelectorAll('.category-btn');
     flags.forEach(flag => {
+        // 👇 Обновляем текст, используя translateText
         if (flag.textContent.includes(translateText('Проверять каналы'))) {
             flag.textContent = checkChannelsOnLoad ? '✅ ' + translateText('Проверять каналы') : '🔲 ' + translateText('Проверять каналы');
             flag.classList.toggle('active', checkChannelsOnLoad);
@@ -899,9 +1276,11 @@ function renderMainCategories() {
         });
         mainCategoriesPanel.appendChild(btn);
     });
+
     const spacer = document.createElement('div');
     spacer.style.width = '20px';
     mainCategoriesPanel.appendChild(spacer);
+
     const ruFlag = document.createElement('button');
     ruFlag.className = 'category-btn';
     ruFlag.textContent = '🇷🇺';
@@ -916,6 +1295,7 @@ function renderMainCategories() {
         }
     });
     mainCategoriesPanel.appendChild(ruFlag);
+
     const enFlag = document.createElement('button');
     enFlag.className = 'category-btn';
     enFlag.textContent = '🇬🇧';
@@ -930,13 +1310,14 @@ function renderMainCategories() {
         }
     });
     mainCategoriesPanel.appendChild(enFlag);
-    
-    // 👇 Добавляем флажок "Проверять каналы"
+  
+        // 👇 Добавляем флажок "Проверять каналы"
     const spacer2 = document.createElement('div');
     spacer2.style.width = '20px';
     mainCategoriesPanel.appendChild(spacer2);
     const checkFlag = document.createElement('button');
     checkFlag.className = 'category-btn';
+    // 👇 Используем translateText для получения переведенного текста
     checkFlag.textContent = checkChannelsOnLoad ? '✅ ' + translateText('Проверять каналы') : '🔲 ' + translateText('Проверять каналы');
     checkFlag.style.minWidth = '140px';
     checkFlag.style.padding = '8px';
@@ -950,19 +1331,15 @@ function renderMainCategories() {
         }
     });
     mainCategoriesPanel.appendChild(checkFlag);
-}
-
+} // <-- ЭТА ЗАКРЫВАЮЩАЯ СКОБКА БЫЛА УДАЛЕНА ПО ОШИБКЕ!
 // Отображение подкатегорий (или кастомного UI)
 function renderSubCategories() {
     if (currentMainCategory === 'Свой плейлист') {
         renderCustomPlaylistSubmenu();
         return;
     }
-    if (currentMainCategory === 'Пользовательские плейлисты') {
-        subCategoriesPanel.innerHTML = '';
-        subCategoriesPanel.style.display = 'flex';
-        subCategoriesPanel.innerHTML = `<div style="color:#aaa; padding:20px; text-align:center">${translateText("Загрузка списка плейлистов...")}</div>`;
-        loadAndRenderPublicPlaylists(); // Загружаем список плейлистов из Firebase
+    if (currentMainCategory === 'Глобальный плейлист') {
+        renderGlobalPlaylistSearch();
         return;
     }
     if (currentMainCategory === 'Случайный канал') {
@@ -1007,96 +1384,244 @@ function renderSubCategories() {
     }
 }
 
-// 👇 НОВАЯ ФУНКЦИЯ: Загрузка и отображение списка публичных плейлистов
-async function loadAndRenderPublicPlaylists() {
-    try {
-        const snapshot = await database.ref('publicPlaylists').get();
-        let publicPlaylists = [];
-
-        if (snapshot.exists()) {
-            publicPlaylists = Object.values(snapshot.val());
-            // Сортируем по дате добавления (новые сверху)
-            publicPlaylists.sort((a, b) => b.addedAt - a.addedAt);
+// 👇 Отображение строки поиска для "Глобальный плейлист"
+function renderGlobalPlaylistSearch() {
+    subCategoriesPanel.innerHTML = '';
+    subCategoriesPanel.style.display = 'flex';
+    const wrapper = document.createElement('div');
+    wrapper.style.display = 'flex';
+    wrapper.style.gap = '10px';
+    wrapper.style.alignItems = 'center';
+    wrapper.style.padding = '0 10px';
+    wrapper.style.width = '100%';
+    const input = document.createElement('input');
+    input.id = 'globalSearchInput';
+    input.type = 'text';
+    input.placeholder = translateText('Поиск по каналам...');
+    input.style.padding = '8px 12px';
+    input.style.borderRadius = '6px';
+    input.style.border = '1px solid #444';
+    input.style.background = '#222';
+    input.style.color = 'white';
+    input.style.fontSize = '13px';
+    input.style.flex = '1';
+    input.setAttribute('tabindex', '0');
+    const button = document.createElement('button');
+    button.textContent = '🔍';
+    button.title = translateText('Поиск');
+    button.style.padding = '8px 16px';
+    button.style.borderRadius = '6px';
+    button.style.border = 'none';
+    button.style.background = 'linear-gradient(90deg, #ff375f, #ff5e41)';
+    button.style.color = 'white';
+    button.style.cursor = 'pointer';
+    button.style.fontSize = '16px';
+    button.setAttribute('tabindex', '0');
+    button.addEventListener('click', performGlobalSearch);
+    button.addEventListener('keydown', function(e) {
+        if (e.key === 'Enter' || e.key === ' ') {
+            e.preventDefault();
+            this.click();
         }
-
-        subCategoriesPanel.innerHTML = '';
-        if (publicPlaylists.length === 0) {
-            subCategoriesPanel.innerHTML = `<div style="color:#aaa; padding:40px; text-align:center">${translateText("Плейлисты не найдены")}</div>`;
-            return;
+    });
+    input.addEventListener('keydown', function(e) {
+        if (e.key === 'Enter') {
+            e.preventDefault();
+            performGlobalSearch();
         }
-
-        publicPlaylists.forEach((playlist, index) => {
-            const btn = document.createElement('button');
-            btn.className = 'subcategory-btn';
-            btn.innerHTML = `<strong>${playlist.name}</strong><br><small>${playlist.channelCount} ${translateText('каналов')}</small>`;
-            btn.title = playlist.url;
-            btn.style.textAlign = 'left';
-            btn.style.justifyContent = 'flex-start';
-            btn.style.padding = '12px 16px';
-
-            if (currentSubcategory === playlist.name) {
-                btn.classList.add('active');
-                currentSubCategoryIndex = index;
-            }
-
-            btn.addEventListener('click', () => selectPublicPlaylist(playlist, index));
-            btn.addEventListener('keydown', function(e) {
-                if (e.key === 'Enter' || e.key === ' ') {
-                    e.preventDefault();
-                    this.click();
-                }
-            });
-
-            subCategoriesPanel.appendChild(btn);
-        });
-    } catch (error) {
-        console.error("❌ Ошибка загрузки публичных плейлистов:", error);
-        subCategoriesPanel.innerHTML = `<div style="color:#aaa; padding:40px; text-align:center">${translateText("Ошибка загрузки")}</div>`;
-    }
+    });
+    wrapper.appendChild(input);
+    wrapper.appendChild(button);
+    subCategoriesPanel.appendChild(wrapper);
+    setTimeout(() => {
+        input.focus();
+        navigationState = 'globalSearch';
+    }, 100);
 }
 
-// 👇 НОВАЯ ФУНКЦИЯ: Выбор публичного плейлиста для загрузки
-async function selectPublicPlaylist(playlist, index) {
-    currentSubcategory = playlist.name;
-    currentSubCategoryIndex = index;
-
+// 👇 Выполняет поиск по глобальному плейлисту
+async function performGlobalSearch() {
+    const input = document.getElementById('globalSearchInput');
+    const searchTerm = input.value.trim().toLowerCase();
     initialLoader.style.display = 'flex';
-    channelsContainer.innerHTML = `<div style="color:#aaa; padding:40px; text-align:center">${translateText("Загрузка...")}</div>`;
-
     try {
-        // Проверяем, не загружен ли плейлист уже
-        if (!loadedPlaylists[playlist.url]) {
-            await fetchAndCachePlaylist(playlist.url, playlist.name);
+        if (!loadedPlaylists[categoryTree['Глобальный плейлист']]) {
+            await fetchAndCachePlaylist(categoryTree['Глобальный плейлист'], translateText('Глобальный плейлист'));
         }
-        // Если fetchAndCachePlaylist прошел успешно, каналы уже отрендерены.
-        const channels = loadedPlaylists[playlist.url] || [];
-        renderChannels(channels);
+        const allChannels = loadedPlaylists[categoryTree['Глобальный плейлист']] || [];
+        if (searchTerm === '') {
+            renderChannels(allChannels);
+        } else {
+            const filteredChannels = allChannels.filter(channel => 
+                channel.name.toLowerCase().includes(searchTerm)
+            );
+            renderChannels(filteredChannels);
+            if (filteredChannels.length === 0) {
+                channelsContainer.innerHTML = `<div style="color:#aaa; padding:40px; text-align:center">${translateText("Каналы не найдены")}</div>`;
+            }
+        }
     } catch (error) {
-        console.error("❌ Ошибка загрузки выбранного публичного плейлиста:", error);
-        showToast(translateText("Не удалось загрузить плейлист"));
+        console.error("Ошибка поиска:", error);
+        showToast(translateText("Ошибка поиска"));
         renderChannels([]);
     } finally {
         initialLoader.style.display = 'none';
         setTimeout(() => {
             const firstChannel = document.querySelector('.channel-card');
-            if (firstChannel) {
-                firstChannel.focus();
-                navigationState = 'channels';
-            }
+            if (firstChannel) firstChannel.focus();
+            navigationState = 'channels';
         }, 100);
     }
 }
 
-// 👇 Загрузка и кэширование плейлиста с опциональной проверкой каналов
+// 👇 Загрузка и проверка случайного канала
+async function loadRandomChannel() {
+    initialLoader.style.display = 'flex';
+    channelsContainer.innerHTML = `<div style="color:#aaa; padding:40px; text-align:center">${translateText("Загрузка...")}</div>`;
+
+    try {
+        const globalPlaylistUrl = categoryTree['Глобальный плейлист'];
+        if (!loadedPlaylists[globalPlaylistUrl]) {
+            await fetchAndCachePlaylist(globalPlaylistUrl, translateText('Глобальный плейлист'));
+        }
+
+        const allChannels = loadedPlaylists[globalPlaylistUrl] || [];
+        if (allChannels.length === 0) {
+            throw new Error('Глобальный плейлист пуст');
+        }
+
+        let attempts = 0;
+        const maxAttempts = 10;
+        let selectedChannel = null;
+
+        while (attempts < maxAttempts) {
+            attempts++;
+            const randomIndex = Math.floor(Math.random() * allChannels.length);
+            selectedChannel = allChannels[randomIndex];
+
+            const blacklist = JSON.parse(localStorage.getItem('blacklist') || '[]');
+            if (blacklist.includes(selectedChannel.url)) {
+                continue;
+            }
+
+            const isAvailable = await checkChannelAvailability(selectedChannel.url);
+            if (isAvailable) {
+                break;
+            } else {
+                selectedChannel = null;
+                addToBlacklist(selectedChannel.url);
+            }
+        }
+
+        if (selectedChannel) {
+            renderChannels([selectedChannel]);
+            setTimeout(() => {
+                const firstChannel = document.querySelector('.channel-card');
+                if (firstChannel) {
+                    firstChannel.focus();
+                    navigationState = 'channels';
+                }
+            }, 100);
+        } else {
+            channelsContainer.innerHTML = `
+                <div style="color:#aaa; padding:60px 20px; text-align:center; font-size:16px;">
+                    <i class="fas fa-dice" style="font-size:48px; margin-bottom:20px;"></i><br>
+                    ${translateText("Не удалось найти доступный канал")}<br>
+                    ${translateText("Попробуйте позже")}
+                </div>`;
+        }
+
+    } catch (error) {
+        console.error("Ошибка при загрузке случайного канала:", error);
+        showToast(translateText("Ошибка загрузки"));
+        channelsContainer.innerHTML = `<div style="color:#aaa; padding:40px; text-align:center">${translateText("Не удалось загрузить")}</div>`;
+    } finally {
+        initialLoader.style.display = 'none';
+    }
+}
+
+// 👇 Вспомогательная функция для проверки доступности канала (оптимизированная)
+function checkChannelAvailability(url) {
+    return new Promise((resolve) => {
+        const video = document.createElement('video');
+        video.muted = true;
+        video.playsInline = true;
+
+        let manifestLoaded = false;
+        let errorOccurred = false;
+
+        const timeoutId = setTimeout(() => {
+            if (!manifestLoaded && !errorOccurred) {
+                console.warn("Таймаут проверки доступности:", url);
+                cleanup();
+                resolve(false);
+            }
+        }, 5000);
+
+        function cleanup() {
+            clearTimeout(timeoutId);
+            if (hlsInstance) {
+                hlsInstance.destroy();
+            }
+            video.src = '';
+            video.load();
+        }
+
+        let hlsInstance = null;
+
+        if (Hls.isSupported()) {
+            hlsInstance = new Hls();
+            hlsInstance.loadSource(url);
+            hlsInstance.attachMedia(video);
+
+            hlsInstance.on(Hls.Events.MANIFEST_PARSED, () => {
+                manifestLoaded = true;
+                cleanup();
+                resolve(true);
+            });
+
+            hlsInstance.on(Hls.Events.ERROR, (event, data) => {
+                if (data.fatal) {
+                    errorOccurred = true;
+                    cleanup();
+                    resolve(false);
+                }
+            });
+        } else if (video.canPlayType('application/vnd.apple.mpegurl')) {
+            video.src = url;
+
+            video.addEventListener('loadedmetadata', () => {
+                manifestLoaded = true;
+                cleanup();
+                resolve(true);
+            });
+
+            video.addEventListener('error', () => {
+                errorOccurred = true;
+                cleanup();
+                resolve(false);
+            });
+        } else {
+            cleanup();
+            resolve(false);
+        }
+
+        video.play().catch(() => {});
+    });
+}
+
+// 👇 Загрузка и кэширование плейлиста с опциональной проверкой каналов (ФИНАЛЬНАЯ ВЕРСИЯ)
 async function fetchAndCachePlaylist(url, group) {
     const content = await fetchM3U(url);
     let channels = parseM3UContent(content, group);
+    
     // Если проверка не включена, просто отображаем все каналы
     if (!checkChannelsOnLoad || channels.length === 0) {
         loadedPlaylists[url] = channels;
         renderChannels(channels);
         return channels;
     }
+
     // 👇 Начинаем процесс проверки
     initialLoader.style.display = 'flex';
     initialLoader.innerHTML = `
@@ -1106,9 +1631,11 @@ async function fetchAndCachePlaylist(url, group) {
         </div>
     `;
     const progressElement = document.getElementById('checkProgress');
+
     // Создаем копию массива для отслеживания доступных каналов
     let availableChannels = [];
     let checkedCount = 0;
+
     // Функция для обновления отображения
     const updateDisplay = () => {
         loadedPlaylists[url] = [...availableChannels]; // Обновляем кэш (клонируем массив)
@@ -1117,8 +1644,12 @@ async function fetchAndCachePlaylist(url, group) {
             progressElement.textContent = `${checkedCount}/${channels.length}`;
         }
     };
+
     // 👇 Сразу убираем лоадер, чтобы каналы стали видны!
+    // Оставляем только прогресс-бар в углу или в хедере, если хотите.
+    // Но для простоты уберем весь initialLoader.
     initialLoader.style.display = 'none';
+
     // Проверяем каждый канал асинхронно и НЕ ждем завершения предыдущего
     channels.forEach(channel => {
         // Запускаем проверку немедленно, без await
@@ -1139,15 +1670,18 @@ async function fetchAndCachePlaylist(url, group) {
                 updateDisplay(); // Обновляем прогресс даже при ошибке
             });
     });
+
     // Ждем завершения ВСЕХ проверок, чтобы вывести итог в консоль
     await Promise.allSettled(channels.map(channel => checkChannelAvailability(channel.url)));
+    
     console.log(`✅ Доступных каналов: ${availableChannels.length} из ${channels.length}`);
+
     // Финальное обновление (на случай, если какие-то обновления не прошли)
     loadedPlaylists[url] = [...availableChannels];
     renderChannels([...availableChannels]);
+
     return availableChannels;
 }
-
 // Выбор главной категории
 function selectMainCategory(categoryName, index) {
     if (currentMainCategory === 'Смотрят') {
@@ -1170,10 +1704,6 @@ function selectMainCategory(categoryName, index) {
         navigationState = 'customInput';
     } else if (categoryName === 'Смотрят' || categoryName === 'Прямо сейчас') {
         loadAndRenderChannels(categoryName, '');
-    } else if (categoryName === 'Пользовательские плейлисты') {
-        subCategoriesPanel.innerHTML = '';
-        subCategoriesPanel.style.display = 'flex';
-        loadAndRenderPublicPlaylists();
     } else if (!categoryTree[categoryName] || Object.keys(categoryTree[categoryName]).length === 0) {
         loadAndRenderChannels(currentMainCategory, currentSubcategory);
     }
@@ -1383,8 +1913,23 @@ async function loadAndRenderChannels(mainCategory, subcategory) {
         }
         return;
     }
-    if (mainCategory === 'Пользовательские плейлисты') {
-        // Обработка через selectPublicPlaylist
+    if (mainCategory === 'Глобальный плейлист') {
+        initialLoader.style.display = 'flex';
+        try {
+            const url = categoryTree['Глобальный плейлист'];
+            let channels = loadedPlaylists[url] || await fetchAndCachePlaylist(url, translateText('Глобальный плейлист'));
+            renderChannels(channels);
+        } catch (error) {
+            console.error("❌ Ошибка загрузки глобального плейлиста:", error);
+            showToast(translateText("Ошибка загрузки каналов"));
+            renderChannels([]);
+        } finally {
+            initialLoader.style.display = 'none';
+            setTimeout(() => {
+                const firstChannel = document.querySelector('.channel-card');
+                if (firstChannel) firstChannel.focus();
+            }, 100);
+        }
         return;
     }
     if (mainCategory === 'Случайный канал') {
@@ -1732,17 +2277,13 @@ function moveFocus(direction) {
                             navigationState = 'customInput';
                             return;
                         }
-                    } else if (currentMainCategory === 'Пользовательские плейлисты') {
-                        navigationState = 'subCategories';
-                        subCategoriesPanel.style.display = 'flex';
-                        setTimeout(() => {
-                            const buttons = subCategoriesPanel.querySelectorAll('.subcategory-btn');
-                            if (buttons.length > 0) {
-                                buttons[0].focus();
-                                currentSubCategoryIndex = 0;
-                            }
-                        }, 100);
-                        return;
+                    } else if (currentMainCategory === 'Глобальный плейлист') {
+                        const input = document.getElementById('globalSearchInput');
+                        if (input) {
+                            input.focus();
+                            navigationState = 'globalSearch';
+                            return;
+                        }
                     } else {
                         navigationState = 'subCategories';
                         subCategoriesPanel.style.display = 'flex';
@@ -1810,6 +2351,31 @@ function moveFocus(direction) {
             }, 100);
         }
     }
+    else if (navigationState === 'globalSearch') {
+        const input = document.getElementById('globalSearchInput');
+        const button = subCategoriesPanel.querySelector('button[title="' + translateText('Поиск') + '"]');
+        if (!input || !button) return;
+        if (direction === 'right') {
+            button.focus();
+        } else if (direction === 'left') {
+            input.focus();
+        } else if (direction === 'down') {
+            const firstChannel = document.querySelector('.channel-card');
+            if (firstChannel) {
+                firstChannel.focus();
+                navigationState = 'channels';
+            }
+        } else if (direction === 'up') {
+            navigationState = 'mainCategories';
+            mainCategoriesPanel.style.display = 'flex';
+            setTimeout(() => {
+                const buttons = mainCategoriesPanel.querySelectorAll('.category-btn');
+                if (buttons[currentMainCategoryIndex]) {
+                    buttons[currentMainCategoryIndex].focus();
+                }
+            }, 100);
+        }
+    }
 }
 
 // Обработчик клавиш
@@ -1834,16 +2400,12 @@ document.addEventListener('keydown', function(e) {
                         input.focus();
                         navigationState = 'customInput';
                     }
-                } else if (currentMainCategory === 'Пользовательские плейлисты') {
-                    navigationState = 'subCategories';
-                    subCategoriesPanel.style.display = 'flex';
-                    setTimeout(() => {
-                        const buttons = subCategoriesPanel.querySelectorAll('.subcategory-btn');
-                        if (buttons.length > 0) {
-                            buttons[0].focus();
-                            currentSubCategoryIndex = 0;
-                        }
-                    }, 100);
+                } else if (currentMainCategory === 'Глобальный плейлист') {
+                    const input = document.getElementById('globalSearchInput');
+                    if (input) {
+                        input.focus();
+                        navigationState = 'globalSearch';
+                    }
                 } else {
                     navigationState = 'subCategories';
                     subCategoriesPanel.style.display = 'flex';
@@ -1855,7 +2417,7 @@ document.addEventListener('keydown', function(e) {
                         }
                     }, 100);
                 }
-            } else if (navigationState === 'subCategories' || navigationState === 'customInput') {
+            } else if (navigationState === 'subCategories' || navigationState === 'customInput' || navigationState === 'globalSearch') {
                 navigationState = 'mainCategories';
                 mainCategoriesPanel.style.display = 'flex';
                 setTimeout(() => {
@@ -1874,16 +2436,12 @@ document.addEventListener('keydown', function(e) {
                         input.focus();
                         navigationState = 'customInput';
                     }
-                } else if (currentMainCategory === 'Пользовательские плейлисты') {
-                    navigationState = 'subCategories';
-                    subCategoriesPanel.style.display = 'flex';
-                    setTimeout(() => {
-                        const buttons = subCategoriesPanel.querySelectorAll('.subcategory-btn');
-                        if (buttons.length > 0) {
-                            buttons[0].focus();
-                            currentSubCategoryIndex = 0;
-                        }
-                    }, 100);
+                } else if (currentMainCategory === 'Глобальный плейлист') {
+                    const input = document.getElementById('globalSearchInput');
+                    if (input) {
+                        input.focus();
+                        navigationState = 'globalSearch';
+                    }
                 } else {
                     navigationState = 'subCategories';
                     subCategoriesPanel.style.display = 'flex';
@@ -1895,7 +2453,7 @@ document.addEventListener('keydown', function(e) {
                         }
                     }, 100);
                 }
-            } else if (navigationState === 'subCategories' || navigationState === 'customInput') {
+            } else if (navigationState === 'subCategories' || navigationState === 'customInput' || navigationState === 'globalSearch') {
                 navigationState = 'channels';
                 setTimeout(() => {
                     const firstChannel = document.querySelector('.channel-card');
@@ -1911,18 +2469,12 @@ document.addEventListener('keydown', function(e) {
                         input.focus();
                         navigationState = 'customInput';
                     }
-                } else if (currentMainCategory === 'Пользовательские плейлисты') {
-                    navigationState = 'subCategories';
-                    subCategoriesPanel.style.display = 'flex';
-                    setTimeout(() => {
-                        const buttons = subCategoriesPanel.querySelectorAll('.subcategory-btn');
-                        if (buttons.length > 0) {
-                            buttons[0].focus();
-                            currentSubCategoryIndex = 0;
-                            currentSubcategory = buttons[0].textContent;
-                            updateSubCategoryActive();
-                        }
-                    }, 100);
+                } else if (currentMainCategory === 'Глобальный плейлист') {
+                    const input = document.getElementById('globalSearchInput');
+                    if (input) {
+                        input.focus();
+                        navigationState = 'globalSearch';
+                    }
                 } else {
                     navigationState = 'subCategories';
                     subCategoriesPanel.style.display = 'flex';
@@ -1939,11 +2491,7 @@ document.addEventListener('keydown', function(e) {
             } else if (navigationState === 'subCategories') {
                 const buttons = subCategoriesPanel.querySelectorAll('.subcategory-btn');
                 if (buttons[currentSubCategoryIndex]) {
-                    if (currentMainCategory === 'Пользовательские плейлисты') {
-                        selectPublicPlaylist(JSON.parse(buttons[currentSubCategoryIndex].title), currentSubCategoryIndex);
-                    } else {
-                        selectSubcategory(buttons[currentSubCategoryIndex].textContent, currentSubCategoryIndex);
-                    }
+                    selectSubcategory(buttons[currentSubCategoryIndex].textContent, currentSubCategoryIndex);
                 }
             } else if (navigationState === 'customInput') {
                 const active = document.activeElement;
@@ -1951,6 +2499,13 @@ document.addEventListener('keydown', function(e) {
                     loadPlaylistFromURL();
                 } else if (active.tagName === 'BUTTON') {
                     active.click();
+                }
+            } else if (navigationState === 'globalSearch') {
+                const active = document.activeElement;
+                if (active.id === 'globalSearchInput') {
+                    performGlobalSearch();
+                } else if (active.tagName === 'BUTTON' && active.title === translateText('Поиск')) {
+                    performGlobalSearch();
                 }
             } else if (navigationState === 'channels' && document.activeElement.classList.contains('channel-card')) {
                 const card = document.activeElement;
@@ -1982,7 +2537,7 @@ document.addEventListener('keydown', function(e) {
             }
             break;
         case 'Escape':
-            if (navigationState === 'subCategories' || navigationState === 'customInput') {
+            if (navigationState === 'subCategories' || navigationState === 'customInput' || navigationState === 'globalSearch') {
                 navigationState = 'mainCategories';
                 setTimeout(() => {
                     const buttons = mainCategoriesPanel.querySelectorAll('.category-btn');

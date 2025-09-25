@@ -1414,58 +1414,118 @@ async function loadAndRenderChannels(mainCategory, subcategory) {
     }
 }
 
-// 👇 Загрузка и проверка случайных каналов (до 12 шт.)
+// 👇 Загрузка и проверка случайного канала (ИСПРАВЛЕННАЯ ВЕРСИЯ)
+async function loadRandomChannel() {
+    initialLoader.style.display = 'flex';
+    channelsContainer.innerHTML = `<div style="color:#aaa; padding:40px; text-align:center">${translateText("Загрузка...")}</div>`;
+
+    try {
+        // 👇 Собираем все возможные источники каналов
+        let allChannels = [];
+
+        // 1. Просмотренные каналы
+        try {
+            const watchedRaw = localStorage.getItem('watchedChannels');
+            if (watchedRaw) {
+                const watched = JSON.parse(watchedRaw);
+                if (Array.isArray(watched)) {
+                    allChannels = allChannels.concat(watched);
+                }
+            }
+        } catch (e) {
+            console.warn("Не удалось загрузить просмотренные каналы для случайного выбора");
+        }
+
+        // 2. Свой плейлист
+        try {
+            const customRaw = localStorage.getItem('customPlaylist');
+            if (customRaw) {
+                const custom = JSON.parse(customRaw);
+                if (Array.isArray(custom)) {
+                    allChannels = allChannels.concat(custom);
+                }
+            }
+        } catch (e) {
+            console.warn("Не удалось загрузить пользовательский плейлист для случайного выбора");
+        }
+
+        // 3. Загруженные плейлисты из Firebase (Пользовательские плейлисты)
+        try {
+            const snapshot = await database.ref('publicPlaylists').get();
+            if (snapshot.exists()) {
+                const playlistKeys = Object.keys(snapshot.val());
+                // Загружаем по 1-2 плейлиста, чтобы не перегружать
+                const sampleSize = Math.min(3, playlistKeys.length);
+                const sampledKeys = [];
+                for (let i = 0; i < sampleSize; i++) {
+                    const randomIndex = Math.floor(Math.random() * playlistKeys.length);
+                    sampledKeys.push(playlistKeys[randomIndex]);
+                    playlistKeys.splice(randomIndex, 1); // Убираем, чтобы не дублировать
+                }
+
+                for (const key of sampledKeys) {
+                    const playlist = snapshot.val()[key];
+                    if (!loadedPlaylists[playlist.url]) {
+                        await fetchAndCachePlaylist(playlist.url, playlist.name);
+                    }
+                    const playlistChannels = loadedPlaylists[playlist.url] || [];
+                    allChannels = allChannels.concat(playlistChannels);
+                }
+            }
+        } catch (e) {
+            console.warn("Не удалось загрузить публичные плейлисты для случайного выбора");
+        }
+
+        // 4. Если есть категории/страны/языки — берем случайную подкатегорию и загружаем её
+        if (allChannels.length === 0) {
+            const availableCategories = ["Категории", "Страны", "Языки", "Регионы"].filter(cat => 
+                categoryTree[cat] && Object.keys(categoryTree[cat]).length > 0
+            );
+
+            if (availableCategories.length > 0) {
+                const randomCategory = availableCategories[Math.floor(Math.random() * availableCategories.length)];
+                const subcategories = Object.keys(categoryTree[randomCategory]);
+                const randomSubcategory = subcategories[Math.floor(Math.random() * subcategories.length)];
+                const url = categoryTree[randomCategory][randomSubcategory];
+
+                if (!loadedPlaylists[url]) {
+                    await fetchAndCachePlaylist(url, randomSubcategory);
                 }
                 allChannels = loadedPlaylists[url] || [];
             }
         }
 
-        // Убираем дубликаты по URL
-        const uniqueChannelsMap = new Map();
-        allChannels.forEach(ch => {
-            if (!uniqueChannelsMap.has(ch.url)) {
-                uniqueChannelsMap.set(ch.url, ch);
-            }
-        });
-        let uniqueChannels = Array.from(uniqueChannelsMap.values());
-
         // Фильтруем по чёрному списку
         const blacklist = JSON.parse(localStorage.getItem('blacklist') || '[]');
-        uniqueChannels = uniqueChannels.filter(ch => !blacklist.includes(ch.url));
+        allChannels = allChannels.filter(channel => !blacklist.includes(channel.url));
 
-        if (uniqueChannels.length === 0) {
-            throw new Error('Нет каналов для случайного выбора');
+        if (allChannels.length === 0) {
+            throw new Error('Не удалось найти ни одного канала для случайного выбора');
         }
 
-        // Перемешиваем массив
-        const shuffled = uniqueChannels.sort(() => 0.5 - Math.random());
-
-        // Выбираем до 12 каналов и проверяем доступность
-        const selectedChannels = [];
-        const maxCount = 12;
         let attempts = 0;
-        const maxAttempts = Math.min(30, shuffled.length); // не больше 30 проверок
+        const maxAttempts = 10;
+        let selectedChannel = null;
 
-        while (selectedChannels.length < maxCount && attempts < maxAttempts) {
-            const candidate = shuffled[attempts];
+        while (attempts < maxAttempts && allChannels.length > 0) {
             attempts++;
-            const isAvailable = await checkChannelAvailability(candidate.url);
+            const randomIndex = Math.floor(Math.random() * allChannels.length);
+            selectedChannel = allChannels[randomIndex];
+
+            // Проверяем доступность
+            const isAvailable = await checkChannelAvailability(selectedChannel.url);
             if (isAvailable) {
-                selectedChannels.push(candidate);
+                break;
             } else {
-                addToBlacklist(candidate.url);
+                // Удаляем недоступный канал из временного массива и добавляем в чёрный список
+                allChannels.splice(randomIndex, 1);
+                addToBlacklist(selectedChannel.url);
+                selectedChannel = null;
             }
         }
 
-        if (selectedChannels.length === 0) {
-            channelsContainer.innerHTML = `
-                <div style="color:#aaa; padding:60px 20px; text-align:center; font-size:16px;">
-                    <i class="fas fa-dice" style="font-size:48px; margin-bottom:20px;"></i><br>
-                    ${translateText("Не удалось найти доступный канал")}<br>
-                    ${translateText("Попробуйте позже")}
-                </div>`;
-        } else {
-            renderChannels(selectedChannels);
+        if (selectedChannel) {
+            renderChannels([selectedChannel]);
             setTimeout(() => {
                 const firstChannel = document.querySelector('.channel-card');
                 if (firstChannel) {
@@ -1473,9 +1533,16 @@ async function loadAndRenderChannels(mainCategory, subcategory) {
                     navigationState = 'channels';
                 }
             }, 100);
+        } else {
+            channelsContainer.innerHTML = `
+                <div style="color:#aaa; padding:60px 20px; text-align:center; font-size:16px;">
+                    <i class="fas fa-dice" style="font-size:48px; margin-bottom:20px;"></i><br>
+                    ${translateText("Не удалось найти доступный канал")}<br>
+                    ${translateText("Попробуйте позже")}
+                </div>`;
         }
     } catch (error) {
-        console.error("Ошибка при загрузке случайных каналов:", error);
+        console.error("Ошибка при загрузке случайного канала:", error);
         showToast(translateText("Ошибка загрузки"));
         channelsContainer.innerHTML = `<div style="color:#aaa; padding:40px; text-align:center">${translateText("Не удалось загрузить")}</div>`;
     } finally {

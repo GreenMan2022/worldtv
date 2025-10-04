@@ -564,7 +564,14 @@ const translations = {
 "Южная Америка": "South America",
 "Южная Африка": "Southern Africa",
 "Южная Европа": "Southern Europe",
-"Юго-Восточная Азия": "Southeast Asia"
+"Юго-Восточная Азия": "Southeast Asia",
+"Сериалы": "Series",
+"Спорт": "Sports",
+"Шопинг": "Shopping",
+"Путешествия": "Travel",
+"Общественные": "Public",
+"Активный отдых": "Outdoor",
+"XXX": "Adult"
 }
 };
 

@@ -84,7 +84,7 @@ const translations = {
     "Проверять каналы": "Check Channels",
     "Просмотренные": "Watched",
     "Прямо сейчас": "Watching Now",
-    "Смотрят": "Popular",
+    "Популярные": "Popular",
     "Свой плейлист": "Custom Playlist",
     "Пользовательские плейлисты": "User Playlists",
     "Добавить в общую коллекцию": "Add to Public Collection",
@@ -893,7 +893,6 @@ function renderWatchedSubmenu() {
     }, 100);
 }
 
-// 👇 НОВАЯ: Поиск по всем каналам с обработкой ошибок
 async function performWatchedSearch() {
     const input = document.getElementById('watchedSearchInput');
     const query = input.value.trim().toLowerCase();
@@ -902,75 +901,68 @@ async function performWatchedSearch() {
         return;
     }
 
-    initialLoader.style.display = 'flex';
-    channelsContainer.innerHTML = `<div style="color:#aaa; padding:40px; text-align:center">${translateText("Загрузка...")}</div>`;
+    // Сбрасываем состояние
+    initialLoader.style.display = 'none';
+    channelsContainer.innerHTML = `<div style="color:#aaa; padding:40px; text-align:center">${translateText("Поиск...")}</div>`;
+    let allResults = []; // для дедупликации
+    const seen = new Set();
 
-    try {
-        // Собираем все URL из categoryTree
-        const allUrls = [];
-        for (const mainCat in categoryTree) {
-            const subCatMap = categoryTree[mainCat];
-            if (typeof subCatMap === 'object' && subCatMap !== null) {
-                for (const url of Object.values(subCatMap)) {
-                    if (typeof url === 'string' && url.endsWith('.m3u')) {
-                        allUrls.push({ url, group: mainCat });
-                    }
+    // Собираем все URL
+    const allUrls = [];
+    for (const mainCat in categoryTree) {
+        const subCatMap = categoryTree[mainCat];
+        if (typeof subCatMap === 'object' && subCatMap !== null) {
+            for (const url of Object.values(subCatMap)) {
+                if (typeof url === 'string' && url.endsWith('.m3u')) {
+                    allUrls.push({ url, group: mainCat });
                 }
             }
         }
+    }
 
-        // Загружаем и парсим все плейлисты (с кэшированием и обработкой ошибок)
-        let allChannels = [];
-        for (const item of allUrls) {
-            if (!loadedPlaylists[item.url]) {
+    // Обновляем контейнер по мере поступления данных
+    const updateResults = (newChannels) => {
+        // Фильтруем по запросу и дедуплицируем
+        const filtered = newChannels.filter(ch => {
+            if (seen.has(ch.url)) return false;
+            const matches = ch.name.toLowerCase().includes(query) ||
+                           (ch.group && ch.group.toLowerCase().includes(query));
+            if (matches) seen.add(ch.url);
+            return matches;
+        });
+
+        if (filtered.length === 0) return;
+
+        allResults.push(...filtered);
+        renderChannels(allResults); // перерисовываем всё с новыми каналами
+    };
+
+    // Загружаем плейлисты параллельно, но с ограничением (например, по 5 одновременно)
+    const CONCURRENT_LIMIT = 5;
+    for (let i = 0; i < allUrls.length; i += CONCURRENT_LIMIT) {
+        const batch = allUrls.slice(i, i + CONCURRENT_LIMIT);
+        await Promise.allSettled(
+            batch.map(async (item) => {
+                if (loadedPlaylists[item.url]) {
+                    updateResults(loadedPlaylists[item.url]);
+                    return;
+                }
                 try {
                     const content = await fetchM3U(item.url);
                     const parsed = parseM3UContent(content, item.group);
                     loadedPlaylists[item.url] = parsed;
-                    allChannels = allChannels.concat(parsed);
+                    updateResults(parsed);
                 } catch (err) {
                     console.warn(`⚠️ Пропущен недоступный плейлист: ${item.url}`, err.message);
-                    // Кэшируем как пустой, чтобы не запрашивать снова
-                    loadedPlaylists[item.url] = [];
+                    loadedPlaylists[item.url] = []; // кэшируем
                 }
-            } else {
-                allChannels = allChannels.concat(loadedPlaylists[item.url]);
-            }
-        }
-
-        // Убираем дубликаты по URL
-        const seen = new Set();
-        allChannels = allChannels.filter(ch => {
-            if (seen.has(ch.url)) return false;
-            seen.add(ch.url);
-            return true;
-        });
-
-        // Фильтруем по запросу
-        const results = allChannels.filter(ch =>
-            ch.name.toLowerCase().includes(query) ||
-            (ch.group && ch.group.toLowerCase().includes(query))
+            })
         );
+    }
 
-        renderChannels(results);
-
-        if (results.length === 0) {
-            channelsContainer.innerHTML = `<div style="color:#aaa; padding:40px; text-align:center">${translateText("Каналы не найдены")}</div>`;
-        }
-
-    } catch (err) {
-        console.error('Ошибка поиска:', err);
-        showToast(translateText("Ошибка при поиске каналов"));
-        channelsContainer.innerHTML = `<div style="color:#aaa; padding:40px; text-align:center">${translateText("Ошибка загрузки")}</div>`;
-    } finally {
-        initialLoader.style.display = 'none';
-        setTimeout(() => {
-            const first = document.querySelector('.channel-card');
-            if (first) {
-                first.focus();
-                navigationState = 'channels';
-            }
-        }, 100);
+    // Если ничего не найдено
+    if (allResults.length === 0) {
+        channelsContainer.innerHTML = `<div style="color:#aaa; padding:40px; text-align:center">${translateText("Каналы не найдены")}</div>`;
     }
 }
 // 👇 Установка языка

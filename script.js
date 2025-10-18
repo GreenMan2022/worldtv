@@ -2124,37 +2124,36 @@ function createMiniPlayer(url) {
     return container;
 }
 
-// Инициализация мини-плеера
+// Инициализация мини-плеера (обновленная)
 function initializeMiniPlayer(video, url, miniPlayer, icon) {
     video.dataset.initialized = 'true';
     let manifestLoaded = false;
     let networkErrorOccurred = false;
     const timeoutId = setTimeout(() => {
         if (!manifestLoaded && !networkErrorOccurred) {
-            console.warn("Таймаут:", url);
-            showToast(translateText('Канал не отвечает'));
-            addToBlacklist(url);
+            console.warn("Таймаут мини-плеера:", url);
             miniPlayer.style.display = 'none';
             icon.style.display = 'block';
         }
     }, 30000);
+
     if (Hls.isSupported()) {
         const hls = new Hls();
+        video.hlsInstance = hls; // 👈 сохраняем ссылку для последующего destroy()
         hls.loadSource(url);
         hls.attachMedia(video);
         hls.on(Hls.Events.MANIFEST_PARSED, () => {
             clearTimeout(timeoutId);
             manifestLoaded = true;
-            video.play().catch(e => console.log("Autoplay:", e));
+            video.play().catch(e => console.log("Autoplay (mini):", e));
         });
         hls.on(Hls.Events.ERROR, (event, data) => {
             if (data.fatal && data.type === Hls.ErrorTypes.NETWORK_ERROR) {
                 networkErrorOccurred = true;
                 clearTimeout(timeoutId);
-                handleStreamError(url, miniPlayer);
-                addToBlacklist(url);
                 miniPlayer.style.display = 'none';
                 icon.style.display = 'block';
+                video.pause();
             }
         });
     } else if (video.canPlayType('application/vnd.apple.mpegurl')) {
@@ -2162,14 +2161,13 @@ function initializeMiniPlayer(video, url, miniPlayer, icon) {
         video.addEventListener('loadedmetadata', () => {
             clearTimeout(timeoutId);
             manifestLoaded = true;
-            video.play().catch(e => console.log("Autoplay:", e));
+            video.play().catch(e => console.log("Autoplay (mini):", e));
         });
         video.addEventListener('error', () => {
             clearTimeout(timeoutId);
-            handleStreamError(url, miniPlayer);
-            addToBlacklist(url);
             miniPlayer.style.display = 'none';
             icon.style.display = 'block';
+            video.pause();
         });
     }
 }
@@ -2183,6 +2181,30 @@ function handleStreamError(url, container) {
     container.style.display = 'none';
 }
 
+// 👇 Остановить все мини-плееры перед открытием полноэкранного
+function stopAllMiniPlayers() {
+    miniPlayers.forEach((container, url) => {
+        const video = container.querySelector('video');
+        if (video) {
+            video.pause();
+            // Уничтожаем HLS-инстанс, если он был
+            if (video.hlsInstance) {
+                video.hlsInstance.destroy();
+                delete video.hlsInstance;
+            }
+            video.src = '';
+            video.load();
+        }
+        container.style.display = 'none';
+        // Показываем иконку вместо плеера
+        const card = container.closest('.channel-card');
+        if (card) {
+            const icon = card.querySelector('.channel-media i');
+            if (icon) icon.style.display = 'block';
+        }
+    });
+}
+
 // Добавление в чёрный список
 function addToBlacklist(url) {
     let blacklist = JSON.parse(localStorage.getItem('blacklist') || '[]');
@@ -2194,6 +2216,9 @@ function addToBlacklist(url) {
 
 // 👇 Просмотренные: Открытие полноэкранного плеера (улучшенная версия)
 function openFullScreenPlayer(name, url, group, logo) {
+    // 👇 ОСТАНОВИТЬ ВСЕ МИНИ-ПЛЕЕРЫ — ключевое изменение!
+    stopAllMiniPlayers();
+
     currentWatchedChannel = { name, url, group, logo };
     watchStartTime = Date.now();
     playerModal.style.display = 'flex';
@@ -2218,9 +2243,9 @@ function openFullScreenPlayer(name, url, group, logo) {
             manifestLoadingTimeOut: 15000,
             levelLoadingTimeOut: 15000,
             fragLoadingTimeOut: 15000,
-            fragLoadingMaxRetry: 10,
-            levelLoadingMaxRetry: 10,
-            manifestLoadingMaxRetry: 10
+            fragLoadingMaxRetry: 6,
+            levelLoadingMaxRetry: 4,
+            manifestLoadingMaxRetry: 3
         });
 
         hls.loadSource(url);
@@ -2243,7 +2268,7 @@ function openFullScreenPlayer(name, url, group, logo) {
             if (data.fatal) {
                 errorCount++;
 
-                if (errorCount >= 5) {
+                if (errorCount >= 2) {
                     // Только после 2+ фатальных ошибок — считаем канал недоступным
                     clearTimeout(timeoutId);
                     showToast(translateText('Канал недоступен'));
@@ -2262,7 +2287,6 @@ function openFullScreenPlayer(name, url, group, logo) {
             }
         });
     } else if (videoPlayerElement.canPlayType('application/vnd.apple.mpegurl')) {
-        // Safari / iOS fallback
         videoPlayerElement.src = url;
         videoPlayerElement.addEventListener('loadedmetadata', () => {
             clearTimeout(timeoutId);

@@ -2674,28 +2674,6 @@ function initApp() {
         renderMainCategories();
         renderSubCategories();
         loadAndRenderChannels(currentMainCategory, currentSubcategory);
-        const lastCleanup = localStorage.getItem('lastFirebaseCleanup');
-        const now = Date.now();
-        if (!lastCleanup || now - parseInt(lastCleanup) > 24 * 60 * 60 * 1000) {
-            database.ref('watching').once('value', async (snapshot) => {
-                if (snapshot.exists()) {
-                    const updates = {};
-                    const data = snapshot.val();
-                    let deleted = 0;
-                    for (let key in data) {
-                        if (now - data[key].lastWatched > 24 * 60 * 60 * 1000) {
-                            updates[key] = null;
-                            deleted++;
-                        }
-                    }
-                    if (Object.keys(updates).length > 0) {
-                        await database.ref('watching').update(updates);
-                        console.log(`🧹 Удалено ${deleted} устаревших записей из "Смотрят"`);
-                    }
-                }
-            });
-            localStorage.setItem('lastFirebaseCleanup', now.toString());
-        }
         setTimeout(() => {
             const firstChannel = document.querySelector('.channel-card');
             if (firstChannel) firstChannel.focus();

@@ -1055,6 +1055,12 @@ closeModal.addEventListener('click', function() {
     playerModal.style.display = 'none';
     videoPlayerElement.pause();
     videoPlayerElement.src = '';
+    if (videoPlayerElement.hls) {
+        videoPlayerElement.hls.destroy();
+        delete videoPlayerElement.hls;
+    }
+    // 👇 Добавлено: убедиться, что фоновые плееры не работают
+    stopAllMiniPlayers();
     if (currentWatchedChannel && watchStartTime) {
         const watchedSeconds = Math.floor((Date.now() - watchStartTime) / 1000);
         console.log(`📺 Просмотрено: ${watchedSeconds} секунд`);
@@ -2139,7 +2145,7 @@ function initializeMiniPlayer(video, url, miniPlayer, icon) {
 
     if (Hls.isSupported()) {
         const hls = new Hls();
-        video.hlsInstance = hls; // 👈 сохраняем ссылку для последующего destroy()
+        video.hlsInstance = hls; // 👈 сохраняем ссылку
         hls.loadSource(url);
         hls.attachMedia(video);
         hls.on(Hls.Events.MANIFEST_PARSED, () => {
@@ -2154,6 +2160,10 @@ function initializeMiniPlayer(video, url, miniPlayer, icon) {
                 miniPlayer.style.display = 'none';
                 icon.style.display = 'block';
                 video.pause();
+                if (video.hlsInstance) {
+                    video.hlsInstance.destroy();
+                    delete video.hlsInstance;
+                }
             }
         });
     } else if (video.canPlayType('application/vnd.apple.mpegurl')) {
@@ -2180,6 +2190,30 @@ function handleStreamError(url, container) {
     if (icon) icon.style.display = 'block';
     container.style.display = 'none';
 }
+
+// 👇 Остановить все мини-плееры перед открытием полноэкранного
+function stopAllMiniPlayers() {
+    miniPlayers.forEach((container, url) => {
+        const video = container.querySelector('video');
+        if (video) {
+            video.pause();
+            if (video.hlsInstance) {
+                video.hlsInstance.destroy();
+                delete video.hlsInstance;
+            }
+            video.src = '';
+            video.load();
+        }
+        container.style.display = 'none';
+        const card = container.closest('.channel-card');
+        if (card) {
+            const icon = card.querySelector('.channel-media i');
+            if (icon) icon.style.display = 'block';
+        }
+    });
+}
+
+
 
 // 👇 Остановить все мини-плееры перед открытием полноэкранного
 function stopAllMiniPlayers() {
@@ -2216,7 +2250,7 @@ function addToBlacklist(url) {
 
 // 👇 Просмотренные: Открытие полноэкранного плеера (улучшенная версия)
 function openFullScreenPlayer(name, url, group, logo) {
-    // 👇 ОСТАНОВИТЬ ВСЕ МИНИ-ПЛЕЕРЫ — ключевое изменение!
+    // 👇 КЛЮЧЕВОЕ: остановить все мини-плееры
     stopAllMiniPlayers();
 
     currentWatchedChannel = { name, url, group, logo };
@@ -2248,6 +2282,9 @@ function openFullScreenPlayer(name, url, group, logo) {
             manifestLoadingMaxRetry: 3
         });
 
+        // 👇 Сохраняем инстанс для последующего уничтожения
+        videoPlayerElement.hls = hls;
+
         hls.loadSource(url);
         hls.attachMedia(videoPlayerElement);
 
@@ -2269,20 +2306,20 @@ function openFullScreenPlayer(name, url, group, logo) {
                 errorCount++;
 
                 if (errorCount >= 2) {
-                    // Только после 2+ фатальных ошибок — считаем канал недоступным
                     clearTimeout(timeoutId);
                     showToast(translateText('Канал недоступен'));
                     addToBlacklist(url);
                     playerModal.style.display = 'none';
-                    hls.destroy();
+                    if (videoPlayerElement.hls) {
+                        videoPlayerElement.hls.destroy();
+                        delete videoPlayerElement.hls;
+                    }
                 } else {
-                    // Пытаемся восстановиться
                     if (data.type === Hls.ErrorTypes.NETWORK_ERROR) {
                         hls.startLoad();
                     } else if (data.type === Hls.ErrorTypes.MEDIA_ERROR) {
                         hls.recoverMediaError();
                     }
-                    // Не уничтожаем hls — даём шанс на восстановление
                 }
             }
         });

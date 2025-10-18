@@ -2672,6 +2672,14 @@ function moveFocus(direction) {
 }
 
 // Обработчик клавиш (полностью исправленный, с поддержкой поиска)
+                        selectPublicPlaylist(JSON.parse(buttons[currentSubCategoryIndex].title), currentSubCategoryIndex);
+                    } else {
+                        selectSubcategory(buttons[currentSubCategoryIndex].textContent, currentSubCategoryIndex);
+                    }
+                }
+            } else if (navigationState === 'customInput') {
+                const active = document.activeElement;
+                if (active.id === 'playlistURL') {
                     loadPlaylistFromURL();
                 } else if (active.tagName === 'BUTTON') {
                     active.click();

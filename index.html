@@ -1,190 +1,153 @@
 <!DOCTYPE html>
 <html lang="ru">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>IPTV Viewer</title>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <meta name="format-detection" content="telephone=no">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="google-site-verification" content="ZjO-Qwe9-sBrQ72O2YlparNENdXCIHBhgIEOJwA-kS0" />
 
-  <!-- Plyr CSS -->
-  <link rel="stylesheet" href="https://cdn.plyr.io/3.7.8/plyr.css" />
-  <!-- Font Awesome -->
-  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" />
+    <!-- 🔍 SEO & GLOBAL TARGETING -->
+    <title>World TV — Watch Free Live TV Channels Online (HD, Worldwide)</title>
+    <meta name="description" content="Stream free live TV channels from around the world: news, sports, movies, kids. No registration, HD quality, works globally.">
+    <meta name="keywords" content="free iptv, live tv online, watch tv free, global tv channels, hd streaming">
+    <meta name="robots" content="index, follow">
+    <meta name="language" content="en">
+    <meta name="geo.region" content="world">
+    <meta name="geo.placename" content="Worldwide">
+    <meta name="geo.position" content="0;0">
+    <meta name="ICBM" content="0, 0">
 
-  <style>
-    * {
-      margin: 0;
-      padding: 0;
-      box-sizing: border-box;
-      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-    }
-    body {
-      background: #121212;
-      color: white;
-      overflow-x: hidden;
-    }
-    #mainCategoriesPanel,
-    #subCategoriesPanel {
-      display: flex;
-      gap: 8px;
-      padding: 10px;
-      background: #1e1e1e;
-      overflow-x: auto;
-      scrollbar-width: none;
-    }
-    #mainCategoriesPanel::-webkit-scrollbar,
-    #subCategoriesPanel::-webkit-scrollbar {
-      display: none;
-    }
-    .category-btn,
-    .subcategory-btn {
-      padding: 8px 12px;
-      background: #333;
-      border: 1px solid #444;
-      border-radius: 6px;
-      color: white;
-      cursor: pointer;
-      white-space: nowrap;
-      font-size: 14px;
-    }
-    .category-btn.active,
-    .subcategory-btn.active {
-      background: #ff375f;
-      border-color: #ff5e41;
-    }
-    #channelsContainer {
-      display: grid;
-      grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
-      gap: 16px;
-      padding: 16px;
-    }
-    .channel-card {
-      background: #1e1e1e;
-      border-radius: 10px;
-      overflow: hidden;
-      cursor: pointer;
-      outline: 2px solid transparent;
-      transition: outline 0.2s;
-    }
-    .channel-card:focus {
-      outline-color: #ff5e41;
-    }
-    .channel-media {
-      position: relative;
-      width: 100%;
-      height: 150px;
-      background: #000;
-    }
-    .channel-media img,
-    .channel-media i,
-    .mini-player {
-      position: absolute;
-      top: 0;
-      left: 0;
-      width: 100%;
-      height: 100%;
-      object-fit: contain;
-    }
-    .mini-player {
-      display: none;
-    }
-    .channel-info {
-      padding: 10px;
-    }
-    .channel-info h3 {
-      font-size: 16px;
-      margin-bottom: 4px;
-    }
-    .channel-info p {
-      font-size: 13px;
-      color: #aaa;
-    }
-    #playerModal {
-      display: none;
-      position: fixed;
-      top: 0;
-      left: 0;
-      width: 100%;
-      height: 100%;
-      background: rgba(0, 0, 0, 0.95);
-      z-index: 1000;
-      justify-content: center;
-      align-items: center;
-    }
-    #videoPlayerElement {
-      width: 90%;
-      max-width: 1000px;
-      height: auto;
-    }
-    #closeModal {
-      position: absolute;
-      top: 20px;
-      right: 20px;
-      background: #ff375f;
-      color: white;
-      border: none;
-      width: 40px;
-      height: 40px;
-      border-radius: 50%;
-      font-size: 20px;
-      cursor: pointer;
-    }
-    #initialLoader {
-      display: none;
-      position: fixed;
-      top: 0;
-      left: 0;
-      width: 100%;
-      height: 100%;
-      background: rgba(0, 0, 0, 0.8);
-      justify-content: center;
-      align-items: center;
-      z-index: 999;
-      color: white;
-      font-size: 18px;
-    }
-    #toastContainer {
-      position: fixed;
-      bottom: 20px;
-      left: 50%;
-      transform: translateX(-50%);
-      z-index: 2000;
-    }
-    .toast {
-      background: #333;
-      color: white;
-      padding: 12px 20px;
-      border-radius: 6px;
-      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5);
-    }
-  </style>
+    <!-- Open Graph / Social -->
+    <meta property="og:title" content="World TV — Free Global Live TV Streaming">
+    <meta property="og:description" content="Watch live TV channels from any country: sports, news, movies, entertainment — in HD and totally free.">
+    <meta property="og:type" content="website">
+    <meta property="og:url" content="https://worldtv.onrender.com/">
+    <meta property="og:image" content="https://worldtv.onrender.com/logo.jpg">
+    <meta property="og:locale" content="en_US">
+
+    <!-- Favicon -->
+    <link rel="icon" href="/favicon.ico" type="image/x-icon">
+
+    <!-- Styles -->
+    <link rel="stylesheet" href="/style.css?v=1.0.1">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
 </head>
 <body>
-  <div id="mainCategoriesPanel"></div>
-  <div id="subCategoriesPanel"></div>
-  <div id="channelsContainer"></div>
+    <noscript>
+        <div style="padding: 30px; background: #f9f9f9; margin: 20px; border-radius: 8px; font-family: Arial, sans-serif;">
+            <h1>World TV — Free Live TV Streaming for Global Audience</h1>
+            <p>Watch hundreds of live TV channels from around the world — completely free. No registration, no ads, HD quality.</p>
+            <h2>Categories:</h2>
+            <ul>
+                <li><a href="#news">📺 News Channels</a></li>
+                <li><a href="#sports">⚽ Sports Channels</a></li>
+                <li><a href="#movies">🎬 Movie Channels</a></li>
+                <li><a href="#kids">🧸 Kids Channels</a></li>
+            </ul>
+            <p>Available worldwide. Updated daily. Works on any device.</p>
+            <p><strong>Note:</strong> JavaScript is required to play streams. Enable JS for full experience.</p>
+        </div>
+    </noscript>
 
-  <div id="playerModal">
-    <button id="closeModal">&times;</button>
-    <video id="videoPlayerElement" playsinline></video>
-  </div>
+    <!-- Загрузочный экран -->
+    <div class="loader" id="initialLoader">
+        <div class="loader-content">
+            <i class="fas fa-spinner fa-spin"></i>
+            <p>Загрузка...</p>
+        </div>
+    </div>
 
-  <div id="initialLoader">
-    <div>Загрузка...</div>
-  </div>
+    <!-- Главное меню категорий -->
+    <div class="main-categories-panel" id="mainCategoriesPanel"></div>
 
-  <div id="toastContainer"></div>
+    <!-- Подменю подкатегорий -->
+    <div class="sub-categories-panel" id="subCategoriesPanel"></div>
 
-  <!-- Firebase -->
-  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
+    <!-- Сетка каналов -->
+    <main class="channels-grid" id="channelsContainer"></main>
 
-  <!-- HLS.js -->
-  <script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
+    <!-- Модальное окно плеера -->
+    <div class="modal" id="playerModal">
+        <div class="modal-content">
+            <button class="close-btn" id="closeModal">&times;</button>
+            <video id="videoPlayerElement" controls></video>
+        </div>
+    </div>
 
-  <!-- Plyr -->
-  <script src="https://cdn.plyr.io/3.7.8/plyr.polyfilled.js"></script>
+    <!-- Уведомления -->
+    <div class="toast-container" id="toastContainer"></div>
 
-  <!-- Main JS -->
-  <script src="app.js"></script>
+    <!-- Firebase -->
+    <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-database-compat.js"></script>
+
+    <!-- HLS.js -->
+    <script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
+
+    <!-- Основной скрипт -->
+    <script src="/script.js?v=1.0.0"></script>
+
+    <!-- Yandex.Metrika informer -->
+    <a href="https://metrika.yandex.ru/stat/?id=104248573&amp;from=informer" target="_blank" rel="nofollow">
+        <img src="https://metrika-informer.com/informer/104248573/3_1_FFFFFFFF_EFEFEFFF_0_pageviews"
+             style="width:88px; height:31px; border:0;"
+             alt="Яндекс.Метрика"
+             title="Яндекс.Метрика: данные за сегодня (просмотры, визиты и уникальные посетители)" />
+    </a>
+    <!-- /Yandex.Metrika informer -->
+
+    <!-- Yandex.Metrika counter -->
+    <script type="text/javascript">
+        (function(m,e,t,r,i,k,a){
+            m[i]=m[i]||function(){(m[i].a=m[i].a||[]).push(arguments)};
+            m[i].l=1*new Date();
+            for (var j = 0; j < document.scripts.length; j++) {if (document.scripts[j].src === r) { return; }}
+            k=e.createElement(t),a=e.getElementsByTagName(t)[0],k.async=1,k.src=r,a.parentNode.insertBefore(k,a)
+        })(window, document,'script','https://mc.webvisor.org/metrika/tag_ww.js?id=104248573', 'ym');
+
+        ym(104248573, 'init', {ssr:true, webvisor:true, clickmap:true, ecommerce:"dataLayer", accurateTrackBounce:true, trackLinks:true});
+    </script>
+    <noscript>
+        <div>
+            <img src="https://mc.yandex.ru/watch/104248573" style="position:absolute; left:-9999px;" alt="" />
+        </div>
+    </noscript>
+    <!-- /Yandex.Metrika counter -->
+
+    <!-- Telegram Footer -->
+    <footer class="telegram-footer">
+        <a href="https://t.me/worldtvandroidclient" target="_blank" rel="noopener">
+            <i class="fab fa-telegram"></i>
+            Telegram!
+        </a>
+    </footer>
+
+    <style>
+        .telegram-footer {
+            margin-top: 40px;
+            padding: 16px;
+            background-color: #fffff;
+            text-align: center;
+            font-family: Arial, sans-serif;
+            font-size: 14px;
+            color: #333;
+            border-top: 1px solid #e0e0e0;
+        }
+
+        .telegram-footer a {
+            color: #0088cc;
+            text-decoration: none;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+        }
+
+        .telegram-footer a:hover {
+            color: #00bfff;
+        }
+    </style>
 </body>
 </html>

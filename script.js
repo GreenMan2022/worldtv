@@ -2218,9 +2218,9 @@ function openFullScreenPlayer(name, url, group, logo) {
             manifestLoadingTimeOut: 15000,
             levelLoadingTimeOut: 15000,
             fragLoadingTimeOut: 15000,
-            fragLoadingMaxRetry: 6,
-            levelLoadingMaxRetry: 4,
-            manifestLoadingMaxRetry: 3
+            fragLoadingMaxRetry: 10,
+            levelLoadingMaxRetry: 10,
+            manifestLoadingMaxRetry: 10
         });
 
         hls.loadSource(url);
@@ -2243,7 +2243,7 @@ function openFullScreenPlayer(name, url, group, logo) {
             if (data.fatal) {
                 errorCount++;
 
-                if (errorCount >= 2) {
+                if (errorCount >= 5) {
                     // Только после 2+ фатальных ошибок — считаем канал недоступным
                     clearTimeout(timeoutId);
                     showToast(translateText('Канал недоступен'));

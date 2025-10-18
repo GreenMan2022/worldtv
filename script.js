@@ -2574,41 +2574,49 @@ function moveFocus(direction) {
             case 'left': nextIndex = (currentIndex - 1 + cards.length) % cards.length; break;
             case 'down': nextIndex = (currentIndex + cols) % cards.length; break;
             case 'up': {
-                nextIndex = (currentIndex - cols + cards.length) % cards.length;
-                if (nextIndex >= currentIndex) {
-                    if (currentMainCategory === 'Свой плейлист') {
-                        const input = document.getElementById('playlistURL');
-                        if (input) {
-                            input.focus();
-                            navigationState = 'customInput';
-                            return;
-                        }
-                    } else if (currentMainCategory === 'Пользовательские плейлисты') {
-                        navigationState = 'subCategories';
-                        subCategoriesPanel.style.display = 'flex';
-                        setTimeout(() => {
-                            const buttons = subCategoriesPanel.querySelectorAll('.subcategory-btn');
-                            if (buttons.length > 0) {
-                                buttons[0].focus();
-                                currentSubCategoryIndex = 0;
-                            }
-                        }, 100);
-                        return;
-                    } else {
-                        navigationState = 'subCategories';
-                        subCategoriesPanel.style.display = 'flex';
-                        setTimeout(() => {
-                            const buttons = subCategoriesPanel.querySelectorAll('.subcategory-btn');
-                            if (buttons.length > 0) {
-                                buttons[0].focus();
-                                currentSubCategoryIndex = 0;
-                            }
-                        }, 100);
-                        return;
-                    }
-                }
-                break;
+    if (currentMainCategory === 'Просмотренные') {
+        navigationState = 'searchInput';
+        setTimeout(() => {
+            const input = document.getElementById('searchChannelInput');
+            if (input) input.focus();
+        }, 100);
+        return;
+    }
+    nextIndex = (currentIndex - cols + cards.length) % cards.length;
+    if (nextIndex >= currentIndex) {
+        if (currentMainCategory === 'Свой плейлист') {
+            const input = document.getElementById('playlistURL');
+            if (input) {
+                input.focus();
+                navigationState = 'customInput';
+                return;
             }
+        } else if (currentMainCategory === 'Пользовательские плейлисты') {
+            navigationState = 'subCategories';
+            subCategoriesPanel.style.display = 'flex';
+            setTimeout(() => {
+                const buttons = subCategoriesPanel.querySelectorAll('.subcategory-btn');
+                if (buttons.length > 0) {
+                    buttons[0].focus();
+                    currentSubCategoryIndex = 0;
+                }
+            }, 100);
+            return;
+        } else {
+            navigationState = 'subCategories';
+            subCategoriesPanel.style.display = 'flex';
+            setTimeout(() => {
+                const buttons = subCategoriesPanel.querySelectorAll('.subcategory-btn');
+                if (buttons.length > 0) {
+                    buttons[0].focus();
+                    currentSubCategoryIndex = 0;
+                }
+            }, 100);
+            return;
+        }
+    }
+    break;
+}
         }
         if (nextIndex >= 0 && nextIndex < cards.length) {
             cards[nextIndex].focus();
@@ -2667,6 +2675,25 @@ function moveFocus(direction) {
 document.addEventListener('keydown', function(e) {
     if (playerModal.style.display === 'flex') {
         if (e.key === 'Escape') closeModal.click();
+        return;
+    }
+  // 👇 Новое состояние: поиск в "Просмотренные"
+    if (navigationState === 'searchInput') {
+        const input = document.getElementById('searchChannelInput');
+        if (!input) return;
+
+        if (e.key === 'ArrowDown') {
+            e.preventDefault();
+            navigationState = 'channels';
+            setTimeout(() => {
+                const firstChannel = document.querySelector('.channel-card');
+                if (firstChannel) firstChannel.focus();
+            }, 100);
+        } else if (e.key === 'Enter') {
+            e.preventDefault();
+            performChannelSearch();
+        }
+        // Остальные клавиши (Backspace, буквы и т.д.) — пропускаем, чтобы можно было печатать
         return;
     }
     if (['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'Enter', 'Escape'].includes(e.key)) {

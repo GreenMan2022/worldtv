@@ -2192,7 +2192,7 @@ function addToBlacklist(url) {
     }
 }
 
-// 👇 Просмотренные: Открытие полноэкранного плеера
+// 👇 Просмотренные: Открытие полноэкранного плеера (улучшенная версия)
 function openFullScreenPlayer(name, url, group, logo) {
     currentWatchedChannel = { name, url, group, logo };
     watchStartTime = Date.now();
@@ -2209,10 +2209,23 @@ function openFullScreenPlayer(name, url, group, logo) {
             playerModal.style.display = 'none';
         }
     }, 30000);
+
     if (Hls.isSupported()) {
-        const hls = new Hls();
+        const hls = new Hls({
+            liveDurationInfinity: true,
+            enableWorker: true,
+            lowLatencyMode: false,
+            manifestLoadingTimeOut: 15000,
+            levelLoadingTimeOut: 15000,
+            fragLoadingTimeOut: 15000,
+            fragLoadingMaxRetry: 6,
+            levelLoadingMaxRetry: 4,
+            manifestLoadingMaxRetry: 3
+        });
+
         hls.loadSource(url);
         hls.attachMedia(videoPlayerElement);
+
         hls.on(Hls.Events.MANIFEST_PARSED, () => {
             clearTimeout(timeoutId);
             manifestLoaded = true;
@@ -2222,15 +2235,34 @@ function openFullScreenPlayer(name, url, group, logo) {
             });
             setTimeout(() => requestNativeFullscreen(), 1000);
         });
+
+        let errorCount = 0;
         hls.on(Hls.Events.ERROR, (event, data) => {
+            console.warn('HLS Error:', data.type, data.details, data.fatal);
+
             if (data.fatal) {
-                clearTimeout(timeoutId);
-                showToast(translateText('Канал недоступен'));
-                addToBlacklist(url);
-                playerModal.style.display = 'none';
+                errorCount++;
+
+                if (errorCount >= 2) {
+                    // Только после 2+ фатальных ошибок — считаем канал недоступным
+                    clearTimeout(timeoutId);
+                    showToast(translateText('Канал недоступен'));
+                    addToBlacklist(url);
+                    playerModal.style.display = 'none';
+                    hls.destroy();
+                } else {
+                    // Пытаемся восстановиться
+                    if (data.type === Hls.ErrorTypes.NETWORK_ERROR) {
+                        hls.startLoad();
+                    } else if (data.type === Hls.ErrorTypes.MEDIA_ERROR) {
+                        hls.recoverMediaError();
+                    }
+                    // Не уничтожаем hls — даём шанс на восстановление
+                }
             }
         });
     } else if (videoPlayerElement.canPlayType('application/vnd.apple.mpegurl')) {
+        // Safari / iOS fallback
         videoPlayerElement.src = url;
         videoPlayerElement.addEventListener('loadedmetadata', () => {
             clearTimeout(timeoutId);

@@ -1823,95 +1823,69 @@ async function loadAndRenderChannels(mainCategory, subcategory) {
 }
 
 // 👇 Загрузка и проверка случайных каналов (до 12 шт.)
+// 👇 НОВАЯ: Случайные каналы ТОЛЬКО из index.m3u
+let cachedGlobalPlaylist = null;
+
 async function loadRandomChannel() {
     initialLoader.style.display = 'flex';
     channelsContainer.innerHTML = `<div style="color:#aaa; padding:40px; text-align:center">${translateText("Загрузка...")}</div>`;
+
+    const MAX_ATTEMPTS = 12;   // Макс. проверок
+    const TARGET_COUNT = 6;    // Цель — 6 рабочих каналов
+    const TIMEOUT_MS = 12000;  // Общее время на выполнение
+
+    const startTime = Date.now();
+
     try {
-        let allChannels = [];
-        try {
-            const watchedRaw = localStorage.getItem('watchedChannels');
-            if (watchedRaw) {
-                const watched = JSON.parse(watchedRaw);
-                if (Array.isArray(watched)) allChannels = allChannels.concat(watched);
-            }
-        } catch (e) {
-            console.warn("Не удалось загрузить просмотренные каналы");
+        // 1. Загружаем или используем кэш
+        if (!cachedGlobalPlaylist) {
+            const content = await fetchM3U('https://iptv-org.github.io/iptv/index.m3u');
+            cachedGlobalPlaylist = parseM3UContent(content, translateText('Международные'));
+            console.log(`✅ Загружено ${cachedGlobalPlaylist.length} каналов из index.m3u`);
         }
-        try {
-            const customRaw = localStorage.getItem('customPlaylist');
-            if (customRaw) {
-                const custom = JSON.parse(customRaw);
-                if (Array.isArray(custom)) allChannels = allChannels.concat(custom);
-            }
-        } catch (e) {
-            console.warn("Не удалось загрузить пользовательский плейлист");
+
+        if (cachedGlobalPlaylist.length === 0) {
+            throw new Error('Плейлист пуст');
         }
-        try {
-            const snapshot = await database.ref('publicPlaylists').get();
-            if (snapshot.exists()) {
-                const playlistKeys = Object.keys(snapshot.val());
-                const sampleSize = Math.min(3, playlistKeys.length);
-                const sampledKeys = [];
-                for (let i = 0; i < sampleSize; i++) {
-                    const idx = Math.floor(Math.random() * playlistKeys.length);
-                    sampledKeys.push(playlistKeys[idx]);
-                    playlistKeys.splice(idx, 1);
-                }
-                for (const key of sampledKeys) {
-                    const playlist = snapshot.val()[key];
-                    if (!loadedPlaylists[playlist.url]) {
-                        await fetchAndCachePlaylist(playlist.url, playlist.name);
-                    }
-                    const playlistChannels = loadedPlaylists[playlist.url] || [];
-                    allChannels = allChannels.concat(playlistChannels);
-                }
-            }
-        } catch (e) {
-            console.warn("Не удалось загрузить публичные плейлисты");
-        }
-        if (allChannels.length === 0) {
-            const availableCategories = ["Категории", "Страны", "Языки", "Регионы"].filter(cat =>
-                categoryTree[cat] && Object.keys(categoryTree[cat]).length > 0
-            );
-            if (availableCategories.length > 0) {
-                const randomCategory = availableCategories[Math.floor(Math.random() * availableCategories.length)];
-                const subcategories = Object.keys(categoryTree[randomCategory]);
-                const randomSubcategory = subcategories[Math.floor(Math.random() * subcategories.length)];
-                const url = categoryTree[randomCategory][randomSubcategory];
-                if (!loadedPlaylists[url]) {
-                    await fetchAndCachePlaylist(url, randomSubcategory);
-                }
-                allChannels = loadedPlaylists[url] || [];
-            }
-        }
-        const uniqueChannelsMap = new Map();
-        allChannels.forEach(ch => {
-            if (!uniqueChannelsMap.has(ch.url)) {
-                uniqueChannelsMap.set(ch.url, ch);
-            }
-        });
-        let uniqueChannels = Array.from(uniqueChannelsMap.values());
+
+        // 2. Фильтруем чёрный список
         const blacklist = JSON.parse(localStorage.getItem('blacklist') || '[]');
-        uniqueChannels = uniqueChannels.filter(ch => !blacklist.includes(ch.url));
-        if (uniqueChannels.length === 0) {
-            throw new Error('Нет каналов для случайного выбора');
+        let candidates = cachedGlobalPlaylist.filter(ch => !blacklist.includes(ch.url));
+        if (candidates.length === 0) {
+            throw new Error('Все каналы в чёрном списке');
         }
-        const shuffled = uniqueChannels.sort(() => 0.5 - Math.random());
-        const selectedChannels = [];
-        const maxCount = 12;
-        let attempts = 0;
-        const maxAttempts = Math.min(30, shuffled.length);
-        while (selectedChannels.length < maxCount && attempts < maxAttempts) {
-            const candidate = shuffled[attempts];
-            attempts++;
-            const isAvailable = await checkChannelAvailability(candidate.url);
-            if (isAvailable) {
-                selectedChannels.push(candidate);
-            } else {
-                addToBlacklist(candidate.url);
+
+        // 3. Перемешиваем
+        candidates.sort(() => 0.5 - Math.random());
+
+        // 4. Проверяем каналы с ограничением по времени и количеству
+        const validChannels = [];
+        let checked = 0;
+
+        for (const ch of candidates) {
+            if (
+                validChannels.length >= TARGET_COUNT ||
+                checked >= MAX_ATTEMPTS ||
+                Date.now() - startTime > TIMEOUT_MS
+            ) {
+                break;
+            }
+
+            checked++;
+            try {
+                const isOk = await checkChannelAvailability(ch.url);
+                if (isOk) {
+                    validChannels.push(ch);
+                } else {
+                    addToBlacklist(ch.url);
+                }
+            } catch (e) {
+                addToBlacklist(ch.url);
             }
         }
-        if (selectedChannels.length === 0) {
+
+        // 5. Отображаем результат
+        if (validChannels.length === 0) {
             channelsContainer.innerHTML = `
                 <div style="color:#aaa; padding:60px 20px; text-align:center; font-size:16px;">
                     <i class="fas fa-dice" style="font-size:48px; margin-bottom:20px;"></i><br>
@@ -1919,24 +1893,28 @@ async function loadRandomChannel() {
                     ${translateText("Попробуйте позже")}
                 </div>`;
         } else {
-            renderChannels(selectedChannels);
-            setTimeout(() => {
-                const firstChannel = document.querySelector('.channel-card');
-                if (firstChannel) {
-                    firstChannel.focus();
-                    navigationState = 'channels';
-                }
-            }, 100);
+            renderChannels(validChannels);
         }
+
     } catch (error) {
-        console.error("Ошибка при загрузке случайных каналов:", error);
-        showToast(translateText("Ошибка загрузки"));
-        channelsContainer.innerHTML = `<div style="color:#aaa; padding:40px; text-align:center">${translateText("Не удалось загрузить")}</div>`;
+        console.error("Ошибка в loadRandomChannel:", error);
+        channelsContainer.innerHTML = `
+            <div style="color:#aaa; padding:60px 20px; text-align:center; font-size:16px;">
+                <i class="fas fa-exclamation-triangle" style="font-size:48px; margin-bottom:20px;"></i><br>
+                ${translateText("Не удалось загрузить каналы")}<br>
+                ${translateText("Попробуйте позже")}
+            </div>`;
     } finally {
         initialLoader.style.display = 'none';
+        setTimeout(() => {
+            const first = document.querySelector('.channel-card');
+            if (first) {
+                first.focus();
+                navigationState = 'channels';
+            }
+        }, 100);
     }
 }
-
 // 👇 Вспомогательная функция для проверки доступности канала (оптимизированная)
 function checkChannelAvailability(url) {
     return new Promise((resolve) => {

@@ -2671,42 +2671,52 @@ function moveFocus(direction) {
     }
 }
 
-// Обработчик клавиш
+// Обработчик клавиш (обновлённый, с поддержкой поиска)
 document.addEventListener('keydown', function(e) {
     if (playerModal.style.display === 'flex') {
         if (e.key === 'Escape') closeModal.click();
         return;
     }
-  // 👇 Новое состояние: поиск в "Просмотренные"
+
+    if (['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'Enter', 'Escape'].includes(e.key)) {
+        e.preventDefault();
+    }
+
+    // 👇 Новое состояние: поиск в "Просмотренные"
     if (navigationState === 'searchInput') {
         const input = document.getElementById('searchChannelInput');
         if (!input) return;
 
         if (e.key === 'ArrowDown') {
-            e.preventDefault();
+            // Переход к карточкам
             navigationState = 'channels';
             setTimeout(() => {
                 const firstChannel = document.querySelector('.channel-card');
                 if (firstChannel) firstChannel.focus();
             }, 100);
         } else if (e.key === 'Enter') {
-            e.preventDefault();
             performChannelSearch();
         }
-        // Остальные клавиши (Backspace, буквы и т.д.) — пропускаем, чтобы можно было печатать
+        // Остальные клавиши (Backspace, буквы и т.д.) — пропускаем для ввода текста
         return;
     }
-    if (['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'Enter', 'Escape'].includes(e.key)) {
-        e.preventDefault();
-    }
+
     switch(e.key) {
         case 'ArrowLeft':
         case 'ArrowRight':
             moveFocus(e.key === 'ArrowRight' ? 'right' : 'left');
             break;
+
         case 'ArrowUp':
             if (navigationState === 'channels') {
-                if (currentMainCategory === 'Свой плейлист') {
+                if (currentMainCategory === 'Просмотренные') {
+                    // Переход к полю поиска
+                    navigationState = 'searchInput';
+                    setTimeout(() => {
+                        const input = document.getElementById('searchChannelInput');
+                        if (input) input.focus();
+                    }, 100);
+                } else if (currentMainCategory === 'Свой плейлист') {
                     const input = document.getElementById('playlistURL');
                     if (input) {
                         input.focus();
@@ -2735,26 +2745,24 @@ document.addEventListener('keydown', function(e) {
                 }
             } else if (navigationState === 'subCategories' || navigationState === 'customInput') {
                 navigationState = 'mainCategories';
-                mainCategoriesPanel.style.display = 'flex';
                 setTimeout(() => {
                     const buttons = mainCategoriesPanel.querySelectorAll('.category-btn');
                     if (buttons[currentMainCategoryIndex]) {
                         buttons[currentMainCategoryIndex].focus();
                     }
                 }, 100);
-            } else if (navigationState === 'searchInput') {
-                if (e.key === 'ArrowDown') {
-                    navigationState = 'channels';
-                    setTimeout(() => {
-                        const first = document.querySelector('.channel-card');
-                        if (first) first.focus();
-                    }, 100);
-                }
             }
             break;
+
         case 'ArrowDown':
             if (navigationState === 'mainCategories') {
-                if (currentMainCategory === 'Свой плейлист') {
+                if (currentMainCategory === 'Просмотренные') {
+                    navigationState = 'searchInput';
+                    setTimeout(() => {
+                        const input = document.getElementById('searchChannelInput');
+                        if (input) input.focus();
+                    }, 100);
+                } else if (currentMainCategory === 'Свой плейлист') {
                     const input = document.getElementById('playlistURL');
                     if (input) {
                         input.focus();
@@ -2789,9 +2797,17 @@ document.addEventListener('keydown', function(e) {
                 }, 100);
             }
             break;
+
         case 'Enter':
             if (navigationState === 'mainCategories') {
-                if (currentMainCategory === 'Свой плейлист') {
+                // Переход в подменю или поиск
+                if (currentMainCategory === 'Просмотренные') {
+                    navigationState = 'searchInput';
+                    setTimeout(() => {
+                        const input = document.getElementById('searchChannelInput');
+                        if (input) input.focus();
+                    }, 100);
+                } else if (currentMainCategory === 'Свой плейлист') {
                     const input = document.getElementById('playlistURL');
                     if (input) {
                         input.focus();
@@ -2872,8 +2888,9 @@ document.addEventListener('keydown', function(e) {
                 }
             }
             break;
+
         case 'Escape':
-            if (navigationState === 'subCategories' || navigationState === 'customInput') {
+            if (navigationState === 'subCategories' || navigationState === 'customInput' || navigationState === 'searchInput') {
                 navigationState = 'mainCategories';
                 setTimeout(() => {
                     const buttons = mainCategoriesPanel.querySelectorAll('.category-btn');

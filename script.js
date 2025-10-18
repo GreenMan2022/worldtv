@@ -2685,28 +2685,45 @@ document.addEventListener('keydown', function(e) {
 
     // Состояние: поиск в "Просмотренные"
     if (navigationState === 'searchInput') {
-        const input = document.getElementById('searchChannelInput');
-        if (!input || document.activeElement !== input) return;
+    const input = document.getElementById('searchChannelInput');
+    if (!input || document.activeElement !== input) return;
 
-        if (e.key === 'ArrowDown') {
-            navigationState = 'channels';
-            setTimeout(() => {
-                const firstChannel = document.querySelector('.channel-card');
-                if (firstChannel) firstChannel.focus();
-            }, 100);
-        } else if (e.key === 'ArrowUp') {
-            navigationState = 'mainCategories';
-            setTimeout(() => {
-                const buttons = mainCategoriesPanel.querySelectorAll('.category-btn');
-                if (buttons[currentMainCategoryIndex]) {
-                    buttons[currentMainCategoryIndex].focus();
-                }
-            }, 100);
-        } else if (e.key === 'Enter') {
-            performChannelSearch();
-        }
+    // 👇 ArrowDown: переход к карточкам
+    if (e.key === 'ArrowDown') {
+        e.preventDefault();
+        navigationState = 'channels';
+        setTimeout(function() {
+            const firstChannel = document.querySelector('.channel-card');
+            if (firstChannel) firstChannel.focus();
+        }, 100);
         return;
     }
+
+    // 👇 ArrowUp: переход в главное меню
+    if (e.key === 'ArrowUp') {
+        e.preventDefault();
+        navigationState = 'mainCategories';
+        setTimeout(function() {
+            const buttons = mainCategoriesPanel.querySelectorAll('.category-btn');
+            if (buttons[currentMainCategoryIndex]) {
+                buttons[currentMainCategoryIndex].focus();
+            }
+        }, 100);
+        return;
+    }
+
+    // 👇 Enter: запуск поиска
+    if (e.key === 'Enter') {
+        e.preventDefault();
+        performChannelSearch();
+        return;
+    }
+
+    // ❗ ВАЖНО: НЕ вызываем e.preventDefault() для ArrowLeft/ArrowRight!
+    // Это позволит курсору двигаться внутри input
+    // Остальные клавиши (Backspace, буквы и т.д.) тоже проходят свободно
+    return;
+}
 
     switch(e.key) {
         case 'ArrowLeft':

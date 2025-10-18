@@ -31,6 +31,13 @@ let checkChannelsOnLoad = localStorage.getItem('checkChannelsOnLoad') === 'true'
 // 👇 Словарь переводов
 const translations = {
     ru: {
+        "Поиск по каналам": "Поиск по каналам",
+        "Название канала": "Название канала",
+        "Ссылка потока": "Ссылка потока",
+        "Показать потоки": "Показать потоки",
+        "Найти": "Найти",
+        "Результаты поиска": "Результаты поиска",
+        "Каналы не найдены": "Каналы не найдены",
         "Проверять каналы": "Проверять каналы",
         "Просмотренные": "Просмотренные",
         "Прямо сейчас": "Прямо сейчас",
@@ -79,6 +86,13 @@ const translations = {
         "Еще один!": "Еще один!"
     },
   en: {
+    "Поиск по каналам": "Search Channels",
+    "Название канала": "Channel Name",
+    "Ссылка потока": "Stream URL",
+    "Показать потоки": "Show Streams",
+    "Найти": "Search",
+    "Результаты поиска": "Search Results",
+    "Каналы не найдены": "No channels found",
     "Проверять каналы": "Check Channels",
     "Просмотренные": "Watched",
     "Прямо сейчас": "Watching Now",
@@ -1412,6 +1426,77 @@ function renderSubCategories() {
         subCategoriesPanel.appendChild(btn);
         return;
     }
+    // 👇 НОВОЕ: подменю для "Просмотренные"
+    if (currentMainCategory === 'Просмотренные') {
+        subCategoriesPanel.innerHTML = '';
+        subCategoriesPanel.style.display = 'flex';
+        const wrapper = document.createElement('div');
+        wrapper.style.display = 'flex';
+        wrapper.style.gap = '10px';
+        wrapper.style.alignItems = 'center';
+        wrapper.style.flexWrap = 'wrap';
+        wrapper.style.padding = '0 10px';
+
+        const input = document.createElement('input');
+        input.id = 'searchChannelInput';
+        input.type = 'text';
+        input.placeholder = translateText('Название канала');
+        input.style.padding = '8px 12px';
+        input.style.borderRadius = '6px';
+        input.style.border = '1px solid #444';
+        input.style.background = '#222';
+        input.style.color = 'white';
+        input.style.fontSize = '13px';
+        input.setAttribute('tabindex', '0');
+
+        const showStreamsCheckbox = document.createElement('label');
+        showStreamsCheckbox.style.display = 'flex';
+        showStreamsCheckbox.style.alignItems = 'center';
+        showStreamsCheckbox.style.gap = '5px';
+        showStreamsCheckbox.style.fontSize = '12px';
+        showStreamsCheckbox.innerHTML = `
+            <input type="checkbox" id="showStreamsCheckbox">
+            <span>${translateText('Показать потоки')}</span>
+        `;
+
+        const button = document.createElement('button');
+        button.textContent = translateText('Найти');
+        button.style.padding = '8px 16px';
+        button.style.borderRadius = '6px';
+        button.style.border = 'none';
+        button.style.background = 'linear-gradient(90deg, #ff375f, #ff5e41)';
+        button.style.color = 'white';
+        button.style.cursor = 'pointer';
+        button.style.fontSize = '13px';
+        button.setAttribute('tabindex', '0');
+        button.addEventListener('click', performChannelSearch);
+        button.addEventListener('keydown', function(e) {
+            if (e.key === 'Enter' || e.key === ' ') {
+                e.preventDefault();
+                this.click();
+            }
+        });
+
+        input.addEventListener('keydown', function(e) {
+            if (e.key === 'Enter') {
+                e.preventDefault();
+                performChannelSearch();
+            }
+        });
+
+        wrapper.appendChild(input);
+        wrapper.appendChild(showStreamsCheckbox);
+        wrapper.appendChild(button);
+        subCategoriesPanel.appendChild(wrapper);
+
+        setTimeout(() => {
+            input.focus();
+            navigationState = 'searchInput';
+        }, 100);
+        return;
+    }
+
+    // Стандартное поведение для других категорий
     subCategoriesPanel.innerHTML = '';
     subCategoriesPanel.style.display = 'none';
     if (!categoryTree[currentMainCategory]) return;
@@ -1921,6 +2006,112 @@ async function loadRandomChannel() {
         }, 100);
     }
 }
+
+
+// 👇 Поиск по всем каналам
+async function performChannelSearch() {
+    const query = document.getElementById('searchChannelInput').value.trim();
+    const showStreams = document.getElementById('showStreamsCheckbox').checked;
+
+    if (!query) {
+        showToast(translateText('Введите название канала'));
+        return;
+    }
+
+    initialLoader.style.display = 'flex';
+    channelsContainer.innerHTML = `<div style="color:#aaa; padding:40px; text-align:center">${translateText("Поиск...")}</div>`;
+
+    // 1. Собираем все каналы из всех источников
+    let allChannels = [];
+
+    // a) Просмотренные
+    try {
+        const watched = JSON.parse(localStorage.getItem('watchedChannels') || '[]');
+        if (Array.isArray(watched)) allChannels = [...watched];
+    } catch (e) {}
+
+    // b) Свой плейлист
+    try {
+        const custom = JSON.parse(localStorage.getItem('customPlaylist') || '[]');
+        if (Array.isArray(custom)) allChannels.push(...custom);
+    } catch (e) {}
+
+    // c) Все категории из categoryTree
+    for (const mainCat of Object.keys(categoryTree)) {
+        if (typeof categoryTree[mainCat] === 'object' && !Array.isArray(categoryTree[mainCat])) {
+            for (const subCat of Object.keys(categoryTree[mainCat])) {
+                const url = categoryTree[mainCat][subCat];
+                if (!loadedPlaylists[url]) {
+                    try {
+                        const content = await fetchM3U(url);
+                        const channels = parseM3UContent(content, subCat);
+                        loadedPlaylists[url] = channels;
+                        allChannels.push(...channels);
+                    } catch (err) {
+                        console.warn(`Не удалось загрузить ${url}`);
+                    }
+                } else {
+                    allChannels.push(...loadedPlaylists[url]);
+                }
+            }
+        }
+    }
+
+    // Убираем дубли по URL
+    const seen = new Set();
+    allChannels = allChannels.filter(ch => {
+        if (seen.has(ch.url)) return false;
+        seen.add(ch.url);
+        return true;
+    });
+
+    // 2. Фильтруем по запросу
+    const results = allChannels.filter(ch =>
+        ch.name.toLowerCase().includes(query.toLowerCase())
+    );
+
+    // 3. Отображаем
+    initialLoader.style.display = 'none';
+    if (results.length === 0) {
+        channelsContainer.innerHTML = `<div style="color:#aaa; padding:40px; text-align:center">${translateText("Каналы не найдены")}</div>`;
+        return;
+    }
+
+    if (showStreams) {
+        // Таблица: Название | Ссылка
+        let tableHTML = `
+            <div style="padding:15px; color:#fff; font-size:16px; font-weight:bold;">
+                ${translateText("Результаты поиска")} (${results.length})
+            </div>
+            <div style="overflow-x:auto; padding:0 15px 20px;">
+                <table style="width:100%; border-collapse:collapse; color:#fff; font-size:14px;">
+                    <thead>
+                        <tr>
+                            <th style="text-align:left; padding:10px; border-bottom:1px solid #444;">${translateText("Название канала")}</th>
+                            <th style="text-align:left; padding:10px; border-bottom:1px solid #444;">${translateText("Ссылка потока")}</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+        `;
+        results.forEach(ch => {
+            tableHTML += `
+                <tr>
+                    <td style="padding:8px; border-bottom:1px solid #333;">${ch.name}</td>
+                    <td style="padding:8px; border-bottom:1px solid #333; word-break:break-all;">
+                        <a href="${ch.url}" target="_blank" style="color:#ff375f;">${ch.url}</a>
+                    </td>
+                </tr>
+            `;
+        });
+        tableHTML += `</tbody></table></div>`;
+        channelsContainer.innerHTML = tableHTML;
+    } else {
+        // Обычные карточки
+        renderChannels(results);
+    }
+}
+
+
 // 👇 Вспомогательная функция для проверки доступности канала (оптимизированная)
 function checkChannelAvailability(url) {
     return new Promise((resolve) => {
@@ -2524,6 +2715,14 @@ document.addEventListener('keydown', function(e) {
                         buttons[currentMainCategoryIndex].focus();
                     }
                 }, 100);
+            } else if (navigationState === 'searchInput') {
+                if (e.key === 'ArrowDown') {
+                    navigationState = 'channels';
+                    setTimeout(() => {
+                        const first = document.querySelector('.channel-card');
+                        if (first) first.focus();
+                    }, 100);
+                }
             }
             break;
         case 'ArrowDown':

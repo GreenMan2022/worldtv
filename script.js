@@ -2672,196 +2672,6 @@ function moveFocus(direction) {
 }
 
 // Обработчик клавиш (полностью исправленный, с поддержкой поиска)
-document.addEventListener('keydown', function(e) {
-    if (playerModal.style.display === 'flex') {
-        if (e.key === 'Escape') closeModal.click();
-        return;
-    }
-
-    // 👇 КРИТИЧЕСКИ ВАЖНО: предотвратить прокрутку страницы стрелками
-    if (['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'Enter', 'Escape'].includes(e.key)) {
-        e.preventDefault();
-    }
-
-    // Состояние: поиск в "Просмотренные"
-    if (navigationState === 'searchInput') {
-    const input = document.getElementById('searchChannelInput');
-    if (!input || document.activeElement !== input) return;
-
-    // 👇 ArrowDown: переход к карточкам
-    if (e.key === 'ArrowDown') {
-        e.preventDefault();
-        navigationState = 'channels';
-        setTimeout(function() {
-            const firstChannel = document.querySelector('.channel-card');
-            if (firstChannel) firstChannel.focus();
-        }, 100);
-        return;
-    }
-
-    // 👇 ArrowUp: переход в главное меню
-    if (e.key === 'ArrowUp') {
-        e.preventDefault();
-        navigationState = 'mainCategories';
-        setTimeout(function() {
-            const buttons = mainCategoriesPanel.querySelectorAll('.category-btn');
-            if (buttons[currentMainCategoryIndex]) {
-                buttons[currentMainCategoryIndex].focus();
-            }
-        }, 100);
-        return;
-    }
-
-    // 👇 Enter: запуск поиска
-    if (e.key === 'Enter') {
-        e.preventDefault();
-        performChannelSearch();
-        return;
-    }
-
-    // ❗ ВАЖНО: НЕ вызываем e.preventDefault() для ArrowLeft/ArrowRight!
-    // Это позволит курсору двигаться внутри input
-    // Остальные клавиши (Backspace, буквы и т.д.) тоже проходят свободно
-    return;
-}
-
-    switch(e.key) {
-        case 'ArrowLeft':
-        case 'ArrowRight':
-            moveFocus(e.key === 'ArrowRight' ? 'right' : 'left');
-            break;
-
-        case 'ArrowUp':
-            if (navigationState === 'channels') {
-                if (currentMainCategory === 'Просмотренные') {
-                    navigationState = 'searchInput';
-                    setTimeout(() => {
-                        const input = document.getElementById('searchChannelInput');
-                        if (input) input.focus();
-                    }, 100);
-                } else if (currentMainCategory === 'Свой плейлист') {
-                    const input = document.getElementById('playlistURL');
-                    if (input) {
-                        input.focus();
-                        navigationState = 'customInput';
-                    }
-                } else if (currentMainCategory === 'Пользовательские плейлисты') {
-                    navigationState = 'subCategories';
-                    subCategoriesPanel.style.display = 'flex';
-                    setTimeout(() => {
-                        const buttons = subCategoriesPanel.querySelectorAll('.subcategory-btn');
-                        if (buttons.length > 0) {
-                            buttons[0].focus();
-                            currentSubCategoryIndex = 0;
-                        }
-                    }, 100);
-                } else {
-                    navigationState = 'subCategories';
-                    subCategoriesPanel.style.display = 'flex';
-                    setTimeout(() => {
-                        const buttons = subCategoriesPanel.querySelectorAll('.subcategory-btn');
-                        if (buttons.length > 0) {
-                            buttons[0].focus();
-                            currentSubCategoryIndex = 0;
-                        }
-                    }, 100);
-                }
-            } else if (navigationState === 'subCategories' || navigationState === 'customInput') {
-                navigationState = 'mainCategories';
-                setTimeout(() => {
-                    const buttons = mainCategoriesPanel.querySelectorAll('.category-btn');
-                    if (buttons[currentMainCategoryIndex]) {
-                        buttons[currentMainCategoryIndex].focus();
-                    }
-                }, 100);
-            }
-            break;
-
-        case 'ArrowDown':
-            if (navigationState === 'mainCategories') {
-                if (currentMainCategory === 'Просмотренные') {
-                    navigationState = 'searchInput';
-                    setTimeout(() => {
-                        const input = document.getElementById('searchChannelInput');
-                        if (input) input.focus();
-                    }, 100);
-                } else if (currentMainCategory === 'Свой плейлист') {
-                    const input = document.getElementById('playlistURL');
-                    if (input) {
-                        input.focus();
-                        navigationState = 'customInput';
-                    }
-                } else if (currentMainCategory === 'Пользовательские плейлисты') {
-                    navigationState = 'subCategories';
-                    subCategoriesPanel.style.display = 'flex';
-                    setTimeout(() => {
-                        const buttons = subCategoriesPanel.querySelectorAll('.subcategory-btn');
-                        if (buttons.length > 0) {
-                            buttons[0].focus();
-                            currentSubCategoryIndex = 0;
-                        }
-                    }, 100);
-                } else {
-                    navigationState = 'subCategories';
-                    subCategoriesPanel.style.display = 'flex';
-                    setTimeout(() => {
-                        const buttons = subCategoriesPanel.querySelectorAll('.subcategory-btn');
-                        if (buttons.length > 0) {
-                            buttons[0].focus();
-                            currentSubCategoryIndex = 0;
-                        }
-                    }, 100);
-                }
-            } else if (navigationState === 'subCategories' || navigationState === 'customInput') {
-                navigationState = 'channels';
-                setTimeout(() => {
-                    const firstChannel = document.querySelector('.channel-card');
-                    if (firstChannel) firstChannel.focus();
-                }, 100);
-            }
-            break;
-
-        case 'Enter':
-            if (navigationState === 'mainCategories') {
-                if (currentMainCategory === 'Просмотренные') {
-                    navigationState = 'searchInput';
-                    setTimeout(() => {
-                        const input = document.getElementById('searchChannelInput');
-                        if (input) input.focus();
-                    }, 100);
-                } else if (currentMainCategory === 'Свой плейлист') {
-                    const input = document.getElementById('playlistURL');
-                    if (input) {
-                        input.focus();
-                        navigationState = 'customInput';
-                    }
-                } else if (currentMainCategory === 'Пользовательские плейлисты') {
-                    navigationState = 'subCategories';
-                    subCategoriesPanel.style.display = 'flex';
-                    setTimeout(() => {
-                        const buttons = subCategoriesPanel.querySelectorAll('.subcategory-btn');
-                        if (buttons.length > 0) {
-                            buttons[0].focus();
-                            currentSubCategoryIndex = 0;
-                            currentSubcategory = buttons[0].textContent;
-                            updateSubCategoryActive();
-                        }
-                    }, 100);
-                } else {
-                    navigationState = 'subCategories';
-                    subCategoriesPanel.style.display = 'flex';
-                    setTimeout(() => {
-                        const buttons = subCategoriesPanel.querySelectorAll('.subcategory-btn');
-                        if (buttons.length > 0) {
-                            buttons[0].focus();
-                            currentSubCategoryIndex = 0;
-                            currentSubcategory = buttons[0].textContent;
-                            updateSubCategoryActive();
-                        }
-                    }, 100);
-                }
-            } else if (navigationState === 'subCategories') {
-                const buttons = subCategoriesPanel.querySelectorAll('.subcategory-btn');
                 if (buttons[currentSubCategoryIndex]) {
                     if (currentMainCategory === 'Пользовательские плейлисты') {
                         selectPublicPlaylist(JSON.parse(buttons[currentSubCategoryIndex].title), currentSubCategoryIndex);
@@ -2897,7 +2707,11 @@ document.addEventListener('keydown', function(e) {
                 } else if (currentMainCategory === 'Свой плейлист') {
                     list = JSON.parse(localStorage.getItem('customPlaylist') || '[]');
                 } else if (currentMainCategory === 'Пользовательские плейлисты') {
-                    const playlistUrl = Object.values(loadedPlaylists).find(pl => pl.some(ch => ch.url === card.dataset.url))?.[0]?.url;
+                    const playlistUrl = Object.values(loadedPlaylists).find(function(pl) {
+                        return pl && pl.some(function(ch) {
+                            return ch.url === card.dataset.url;
+                        });
+                    });
                     if (playlistUrl) {
                         list = loadedPlaylists[playlistUrl] || [];
                     }
@@ -2914,7 +2728,7 @@ document.addEventListener('keydown', function(e) {
         case 'Escape':
             if (navigationState === 'subCategories' || navigationState === 'customInput' || navigationState === 'searchInput') {
                 navigationState = 'mainCategories';
-                setTimeout(() => {
+                setTimeout(function() {
                     const buttons = mainCategoriesPanel.querySelectorAll('.category-btn');
                     if (buttons[currentMainCategoryIndex]) {
                         buttons[currentMainCategoryIndex].focus();
@@ -2922,9 +2736,11 @@ document.addEventListener('keydown', function(e) {
                 }, 100);
             } else if (navigationState === 'mainCategories') {
                 navigationState = 'channels';
-                setTimeout(() => {
+                setTimeout(function() {
                     const firstChannel = document.querySelector('.channel-card');
-                    if (firstChannel) firstChannel.focus();
+                    if (firstChannel) {
+                        firstChannel.focus();
+                    }
                 }, 100);
             }
             break;

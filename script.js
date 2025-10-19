@@ -153,8 +153,6 @@ let navigationState = 'channels';
 let currentWatchedChannel = null;
 let watchStartTime = null;
 
-// 👇 Дерево категорий
-const categoryTree = {
   // 👇 Главная: пользовательские ленты
 let homeRows = JSON.parse(localStorage.getItem('homeRows')) || [
   { type: 'special', name: 'Просмотренные' },
@@ -163,6 +161,9 @@ let homeRows = JSON.parse(localStorage.getItem('homeRows')) || [
   { type: 'category', main: 'Категории', sub: 'Музыка' },
   { type: 'category', main: 'Категории', sub: 'Кино' }
 ];
+
+// 👇 Дерево категорий
+const categoryTree = {
   "Главная": {}, // ← новая главная
   "Просмотренные": {},
   "Прямо сейчас": {},

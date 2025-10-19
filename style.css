@@ -1,4 +1,4 @@
-/* === СОВРЕМЕННЫЙ ВИДЕОСЕРВИС — WORLD TV v2 === */
+/* === World TV — Modern Video Service v2.0 === */
 * {
   margin: 0;
   padding: 0;
@@ -48,7 +48,6 @@ body {
 .loader-content p {
   font-size: 18px;
   color: #ccc;
-  font-weight: 400;
 }
 
 /* Главное меню */
@@ -58,7 +57,6 @@ body {
   padding: 12px 16px 8px;
   background: rgba(10, 10, 10, 0.95);
   backdrop-filter: blur(12px);
-  -webkit-backdrop-filter: blur(12px);
   border-bottom: 1px solid rgba(255, 255, 255, 0.08);
   overflow-x: auto;
   white-space: nowrap;
@@ -92,7 +90,6 @@ body {
   justify-content: center;
   transition: all 0.25s cubic-bezier(0.25, 0.46, 0.45, 0.94);
   outline: none;
-  touch-action: manipulation;
 }
 
 .main-categories-panel .category-btn:hover,
@@ -104,11 +101,6 @@ body {
   box-shadow: 0 4px 12px rgba(255, 55, 95, 0.35);
 }
 
-.main-categories-panel .category-btn:focus {
-  outline: 3px solid #ff375f;
-  outline-offset: 2px;
-}
-
 /* Подменю */
 .sub-categories-panel {
   display: none;
@@ -116,7 +108,6 @@ body {
   padding: 10px 16px;
   background: rgba(15, 15, 15, 0.92);
   backdrop-filter: blur(10px);
-  -webkit-backdrop-filter: blur(10px);
   border-bottom: 1px solid rgba(255, 255, 255, 0.05);
   overflow-x: auto;
   white-space: nowrap;
@@ -148,10 +139,8 @@ body {
   display: flex;
   align-items: center;
   justify-content: center;
-  text-align: center;
   transition: all 0.2s ease;
   outline: none;
-  touch-action: manipulation;
 }
 
 .sub-categories-panel .subcategory-btn:hover,
@@ -163,22 +152,75 @@ body {
   box-shadow: 0 3px 8px rgba(255, 55, 95, 0.3);
 }
 
-.sub-categories-panel .subcategory-btn:focus {
-  outline: 3px solid #ff375f;
-  outline-offset: 2px;
-}
-
-/* Сетка каналов */
-.channels-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(270px, 1fr));
-  gap: 20px;
-  padding: 150px 20px 120px;
+/* Основной контент */
+#mainContent {
+  padding-top: 140px;
+  padding-bottom: 100px;
   max-width: 1800px;
   margin: 0 auto;
 }
 
-/* Карточка канала */
+/* Главный экран — ленты */
+.hero-section {
+  text-align: center;
+  padding: 40px 20px 30px;
+  background: linear-gradient(to bottom, rgba(0,0,0,0.7), transparent);
+  margin-bottom: 20px;
+}
+
+.hero-title {
+  font-size: 2.2rem;
+  font-weight: 800;
+  background: linear-gradient(90deg, #ff375f, #4cc9f0);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  margin-bottom: 10px;
+}
+
+.hero-subtitle {
+  font-size: 1.1rem;
+  color: #bbb;
+  max-width: 600px;
+  margin: 0 auto;
+}
+
+.carousel-section {
+  margin-bottom: 40px;
+  padding: 0 20px;
+}
+
+.carousel-title {
+  font-size: 1.4rem;
+  font-weight: 600;
+  margin-bottom: 16px;
+  color: white;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.carousel {
+  display: flex;
+  gap: 16px;
+  overflow-x: auto;
+  padding: 8px 0 16px;
+  scroll-snap-type: x mandatory;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: none;
+}
+
+.carousel::-webkit-scrollbar {
+  display: none;
+}
+
+.carousel .channel-card {
+  scroll-snap-align: start;
+  min-width: 220px;
+  height: 260px;
+}
+
+/* Карточка канала — общая */
 .channel-card {
   background: rgba(25, 25, 25, 0.7);
   border-radius: 16px;
@@ -186,13 +228,11 @@ body {
   position: relative;
   cursor: pointer;
   outline: none;
-  height: 240px;
   display: flex;
   flex-direction: column;
   transition: all 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94);
   box-shadow: 0 6px 16px rgba(0, 0, 0, 0.3);
   backdrop-filter: blur(4px);
-  -webkit-backdrop-filter: blur(4px);
   border: 1px solid rgba(255, 255, 255, 0.05);
   tabindex: 0;
   touch-action: manipulation;
@@ -206,7 +246,6 @@ body {
   z-index: 10;
 }
 
-/* Медиа-контейнер */
 .channel-media {
   height: 72%;
   position: relative;
@@ -219,7 +258,6 @@ body {
   height: 100%;
   object-fit: cover;
   opacity: 0.95;
-  transition: opacity 0.3s ease;
 }
 
 .channel-media i {
@@ -230,7 +268,6 @@ body {
   font-size: 32px;
   color: #ff375f;
   opacity: 0.8;
-  transition: opacity 0.3s;
 }
 
 .channel-card:hover .channel-media i,
@@ -238,7 +275,6 @@ body {
   opacity: 1;
 }
 
-/* Мини-плеер */
 .mini-player {
   width: 100%;
   height: 100%;
@@ -256,7 +292,6 @@ body {
   object-fit: cover;
 }
 
-/* Информация о канале */
 .channel-info {
   padding: 12px;
   background: rgba(0, 0, 0, 0.4);
@@ -296,7 +331,6 @@ body {
   height: 100%;
   background: rgba(0, 0, 0, 0.95);
   backdrop-filter: blur(10px);
-  -webkit-backdrop-filter: blur(10px);
   z-index: 1000;
   align-items: center;
   justify-content: center;
@@ -364,7 +398,6 @@ body {
   border-radius: 12px;
   box-shadow: 0 6px 20px rgba(0, 0, 0, 0.4);
   backdrop-filter: blur(12px);
-  -webkit-backdrop-filter: blur(12px);
   animation: slideInUp 0.4s forwards, fadeOut 0.5s 2.5s forwards;
   text-align: center;
   font-size: 15px;
@@ -375,21 +408,12 @@ body {
 }
 
 @keyframes slideInUp {
-  from {
-    opacity: 0;
-    transform: translate(-50%, -20px);
-  }
-  to {
-    opacity: 1;
-    transform: translate(-50%, 0);
-  }
+  from { opacity: 0; transform: translate(-50%, -20px); }
+  to { opacity: 1; transform: translate(-50%, 0); }
 }
 
 @keyframes fadeOut {
-  to {
-    opacity: 0;
-    transform: translate(-50%, -10px);
-  }
+  to { opacity: 0; transform: translate(-50%, -10px); }
 }
 
 /* Telegram Footer */
@@ -399,7 +423,6 @@ body {
   background: rgba(15, 15, 15, 0.7);
   backdrop-filter: blur(8px);
   text-align: center;
-  font-family: 'Segoe UI', sans-serif;
   font-size: 15px;
   color: #ddd;
   border-top: 1px solid rgba(255, 255, 255, 0.05);
@@ -421,67 +444,15 @@ body {
 }
 
 /* Адаптивность */
-@media (max-width: 1024px) {
-  .channels-grid {
-    grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
-    padding: 140px 16px 110px;
-  }
-  .channel-card {
-    height: 220px;
-  }
-}
-
 @media (max-width: 768px) {
-  .channels-grid {
-    grid-template-columns: repeat(auto-fill, minmax(210px, 1fr));
-    padding: 130px 14px 100px;
-  }
-  .channel-card {
-    height: 200px;
-  }
-  .main-categories-panel {
-    padding: 10px 14px 6px;
-  }
-  .main-categories-panel .category-btn {
-    padding: 7px 16px;
-    font-size: 14px;
-  }
-  .sub-categories-panel {
-    top: 60px;
-    padding: 8px 14px;
-  }
-  .sub-categories-panel .subcategory-btn {
-    padding: 6px 14px;
-    font-size: 12px;
-  }
+  .hero-title { font-size: 1.8rem; }
+  .carousel .channel-card { min-width: 190px; height: 240px; }
+  #mainContent { padding-top: 130px; }
 }
 
 @media (max-width: 480px) {
-  .channels-grid {
-    grid-template-columns: 1fr;
-    padding: 120px 12px 90px;
-  }
-  .channel-card {
-    height: 180px;
-  }
-  .main-categories-panel {
-    gap: 8px;
-    padding: 8px 10px 5px;
-  }
-  .main-categories-panel .category-btn {
-    padding: 6px 14px;
-    font-size: 13px;
-  }
-  .sub-categories-panel {
-    top: 56px;
-    gap: 6px;
-    padding: 6px 10px;
-  }
-  .sub-categories-panel .subcategory-btn {
-    padding: 5px 12px;
-    font-size: 11px;
-  }
-  .channel-info h3 {
-    font-size: 15px;
-  }
+  .hero-title { font-size: 1.5rem; }
+  .carousel .channel-card { min-width: 160px; height: 220px; }
+  .carousel-title { font-size: 1.2rem; }
+  #mainContent { padding-top: 120px; }
 }

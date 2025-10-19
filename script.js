@@ -2469,15 +2469,18 @@ function renderCarouselChannels(containerId, channels) {
     const mediaContainer = document.createElement('div');
     mediaContainer.className = 'channel-media';
 
-    // 👇 Обработка логотипа с fallback
+    // 👇 Безопасная загрузка логотипа
     if (channel.logo) {
       const img = document.createElement('img');
       img.src = channel.logo;
       img.alt = channel.name;
-      // 👇 Ключевое: скрыть изображение при ошибке
-      img.onerror = () => { 
-        img.style.display = 'none'; 
-        // Опционально: можно показать placeholder или иконку
+      img.style.width = '100%';
+      img.style.height = '100%';
+      img.style.objectFit = 'cover';
+      // 👇 Главное: скрыть изображение при ошибке
+      img.onerror = () => {
+        img.style.display = 'none';
+        // Опционально: можно показать иконку категории
       };
       mediaContainer.appendChild(img);
     }

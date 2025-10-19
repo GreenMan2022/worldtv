@@ -1,458 +1,434 @@
-/* === World TV — Modern Video Service v2.0 === */
 * {
-  margin: 0;
-  padding: 0;
-  box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
 }
 
 body {
-  background: linear-gradient(180deg, #0a0a0a 0%, #000 100%);
-  color: #fff;
-  font-family: 'Segoe UI', system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
-  overflow-x: hidden;
-  touch-action: manipulation;
-  min-height: 100vh;
+    background: #000;
+    color: #fff;
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
+    overflow-x: hidden;
+    touch-action: manipulation;
 }
 
 /* Загрузочный экран */
 .loader {
-  position: fixed;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 100%;
-  background: #000;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  z-index: 9999;
-  backdrop-filter: blur(2px);
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: #000;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 9999;
 }
 
 .loader-content {
-  text-align: center;
+    text-align: center;
 }
 
 .loader-content i {
-  font-size: 48px;
-  color: #ff375f;
-  margin-bottom: 20px;
-  animation: pulse 2s infinite;
-}
-
-@keyframes pulse {
-  0%, 100% { transform: scale(1); }
-  50% { transform: scale(1.1); }
+    font-size: 48px;
+    color: #ff375f;
+    margin-bottom: 20px;
 }
 
 .loader-content p {
-  font-size: 18px;
-  color: #ccc;
+    font-size: 18px;
+    color: #aaa;
 }
 
-/* Главное меню */
+/* Главное меню категорий */
 .main-categories-panel {
-  display: flex;
-  gap: 12px;
-  padding: 12px 16px 8px;
-  background: rgba(10, 10, 10, 0.95);
-  backdrop-filter: blur(12px);
-  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
-  overflow-x: auto;
-  white-space: nowrap;
-  position: fixed;
-  top: 0;
-  left: 0;
-  width: 100%;
-  z-index: 100;
-  -webkit-overflow-scrolling: touch;
-  box-shadow: 0 2px 16px rgba(0, 0, 0, 0.5);
+    display: flex;
+    gap: 10px;
+    padding: 12px 15px 8px;
+    background: rgba(0, 0, 0, 0.9);
+    border-bottom: 2px solid #ff375f;
+    overflow-x: auto;
+    white-space: nowrap;
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    z-index: 99;
+    -webkit-overflow-scrolling: touch;
 }
 
 .main-categories-panel::-webkit-scrollbar {
-  display: none;
+    display: none;
 }
 
 .main-categories-panel .category-btn {
-  background: rgba(255, 255, 255, 0.08);
-  color: #fff;
-  border: none;
-  padding: 8px 20px;
-  border-radius: 24px;
-  cursor: pointer;
-  white-space: nowrap;
-  font-size: 15px;
-  font-weight: 500;
-  min-width: auto;
-  flex-shrink: 0;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  transition: all 0.25s cubic-bezier(0.25, 0.46, 0.45, 0.94);
-  outline: none;
+    background: rgba(255, 255, 255, 0.1);
+    color: #fff;
+    border: none;
+    /* 👇 Ключевое: фиксированный padding, чтобы текст "дышал" */
+    padding: 8px 16px;
+    border-radius: 20px;
+    cursor: pointer;
+    /* 👇 Текст всегда в одну строку */
+    white-space: nowrap;
+    font-size: 15px;
+    /* 👇 Убираем минимальную ширину — кнопка растягивается по контенту */
+    min-width: auto;
+    /* 👇 Не сжимается при скролле */
+    flex-shrink: 0;
+    text-align: center;
+    outline: none;
+    transition: all 0.2s;
+    touch-action: manipulation;
+    /* 👇 Центрируем текст вертикально */
+    display: flex;
+    align-items: center;
+    justify-content: center;
 }
 
 .main-categories-panel .category-btn:hover,
 .main-categories-panel .category-btn.active,
 .main-categories-panel .category-btn:focus {
-  background: linear-gradient(90deg, #ff375f, #ff5e41);
-  color: white;
-  transform: translateY(-2px);
-  box-shadow: 0 4px 12px rgba(255, 55, 95, 0.35);
+    background: linear-gradient(90deg, #ff375f, #ff5e41);
+    color: white;
 }
 
-/* Подменю */
+.main-categories-panel .category-btn:focus {
+    outline: 3px solid #ff375f;
+    outline-offset: 2px;
+}
+
+/* Подменю подкатегорий */
 .sub-categories-panel {
-  display: none;
-  gap: 10px;
-  padding: 10px 16px;
-  background: rgba(15, 15, 15, 0.92);
-  backdrop-filter: blur(10px);
-  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
-  overflow-x: auto;
-  white-space: nowrap;
-  position: fixed;
-  top: 64px;
-  left: 0;
-  width: 100%;
-  z-index: 99;
-  -webkit-overflow-scrolling: touch;
-  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.4);
+    display: none;
+    gap: 8px;
+    padding: 8px 15px;
+    background: rgba(0, 0, 0, 0.8);
+    border-bottom: 1px solid #555;
+    overflow-x: auto;
+    white-space: nowrap;
+    position: fixed;
+    top: 60px;
+    left: 0;
+    width: 100%;
+    z-index: 98;
+    -webkit-overflow-scrolling: touch;
 }
 
 .sub-categories-panel::-webkit-scrollbar {
-  display: none;
+    display: none;
 }
 
 .sub-categories-panel .subcategory-btn {
-  background: rgba(255, 255, 255, 0.07);
-  color: #fff;
-  border: none;
-  padding: 8px 16px;
-  border-radius: 20px;
-  cursor: pointer;
-  white-space: nowrap;
-  font-size: 13px;
-  font-weight: 500;
-  min-width: auto;
-  flex-shrink: 0;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  transition: all 0.2s ease;
-  outline: none;
+    background: rgba(255, 255, 255, 0.1);
+    color: #fff;
+    border: none;
+    padding: 6px 14px;
+    border-radius: 18px;
+    cursor: pointer;
+    white-space: nowrap;
+    font-size: 13px;
+    min-width: auto;
+    flex-shrink: 0;
+    text-align: center;
+    outline: none;
+    transition: all 0.2s;
+    touch-action: manipulation;
+    display: flex;
+    align-items: center;
+    justify-content: center;
 }
 
 .sub-categories-panel .subcategory-btn:hover,
 .sub-categories-panel .subcategory-btn.active,
 .sub-categories-panel .subcategory-btn:focus {
-  background: linear-gradient(90deg, #ff375f, #ff5e41);
-  color: white;
-  transform: translateY(-1px);
-  box-shadow: 0 3px 8px rgba(255, 55, 95, 0.3);
+    background: linear-gradient(90deg, #ff375f, #ff5e41);
+    color: white;
 }
 
-/* Основной контент */
-#mainContent {
-  padding-top: 140px;
-  padding-bottom: 100px;
-  max-width: 1800px;
-  margin: 0 auto;
+.sub-categories-panel .subcategory-btn:focus {
+    outline: 3px solid #ff375f;
+    outline-offset: 2px;
 }
 
-/* Главный экран — ленты */
-.hero-section {
-  text-align: center;
-  padding: 40px 20px 30px;
-  background: linear-gradient(to bottom, rgba(0,0,0,0.7), transparent);
-  margin-bottom: 20px;
+/* Сетка каналов — сдвинута вниз, чтобы не перекрывалась меню */
+.channels-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+    gap: 12px;
+    padding: 130px 15px 80px;
 }
 
-.hero-title {
-  font-size: 2.2rem;
-  font-weight: 800;
-  background: linear-gradient(90deg, #ff375f, #4cc9f0);
-  -webkit-background-clip: text;
-  background-clip: text;
-  color: transparent;
-  margin-bottom: 10px;
-}
-
-.hero-subtitle {
-  font-size: 1.1rem;
-  color: #bbb;
-  max-width: 600px;
-  margin: 0 auto;
-}
-
-.carousel-section {
-  margin-bottom: 40px;
-  padding: 0 20px;
-}
-
-.carousel-title {
-  font-size: 1.4rem;
-  font-weight: 600;
-  margin-bottom: 16px;
-  color: white;
-  display: flex;
-  align-items: center;
-  gap: 10px;
-}
-
-.carousel {
-  display: flex;
-  gap: 16px;
-  overflow-x: auto;
-  padding: 8px 0 16px;
-  scroll-snap-type: x mandatory;
-  -webkit-overflow-scrolling: touch;
-  scrollbar-width: none;
-}
-
-.carousel::-webkit-scrollbar {
-  display: none;
-}
-
-.carousel .channel-card {
-  scroll-snap-align: start;
-  min-width: 220px;
-  height: 260px;
-}
-
-/* Карточка канала — общая */
+/* Карточка канала */
 .channel-card {
-  background: rgba(25, 25, 25, 0.7);
-  border-radius: 16px;
-  overflow: hidden;
-  position: relative;
-  cursor: pointer;
-  outline: none;
-  display: flex;
-  flex-direction: column;
-  transition: all 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94);
-  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.3);
-  backdrop-filter: blur(4px);
-  border: 1px solid rgba(255, 255, 255, 0.05);
-  tabindex: 0;
-  touch-action: manipulation;
+    background: rgba(255, 255, 255, 0.05);
+    border-radius: 10px;
+    overflow: hidden;
+    position: relative;
+    cursor: pointer;
+    transition: transform 0.2s;
+    outline: none;
+    height: 200px;
+    display: flex;
+    flex-direction: column;
+    tabindex: 0;
+    touch-action: manipulation;
 }
 
-.channel-card:focus,
-.channel-card:hover {
-  transform: translateY(-8px);
-  background: rgba(35, 35, 35, 0.9);
-  box-shadow: 0 10px 24px rgba(0, 0, 0, 0.45);
-  z-index: 10;
+.channel-card:focus {
+    transform: scale(1.02);
+    outline: 3px solid #ff375f;
+    outline-offset: 2px;
 }
 
+/* Медиа-контейнер */
 .channel-media {
-  height: 72%;
-  position: relative;
-  background: linear-gradient(135deg, #1a1a1a, #0d0d0d);
-  overflow: hidden;
+    height: 70%;
+    position: relative;
+    background: linear-gradient(135deg, #333, #111);
+    overflow: hidden;
 }
 
 .channel-media img {
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-  opacity: 0.95;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
 }
 
 .channel-media i {
-  position: absolute;
-  top: 50%;
-  left: 50%;
-  transform: translate(-50%, -50%);
-  font-size: 32px;
-  color: #ff375f;
-  opacity: 0.8;
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    font-size: 36px;
+    color: #ff375f;
 }
 
-.channel-card:hover .channel-media i,
-.channel-card:focus .channel-media i {
-  opacity: 1;
-}
-
+/* Мини-плеер */
 .mini-player {
-  width: 100%;
-  height: 100%;
-  background: #000;
-  position: absolute;
-  top: 0;
-  left: 0;
-  display: none;
-  z-index: 2;
+    width: 100%;
+    height: 100%;
+    background: #000;
+    position: absolute;
+    top: 0;
+    left: 0;
+    display: none;
 }
 
 .mini-player video {
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
 }
 
+/* Информация о канале */
 .channel-info {
-  padding: 12px;
-  background: rgba(0, 0, 0, 0.4);
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-  justify-content: center;
+    padding: 8px;
+    background: rgba(0, 0, 0, 0.7);
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
 }
 
 .channel-info h3 {
-  font-size: 16px;
-  font-weight: 600;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  margin-bottom: 4px;
-  color: white;
-  line-height: 1.3;
+    font-size: 15px;
+    font-weight: 500;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    margin-bottom: 3px;
+    color: white;
 }
 
 .channel-info p {
-  font-size: 12px;
-  color: #bbb;
-  margin: 0;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
+    font-size: 12px;
+    color: #aaa;
+    margin: 0;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
 }
 
-/* Модальное окно */
+/* Модальное окно плеера */
 .modal {
-  display: none;
-  position: fixed;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 100%;
-  background: rgba(0, 0, 0, 0.95);
-  backdrop-filter: blur(10px);
-  z-index: 1000;
-  align-items: center;
-  justify-content: center;
-  padding: 0;
+    display: none;
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: #000;
+    z-index: 1000;
+    align-items: center;
+    justify-content: center;
+    padding: 0;
 }
 
 .modal-content {
-  position: relative;
-  width: 100%;
-  height: 100%;
-  max-width: none;
-  margin: 0;
+    position: relative;
+    width: 100%;
+    height: 100%;
+    max-width: none;
+    margin: 0;
 }
 
 .close-btn {
-  position: absolute;
-  top: 20px;
-  right: 20px;
-  background: rgba(30, 30, 30, 0.7);
-  color: white;
-  border: none;
-  border-radius: 50%;
-  width: 48px;
-  height: 48px;
-  font-size: 24px;
-  cursor: pointer;
-  z-index: 10;
-  outline: none;
-  backdrop-filter: blur(8px);
-  transition: all 0.2s ease;
-  display: flex;
-  align-items: center;
-  justify-content: center;
+    position: absolute;
+    top: 15px;
+    right: 15px;
+    background: rgba(0, 0, 0, 0.7);
+    color: white;
+    border: none;
+    border-radius: 50%;
+    width: 40px;
+    height: 40px;
+    font-size: 20px;
+    cursor: pointer;
+    z-index: 10;
+    outline: none;
+    backdrop-filter: blur(5px);
+    touch-action: manipulation;
 }
 
-.close-btn:hover {
-  background: rgba(255, 55, 95, 0.9);
-  transform: rotate(90deg);
+.close-btn:focus {
+    outline: 3px solid #ff375f;
 }
 
 #videoPlayerElement {
-  width: 100%;
-  height: 100%;
-  object-fit: contain;
-  background: #000;
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+    background: #000;
 }
 
 /* Уведомления */
 .toast-container {
-  position: fixed;
-  top: 80px;
-  left: 50%;
-  transform: translateX(-50%);
-  z-index: 2000;
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-  pointer-events: none;
+    position: fixed;
+    top: 70px;
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: 2000;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    pointer-events: none;
 }
 
 .toast {
-  background: rgba(30, 30, 30, 0.92);
-  color: white;
-  padding: 14px 24px;
-  border-radius: 12px;
-  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.4);
-  backdrop-filter: blur(12px);
-  animation: slideInUp 0.4s forwards, fadeOut 0.5s 2.5s forwards;
-  text-align: center;
-  font-size: 15px;
-  font-weight: 500;
-  min-width: 260px;
-  pointer-events: auto;
-  border-left: 4px solid #ff375f;
+    background: rgba(0, 0, 0, 0.8);
+    color: white;
+    padding: 12px 20px;
+    border-radius: 8px;
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
+    backdrop-filter: blur(5px);
+    animation: fadeInOut 3s ease-in-out;
+    text-align: center;
+    font-size: 15px;
+    min-width: 240px;
+    pointer-events: auto;
+    touch-action: manipulation;
 }
 
-@keyframes slideInUp {
-  from { opacity: 0; transform: translate(-50%, -20px); }
-  to { opacity: 1; transform: translate(-50%, 0); }
+@keyframes fadeInOut {
+    0% { opacity: 0; transform: translateY(-10px); }
+    10% { opacity: 1; transform: translateY(0); }
+    90% { opacity: 1; transform: translateY(0); }
+    100% { opacity: 0; transform: translateY(-10px); }
 }
 
-@keyframes fadeOut {
-  to { opacity: 0; transform: translate(-50%, -10px); }
-}
-
-/* Telegram Footer */
-.telegram-footer {
-  margin-top: 60px;
-  padding: 20px;
-  background: rgba(15, 15, 15, 0.7);
-  backdrop-filter: blur(8px);
-  text-align: center;
-  font-size: 15px;
-  color: #ddd;
-  border-top: 1px solid rgba(255, 255, 255, 0.05);
-}
-
-.telegram-footer a {
-  color: #00bfff;
-  text-decoration: none;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 10px;
-  font-weight: 500;
-  transition: color 0.2s;
-}
-
-.telegram-footer a:hover {
-  color: #ff375f;
-}
-
-/* Адаптивность */
+/* Адаптивность для мобильных устройств */
 @media (max-width: 768px) {
-  .hero-title { font-size: 1.8rem; }
-  .carousel .channel-card { min-width: 190px; height: 240px; }
-  #mainContent { padding-top: 130px; }
+    .channels-grid {
+        grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+        padding: 120px 10px 70px;
+    }
+    
+    .channel-card {
+        height: 180px;
+    }
+    
+    .channel-info h3 {
+        font-size: 14px;
+    }
+    
+    .channel-info p {
+        font-size: 11px;
+    }
+    
+    .main-categories-panel {
+        padding: 10px 12px 6px;
+        top: 0;
+    }
+    
+    .main-categories-panel .category-btn {
+        padding: 6px 14px;
+        font-size: 14px;
+    }
+    
+    .sub-categories-panel {
+        top: 55px;
+        padding: 6px 12px;
+    }
+    
+    .sub-categories-panel .subcategory-btn {
+        padding: 5px 12px;
+        font-size: 12px;
+    }
+    
+    .close-btn {
+        top: 10px;
+        right: 10px;
+        width: 35px;
+        height: 35px;
+        font-size: 18px;
+    }
+    
+    .toast {
+        top: 60px;
+        font-size: 14px;
+        min-width: 220px;
+    }
 }
 
+/* Для очень маленьких экранов */
 @media (max-width: 480px) {
-  .hero-title { font-size: 1.5rem; }
-  .carousel .channel-card { min-width: 160px; height: 220px; }
-  .carousel-title { font-size: 1.2rem; }
-  #mainContent { padding-top: 120px; }
+    .channels-grid {
+        grid-template-columns: 1fr;
+        padding: 110px 10px 60px;
+    }
+    
+    .channel-card {
+        height: 160px;
+    }
+    
+    .main-categories-panel {
+        gap: 8px;
+        padding: 8px 10px 5px;
+    }
+    
+    .main-categories-panel .category-btn {
+        padding: 5px 12px;
+        font-size: 13px;
+    }
+    
+    .sub-categories-panel {
+        top: 50px;
+        gap: 6px;
+        padding: 5px 10px;
+    }
+    
+    .sub-categories-panel .subcategory-btn {
+        padding: 4px 10px;
+        font-size: 11px;
+    }
+    
+    .channel-info h3 {
+        font-size: 13px;
+    }
+    
+    .channel-info p {
+        font-size: 10px;
+    }
 }

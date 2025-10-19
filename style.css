@@ -490,3 +490,78 @@ body {
 .picker-btn:hover {
     background: linear-gradient(90deg, #ff375f, #ff5e41);
 }
+
+/* === Главная: Netflix-style === */
+body.main-home .channels-grid {
+    display: block;
+    padding: 80px 15px 60px;
+    grid-template-columns: unset;
+    gap: 0;
+}
+
+.home-row {
+    margin-bottom: 24px;
+}
+
+.row-title {
+    font-size: 18px;
+    margin: 0 15px 10px;
+    color: #fff;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+}
+
+.row-channels {
+    display: flex;
+    gap: 12px;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    padding: 0 5px 10px;
+    scrollbar-width: none;
+}
+.row-channels::-webkit-scrollbar {
+    display: none;
+}
+
+.home-row .channel-card {
+    height: auto;
+    min-height: 120px;
+    max-height: 140px;
+    width: 180px;
+}
+
+.add-row-btn {
+    width: 180px;
+    height: 120px;
+    background: rgba(255, 255, 255, 0.05);
+    border: 2px dashed #ff375f;
+    border-radius: 8px;
+    color: #aaa;
+    font-size: 14px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+.add-row-btn:hover {
+    background: rgba(255, 55, 95, 0.1);
+    color: #ff375f;
+}
+
+.picker-btn {
+    background: rgba(255,255,255,0.1);
+    border: none;
+    color: white;
+    padding: 8px 12px;
+    border-radius: 6px;
+    cursor: pointer;
+    min-width: 100px;
+    text-align: center;
+    margin: 4px;
+}
+.picker-btn:hover {
+    background: linear-gradient(90deg, #ff375f, #ff5e41);
+}

@@ -1321,16 +1321,25 @@ async function loadAndRenderChannels(mainCategory, subcategory) {
         initialLoader.style.display = 'none';
         let watched;
         try {
-            const raw = localStorage.getItem('watchedChannels');
-            watched = raw ? JSON.parse(raw) : [];
-            if (!Array.isArray(watched)) {
-                watched = [];
-                localStorage.setItem('watchedChannels', '[]');
-            }
+          const raw = localStorage.getItem('watchedChannels');
+          watched = raw ? JSON.parse(raw) : [];
+          if (!Array.isArray(watched)) watched = [];
         } catch (e) {
-            watched = [];
-            localStorage.setItem('watchedChannels', '[]');
+          watched = [];
         }
+      
+        // Если "Просмотренные" пусты — показываем главный экран
+        if (watched.length === 0) {
+          renderHomeFeed();
+          return;
+        }
+      
+        // Иначе — обычная сетка
+        const gridContainer = document.createElement('div');
+        gridContainer.className = 'channels-grid';
+        gridContainer.id = 'channelsContainer';
+        document.getElementById('mainContent').innerHTML = '';
+        document.getElementById('mainContent').appendChild(gridContainer);
         renderChannels(watched);
         return;
     }
@@ -2353,6 +2362,183 @@ document.addEventListener('keydown', function(e) {
     }
 });
 
+
+// === НОВЫЙ: Главный экран с лентами ===
+
+// Ключевые категории для лент (группа → URL)
+const HOME_FEED_CATEGORIES = {
+  'Популярные': null, // загружается из Firebase отдельно
+  'Новости': 'https://iptv-org.github.io/iptv/categories/news.m3u',
+  'Музыка': 'https://iptv-org.github.io/iptv/categories/music.m3u',
+  'Спорт': 'https://iptv-org.github.io/iptv/categories/sports.m3u',
+  'Детские': 'https://iptv-org.github.io/iptv/categories/kids.m3u',
+  'Кино': 'https://iptv-org.github.io/iptv/categories/movies.m3u'
+};
+
+// Отображение главного экрана
+async function renderHomeFeed() {
+  const mainContent = document.getElementById('mainContent');
+  mainContent.innerHTML = `
+    <div class="hero-section">
+      <h1 class="hero-title">World TV</h1>
+      <p class="hero-subtitle">${translateText("Смотрите телеканалы со всего мира — бесплатно и в HD")}</p>
+    </div>
+  `;
+
+  // Лента "Просмотренные", если есть
+  const watchedRaw = localStorage.getItem('watchedChannels');
+  const watched = watchedRaw ? JSON.parse(watchedRaw) : [];
+  if (Array.isArray(watched) && watched.length > 0) {
+    const watchedSection = document.createElement('div');
+    watchedSection.className = 'carousel-section';
+    watchedSection.innerHTML = `<h2 class="carousel-title">👀 ${translateText("Вы недавно смотрели")}</h2><div class="carousel" id="watchedCarousel"></div>`;
+    mainContent.appendChild(watchedSection);
+    renderCarouselChannels('watchedCarousel', watched.slice(0, 10));
+  }
+
+  // Остальные ленты
+  for (const [groupName, url] of Object.entries(HOME_FEED_CATEGORIES)) {
+    const section = document.createElement('div');
+    section.className = 'carousel-section';
+    const title = groupName === 'Популярные' 
+      ? '🔥 ' + translateText("Популярные") 
+      : getGroupIcon(groupName).replace('fa-', '') + ' ' + translateText(groupName);
+    section.innerHTML = `<h2 class="carousel-title">${title}</h2><div class="carousel" id="${groupName}Carousel"></div>`;
+    mainContent.appendChild(section);
+
+    if (groupName === 'Популярные') {
+      // Загрузка из Firebase
+      try {
+        const snapshot = await database.ref('popular').get();
+        let popular = [];
+        if (snapshot.exists()) {
+          popular = Object.values(snapshot.val())
+            .sort((a, b) => (b.views || 0) - (a.views || 0))
+            .slice(0, 10);
+        }
+        renderCarouselChannels('ПопулярныеCarousel', popular);
+      } catch (e) {
+        console.warn("Не удалось загрузить популярные:", e);
+        renderCarouselChannels('ПопулярныеCarousel', []);
+      }
+    } else {
+      // Загрузка из M3U
+      if (!loadedPlaylists[url]) {
+        try {
+          const content = await fetchM3U(url);
+          const channels = parseM3UContent(content, groupName);
+          loadedPlaylists[url] = channels;
+        } catch (e) {
+          console.warn(`Не удалось загрузить ${groupName}:`, e);
+          loadedPlaylists[url] = [];
+        }
+      }
+      renderCarouselChannels(`${groupName}Carousel`, loadedPlaylists[url].slice(0, 10));
+    }
+  }
+
+  // Устанавливаем фокус на первую карточку
+  setTimeout(() => {
+    const firstCard = mainContent.querySelector('.channel-card');
+    if (firstCard) {
+      firstCard.focus();
+      navigationState = 'channels';
+    }
+  }, 300);
+}
+
+// Отображение карусели каналов
+function renderCarouselChannels(containerId, channels) {
+  const container = document.getElementById(containerId);
+  if (!container) return;
+
+  container.innerHTML = '';
+  if (channels.length === 0) {
+    container.innerHTML = `<div style="color:#555; padding:20px;">${translateText("Каналы не найдены")}</div>`;
+    return;
+  }
+
+  channels.forEach((channel, index) => {
+    const groupIcon = getGroupIcon(channel.group || '');
+    const channelCard = document.createElement('div');
+    channelCard.className = 'channel-card';
+    channelCard.setAttribute('tabindex', '0');
+    channelCard.dataset.url = channel.url;
+    channelCard.dataset.group = channel.group || '';
+
+    const mediaContainer = document.createElement('div');
+    mediaContainer.className = 'channel-media';
+    if (channel.logo) {
+      const img = document.createElement('img');
+      img.src = channel.logo;
+      img.alt = channel.name;
+      img.onerror = () => { img.style.display = 'none'; };
+      mediaContainer.appendChild(img);
+    }
+    const icon = document.createElement('i');
+    icon.className = `fas ${groupIcon}`;
+    mediaContainer.appendChild(icon);
+
+    const miniPlayer = createMiniPlayer(channel.url);
+    mediaContainer.appendChild(miniPlayer);
+
+    const infoContainer = document.createElement('div');
+    infoContainer.className = 'channel-info';
+    infoContainer.innerHTML = `<h3>${channel.name}</h3><p>${channel.group || ''}</p>`;
+
+    channelCard.appendChild(mediaContainer);
+    channelCard.appendChild(infoContainer);
+
+    // Повторяем логику фокуса и клика из renderChannels
+    channelCard.addEventListener('focus', function() {
+      currentChannelIndex = index;
+      if (focusTimer) clearTimeout(focusTimer);
+      if (currentMiniPlayer && currentMiniPlayer !== miniPlayer) {
+        currentMiniPlayer.style.display = 'none';
+        const prevIcon = currentMiniPlayer.parentElement.querySelector('i');
+        if (prevIcon) prevIcon.style.display = 'block';
+        const prevVideo = currentMiniPlayer.querySelector('video');
+        if (prevVideo) prevVideo.pause();
+      }
+      miniPlayer.style.display = 'block';
+      icon.style.display = 'none';
+      currentMiniPlayer = miniPlayer;
+      focusTimer = setTimeout(() => {
+        const video = miniPlayer.querySelector('video');
+        if (!video.dataset.initialized) {
+          initializeMiniPlayer(video, channel.url, miniPlayer, icon);
+        } else if (video.paused) {
+          video.play().catch(e => console.log("Autoplay (mini):", e));
+        }
+      }, 3000);
+    });
+
+    channelCard.addEventListener('blur', function() {
+      if (focusTimer) clearTimeout(focusTimer);
+      setTimeout(() => {
+        if (!channelCard.contains(document.activeElement)) {
+          miniPlayer.style.display = 'none';
+          icon.style.display = 'block';
+          const video = miniPlayer.querySelector('video');
+          if (video) video.pause();
+        }
+      }, 100);
+    });
+
+    channelCard.addEventListener('click', () => openFullScreenPlayer(channel.name, channel.url, channel.group, channel.logo));
+    channelCard.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') {
+        e.preventDefault();
+        openFullScreenPlayer(channel.name, channel.url, channel.group, channel.logo);
+      }
+    });
+
+    container.appendChild(channelCard);
+  });
+}
+
+
+
 // Инициализация приложения
 function initApp() {
     currentLanguage = localStorage.getItem('appLanguage') || 'ru';
@@ -2364,7 +2550,14 @@ function initApp() {
         currentMainCategory = 'Просмотренные';
         renderMainCategories();
         renderSubCategories();
-        loadAndRenderChannels(currentMainCategory, currentSubcategory);
+        // Проверяем: если "Просмотренные" пусты — показываем ленты
+        const watchedRaw = localStorage.getItem('watchedChannels');
+        const watched = watchedRaw ? JSON.parse(watchedRaw) : [];
+        if (Array.isArray(watched) && watched.length === 0) {
+          renderHomeFeed();
+        } else {
+          loadAndRenderChannels(currentMainCategory, currentSubcategory);
+        }
         setTimeout(() => {
             const firstChannel = document.querySelector('.channel-card');
             if (firstChannel) firstChannel.focus();

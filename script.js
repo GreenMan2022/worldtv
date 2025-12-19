@@ -1984,6 +1984,26 @@ function checkChannelAvailability(url) {
     });
 }
 
+// 👇 Добавление/обновление в "Прямо сейчас" (Firebase)
+async function updateWatchingNow(name, url, group, logo) {
+    try {
+        const key = url.replace(/[^a-zA-Z0-9]/g, '_').substring(0, 100);
+        const now = Date.now();
+        await database.ref('watching/' + key).set({
+            name,
+            url,
+            group,
+            logo,
+            lastWatched: now
+        });
+        console.log(`⏱️  Обновлено в "Прямо сейчас": ${name}`);
+    } catch (error) {
+        console.error("❌ Ошибка Firebase updateWatchingNow:", error);
+    }
+}
+
+
+
 // Загрузка M3U
 async function fetchM3U(url) {
     const response = await fetch(url);
@@ -2114,6 +2134,8 @@ function renderChannels(channelsToRender) {
         channelsContainer.appendChild(channelCard);
     });
 }
+
+
 
 // Создание мини-плеера
 function createMiniPlayer(url) {
@@ -2748,3 +2770,4 @@ function initMouseWheelScroll() {
 document.addEventListener('DOMContentLoaded', () => {
     initMouseWheelScroll();
 });
+

@@ -100,7 +100,7 @@ const translations = {
   "Проверять каналы": "Check Channels",
   "Просмотренные": "Watched",
   "Прямо сейчас": "Watching Now",
-  "Смотрят": "Popular",
+  "Популярные": "Popular",
   "Свой плейлист": "Custom Playlist",
   "Пользовательские плейлисты": "User Playlists",
   "Добавить в общую коллекцию": "Add to Public Collection",

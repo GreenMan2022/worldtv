@@ -8,86 +8,43 @@
     <meta name="mobile-web-app-capable" content="yes">
     <meta name="google-site-verification" content="ZjO-Qwe9-sBrQ72O2YlparNENdXCIHBhgIEOJwA-kS0" />
 
-    <!-- 🔍 SEO & GLOBAL TARGETING (2026 optimized) -->
+    <!-- SEO & GLOBAL TARGETING -->
     <title>WorldTV - Free Online IPTV Player | Watch Live TV Worldwide in Browser</title>
     <meta name="description" content="Free online IPTV player: watch live TV channels from around the world in your browser. News, sports, movies, kids — no download, no registration, HD streaming with M3U support.">
     <meta name="keywords" content="free online IPTV player, watch live TV browser, free IPTV web player, M3U player online, free live TV no download, best free IPTV player 2026">
     <meta name="robots" content="index, follow">
-    <meta name="language" content="en">
-    <meta name="geo.region" content="world">
-    <meta name="geo.placename" content="Worldwide">
-    <meta name="geo.position" content="0;0">
-    <meta name="ICBM" content="0, 0">
 
-    <!-- Open Graph / Social Sharing -->
+    <!-- Open Graph -->
     <meta property="og:title" content="WorldTV - Free Online IPTV Web Player">
-    <meta property="og:description" content="Stream hundreds of global live TV channels for free directly in browser. Public M3U playlists, no apps needed, mobile & desktop friendly.">
+    <meta property="og:description" content="Stream hundreds of global live TV channels for free directly in browser. Public M3U playlists, no apps needed.">
     <meta property="og:type" content="website">
     <meta property="og:url" content="https://worldtv.onrender.com/">
-    <meta property="og:image" content="https://worldtv.onrender.com/logo.jpg"> <!-- если нет logo.jpg — замени на реальный скрин или иконку -->
-    <meta property="og:locale" content="en_US">
-
-    <!-- Twitter/X Cards -->
-    <meta name="twitter:card" content="summary_large_image">
-    <meta name="twitter:title" content="Free Online IPTV Player - WorldTV">
-    <meta name="twitter:description" content="Watch worldwide live TV channels for free in your browser — no installation required.">
-
-    <!-- PWA basics (helps mobile users "install" site) -->
-    <meta name="theme-color" content="#000000">
-    <link rel="manifest" href="/manifest.json"> <!-- создай файл manifest.json, см. ниже -->
-
-    <!-- Favicon -->
-    <link rel="icon" href="/favicon.ico" type="image/x-icon">
+    <meta property="og:image" content="https://worldtv.onrender.com/logo.jpg">
 
     <!-- Styles -->
     <link rel="stylesheet" href="/style.css?v=1.0.1">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
 
-    <!-- Structured Data for Google rich results -->
-    <script type="application/ld+json">
-    {
-      "@context": "https://schema.org",
-      "@type": "WebSite",
-      "name": "WorldTV",
-      "url": "https://worldtv.onrender.com/",
-      "description": "Free browser-based IPTV player for live TV channels worldwide",
-      "potentialAction": {
-        "@type": "SearchAction",
-        "target": "https://worldtv.onrender.com/?search={search_term_string}",
-        "query-input": "required name=search_term_string"
-      }
-    }
-    </script>
+    <!-- PWA basics -->
+    <meta name="theme-color" content="#000000">
 </head>
 <body>
 
-    <!-- Статический контент для SEO (поисковики увидят даже без JS) -->
+    <!-- Статический контент для SEO -->
     <header style="text-align:center; padding:20px; background:#0d1117; color:white; margin-bottom:20px;">
       <h1>WorldTV – Free Online IPTV Player</h1>
-      <p style="font-size:1.2em; max-width:900px; margin:0 auto;">
-        Watch free live TV channels from 100+ countries directly in your browser.<br>
-        Categories: News, Sports, Movies, Kids, Music, International — no apps, no sign-up.
-      </p>
+      <p>Watch free live TV channels from 100+ countries directly in your browser.<br>Categories: News, Sports, Movies, Kids, Music — no apps, no sign-up.</p>
     </header>
 
     <noscript>
-        <div style="max-width:900px; margin:40px auto; padding:30px; background:#f8f9fa; border-radius:12px; font-family:system-ui; text-align:center; box-shadow:0 4px 20px rgba(0,0,0,0.1);">
+        <div style="max-width:900px; margin:40px auto; padding:30px; background:#f8f9fa; border-radius:12px; text-align:center;">
             <h2>World TV — Free Live TV Streaming Worldwide</h2>
-            <p style="font-size:1.2em;">
-                Hundreds of live channels: news, sports, movies, kids — completely free, HD where available.<br>
-                No registration • Works on any device with browser.
-            </p>
-            <ul style="list-style:none; padding:0; font-size:1.1em;">
-                <li>📺 News</li>
-                <li>⚽ Sports</li>
-                <li>🎬 Movies</li>
-                <li>🧸 Kids</li>
-            </ul>
-            <p><strong>JavaScript required</strong> to load channels and play streams. Please enable it.</p>
+            <p>Hundreds of live channels: news, sports, movies, kids — completely free.</p>
+            <p><strong>JavaScript required</strong> to load channels and play streams.</p>
         </div>
     </noscript>
 
-    <!-- Твои оригинальные блоки — ничего не трогаем -->
+    <!-- Loader -->
     <div class="loader" id="initialLoader">
         <div class="loader-content">
             <i class="fas fa-spinner fa-spin"></i>
@@ -95,31 +52,61 @@
         </div>
     </div>
 
+    <!-- Основные контейнеры -->
     <div class="main-categories-panel" id="mainCategoriesPanel"></div>
     <div class="sub-categories-panel" id="subCategoriesPanel"></div>
     <main class="channels-grid" id="channelsContainer"></main>
 
+    <!-- Плеер -->
     <div class="modal" id="playerModal">
         <div class="modal-content">
-            <button class="close-btn" id="closeModal">&times;</button>
+            <button class="close-btn" id="closeModal">×</button>
             <video id="videoPlayerElement" controls></video>
         </div>
     </div>
 
+    <!-- Модалка шаринга -->
+    <div class="modal" id="shareModal" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.5); z-index:1000; justify-content:center; align-items:center;">
+        <div class="modal-content" style="max-width:420px; padding:24px; background:#fff; border-radius:12px; box-shadow:0 8px 32px rgba(0,0,0,0.25);">
+            <button class="close-btn" onclick="document.getElementById('shareModal').style.display='none'" style="position:absolute; right:16px; top:12px; font-size:28px; background:none; border:none; cursor:pointer;">×</button>
+            <h3 id="shareTitle" style="margin:0 0 16px; text-align:center;">Share Channel / Поделиться каналом</h3>
+            <p id="shareChannelName" style="text-align:center; margin:0 0 20px; font-weight:bold;"></p>
+            
+            <div class="share-options" style="display:grid; grid-template-columns:1fr; gap:12px;">
+                <button onclick="copyDirectLink()" class="share-btn copy">
+                    <i class="fas fa-copy"></i> Copy M3U link / Скопировать M3U-ссылку
+                </button>
+                <button onclick="shareToVK()" class="share-btn vk">
+                    <i class="fab fa-vk"></i> Share to VK wall
+                </button>
+                <button onclick="shareToFacebook()" class="share-btn fb">
+                    <i class="fab fa-facebook-f"></i> Share to Facebook timeline
+                </button>
+                <button onclick="shareToTwitter()" class="share-btn tw">
+                    <i class="fab fa-x-twitter"></i> Share to X (Twitter)
+                </button>
+                <button onclick="shareToLinkedIn()" class="share-btn li">
+                    <i class="fab fa-linkedin-in"></i> Share to LinkedIn profile
+                </button>
+                <button onclick="shareToReddit()" class="share-btn rd">
+                    <i class="fab fa-reddit-alien"></i> Post to Reddit
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Toasts -->
     <div class="toast-container" id="toastContainer"></div>
 
-    <!-- Scripts (без изменений) -->
+    <!-- Scripts -->
     <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-database-compat.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
-    <script src="/script.js?v=1.0.0"></script>
+    <script src="/script.js?v=1.0.1"></script>
 
-    <!-- Yandex.Metrika (оставляем как есть) -->
-    <a href="https://metrika.yandex.ru/stat/?id=104248573&from=informer" target="_blank" rel="nofollow">
-        <img src="https://metrika-informer.com/informer/104248573/3_1_FFFFFFFF_EFEFEFFF_0_pageviews"
-             style="width:88px; height:31px; border:0;"
-             alt="Yandex.Metrica" title="Yandex.Metrica statistics" />
-    </a>
+    <!-- /Yandex.Metrika informer -->
+
+    <!-- Yandex.Metrika counter -->
     <script type="text/javascript">
         (function(m,e,t,r,i,k,a){
             m[i]=m[i]||function(){(m[i].a=m[i].a||[]).push(arguments)};
@@ -127,11 +114,15 @@
             for (var j = 0; j < document.scripts.length; j++) {if (document.scripts[j].src === r) { return; }}
             k=e.createElement(t),a=e.getElementsByTagName(t)[0],k.async=1,k.src=r,a.parentNode.insertBefore(k,a)
         })(window, document,'script','https://mc.webvisor.org/metrika/tag_ww.js?id=104248573', 'ym');
+
         ym(104248573, 'init', {ssr:true, webvisor:true, clickmap:true, ecommerce:"dataLayer", accurateTrackBounce:true, trackLinks:true});
     </script>
     <noscript>
-        <div><img src="https://mc.yandex.ru/watch/104248573" style="position:absolute; left:-9999px;" alt="" /></div>
+        <div>
+            <img src="https://mc.yandex.ru/watch/104248573" style="position:absolute; left:-9999px;" alt="" />
+        </div>
     </noscript>
+    <!-- /Yandex.Metrika counter -->
 
     <!-- Telegram Footer -->
     <footer class="telegram-footer">
@@ -140,28 +131,5 @@
         </a>
     </footer>
 
-    <style>
-        .telegram-footer {
-            margin-top: 40px;
-            padding: 16px;
-            background-color: #ffffff;
-            text-align: center;
-            font-family: Arial, sans-serif;
-            font-size: 14px;
-            color: #333;
-            border-top: 1px solid #e0e0e0;
-        }
-        .telegram-footer a {
-            color: #0088cc;
-            text-decoration: none;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            gap: 8px;
-        }
-        .telegram-footer a:hover {
-            color: #00bfff;
-        }
-    </style>
 </body>
 </html>

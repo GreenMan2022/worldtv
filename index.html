@@ -149,5 +149,61 @@
             color: #00bfff;
         }
     </style>
+    <!-- Модальное окно для шаринга -->
+<div class="share-modal" id="shareModal">
+    <div class="share-modal-content">
+        <div class="share-modal-header">
+            <span>Поделиться каналом</span>
+            <button class="share-close-btn" id="shareCloseBtn">&times;</button>
+        </div>
+        
+        <div class="share-channel-info" id="shareChannelInfo">
+            <!-- Информация о канале -->
+        </div>
+        
+        <textarea 
+            class="share-custom-message" 
+            id="shareCustomMessage" 
+            placeholder="Добавьте своё сообщение..."
+        ></textarea>
+        
+        <div class="share-social-grid">
+            <button class="share-social-btn share-telegram" data-platform="telegram">
+                <i class="fab fa-telegram share-social-icon"></i>
+                <span class="share-social-name">Telegram</span>
+            </button>
+            
+            <button class="share-social-btn share-whatsapp" data-platform="whatsapp">
+                <i class="fab fa-whatsapp share-social-icon"></i>
+                <span class="share-social-name">WhatsApp</span>
+            </button>
+            
+            <button class="share-social-btn share-vk" data-platform="vk">
+                <i class="fab fa-vk share-social-icon"></i>
+                <span class="share-social-name">ВКонтакте</span>
+            </button>
+            
+            <button class="share-social-btn share-twitter" data-platform="twitter">
+                <i class="fab fa-twitter share-social-icon"></i>
+                <span class="share-social-name">Twitter</span>
+            </button>
+            
+            <button class="share-social-btn share-facebook" data-platform="facebook">
+                <i class="fab fa-facebook share-social-icon"></i>
+                <span class="share-social-name">Facebook</span>
+            </button>
+            
+            <button class="share-social-btn share-reddit" data-platform="reddit">
+                <i class="fab fa-reddit share-social-icon"></i>
+                <span class="share-social-name">Reddit</span>
+            </button>
+            
+            <button class="share-social-btn share-copy" data-platform="copy">
+                <i class="fas fa-copy share-social-icon"></i>
+                <span class="share-social-name">Копировать</span>
+            </button>
+        </div>
+    </div>
+</div>
 </body>
 </html>

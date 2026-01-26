@@ -1,141 +1,179 @@
 <!DOCTYPE html>
-<html lang="ru">
+<html lang="en">
 <head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  
   <title>WorldTV - Free Online IPTV Player | Watch Live TV Worldwide in Browser</title>
-  <meta name="description" content="Watch free live TV channels from around the world directly in your browser. Supports M3U playlists, 100+ categories: news, sports, movies, music. No download, no registration, no installation needed.">
+  <meta name="description" content="Watch free live TV channels from 100+ countries directly in your browser. Free IPTV web player with M3U playlists support: news, sports, movies, music, kids. No download, no registration, no installation required." />
   
-  <!-- Open Graph для шеров (Facebook, Reddit, Telegram, etc.) -->
-  <meta property="og:title" content="WorldTV - Free Online IPTV Web Player">
-  <meta property="og:description" content="Stream hundreds of global live TV channels for free in your browser. Public M3U playlists from iptv-org, easy to use, mobile friendly.">
-  <meta property="og:type" content="website">
-  <meta property="og:url" content="https://worldtv.onrender.com/">
-  <meta property="og:image" content="https://worldtv.onrender.com/icon-512.png"> <!-- добавь реальный скриншот плеера или лого -->
-  <meta property="og:image:alt" content="WorldTV IPTV Player Interface">
+  <!-- Keywords (помогают в некоторых поисковиках и для семантики) -->
+  <meta name="keywords" content="free online IPTV player, watch live TV browser, free IPTV web player, M3U player online, free live TV streaming, IPTV online no download, best free IPTV player" />
   
-  <!-- Twitter Cards -->
-  <meta name="twitter:card" content="summary_large_image">
-  <meta name="twitter:title" content="Free IPTV Player Online - WorldTV">
-  <meta name="twitter:description" content="Browse and watch free live TV worldwide without apps or sign-up.">
+  <meta name="robots" content="index, follow" />
+  <link rel="canonical" href="https://worldtv.onrender.com/" />
   
-  <!-- Дополнительно для Google -->
-  <meta name="keywords" content="free iptv player, online iptv, watch live tv browser, m3u player web, free iptv online, iptv web player">
-  <meta name="robots" content="index, follow">
-  <link rel="canonical" href="https://worldtv.onrender.com/">
+  <!-- Open Graph (Facebook, Reddit, Telegram, Discord) -->
+  <meta property="og:title" content="WorldTV - Free Online IPTV Player" />
+  <meta property="og:description" content="Stream hundreds of global live TV channels for free in your browser. Public M3U playlists, mobile & desktop friendly, no sign-up needed." />
+  <meta property="og:type" content="website" />
+  <meta property="og:url" content="https://worldtv.onrender.com/" />
+  <meta property="og:image" content="https://worldtv.onrender.com/icon-512.png" /> <!-- замени на реальный скриншот плеера -->
+  <meta property="og:image:alt" content="WorldTV free IPTV player interface" />
+  <meta property="og:site_name" content="WorldTV" />
+  
+  <!-- Twitter / X Cards -->
+  <meta name="twitter:card" content="summary_large_image" />
+  <meta name="twitter:title" content="Free Online IPTV Player - WorldTV" />
+  <meta name="twitter:description" content="Watch worldwide live TV channels for free in browser — no apps, no registration." />
+  <meta name="twitter:image" content="https://worldtv.onrender.com/icon-512.png" />
+  
+  <!-- PWA basics -->
+  <link rel="manifest" href="/manifest.json" /> <!-- создай manifest.json в корне -->
+  <meta name="theme-color" content="#000000" />
+  <link rel="icon" href="/favicon.ico" type="image/x-icon" />
+  
+  <!-- Structured Data (JSON-LD) - помогает в сниппетах -->
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "WebSite",
+    "name": "WorldTV",
+    "url": "https://worldtv.onrender.com/",
+    "description": "Free online IPTV player to watch live TV channels worldwide in browser",
+    "potentialAction": {
+      "@type": "SearchAction",
+      "target": "https://worldtv.onrender.com/?search={search_term_string}",
+      "query-input": "required name=search_term_string"
+    }
+  }
+  </script>
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "VideoObject",
+    "name": "WorldTV Free IPTV Player",
+    "description": "Watch free live TV streams from news, sports, movies and more categories in your browser",
+    "thumbnailUrl": "https://worldtv.onrender.com/icon-512.png",
+    "uploadDate": "2025-01-01",
+    "contentUrl": "https://worldtv.onrender.com/",
+    "embedUrl": "https://worldtv.onrender.com/"
+  }
+  </script>
+
+  <!-- Твои стили и скрипты ниже -->
 </head>
 <body>
-    <noscript>
-        <div style="padding: 30px; background: #f9f9f9; margin: 20px; border-radius: 8px; font-family: Arial, sans-serif;">
-            <h1>World TV — Free Live TV Streaming for Global Audience</h1>
-            <p>Watch hundreds of live TV channels from around the world — completely free. No registration, no ads, HD quality.</p>
-            <h2>Categories:</h2>
-            <ul>
-                <li><a href="#news">📺 News Channels</a></li>
-                <li><a href="#sports">⚽ Sports Channels</a></li>
-                <li><a href="#movies">🎬 Movie Channels</a></li>
-                <li><a href="#kids">🧸 Kids Channels</a></li>
-            </ul>
-            <p>Available worldwide. Updated daily. Works on any device.</p>
-            <p><strong>Note:</strong> JavaScript is required to play streams. Enable JS for full experience.</p>
-        </div>
-    </noscript>
-
-    <!-- Загрузочный экран -->
-    <div class="loader" id="initialLoader">
-        <div class="loader-content">
-            <i class="fas fa-spinner fa-spin"></i>
-            <p>Загрузка...</p>
-        </div>
+  <!-- Noscript fallback – очень важен для SEO и пользователей с отключенным JS -->
+  <noscript>
+    <div style="max-width: 900px; margin: 40px auto; padding: 30px; background: #f8f9fa; border-radius: 12px; font-family: system-ui, sans-serif; text-align: center; box-shadow: 0 4px 20px rgba(0,0,0,0.1);">
+      <h1>WorldTV — Free Live TV Streaming Worldwide</h1>
+      <p style="font-size: 1.2em; line-height: 1.6;">
+        Watch hundreds of live TV channels from around the world — completely free.<br>
+        No registration • No ads • HD quality where available
+      </p>
+      
+      <h2>Popular Categories</h2>
+      <ul style="list-style: none; padding: 0; font-size: 1.1em; line-height: 2;">
+        <li>📺 News Channels</li>
+        <li>⚽ Sports & Live Events</li>
+        <li>🎬 Movies & Series</li>
+        <li>🧸 Kids & Family</li>
+        <li>🎵 Music Channels</li>
+        <li>🌍 International & Regional TV</li>
+      </ul>
+      
+      <p style="margin-top: 30px; font-size: 1.1em;">
+        <strong>JavaScript is required</strong> to load channels and play streams.<br>
+        Please enable JavaScript in your browser settings for the full experience.
+      </p>
+      <p>Available on any device with a modern browser.</p>
     </div>
+  </noscript>
 
-    <!-- Главное меню категорий -->
+  <!-- Loader -->
+  <div class="loader" id="initialLoader">
+    <div class="loader-content">
+      <i class="fas fa-spinner fa-spin"></i>
+      <p>Loading WorldTV...</p>
+    </div>
+  </div>
+
+  <!-- Основной статический контент для SEO (видимый поисковикам) -->
+  <header style="text-align: center; padding: 20px; background: #0d1117; color: white;">
+    <h1>WorldTV – Free Online IPTV Player</h1>
+    <p style="font-size: 1.2em; max-width: 800px; margin: 0 auto;">
+      Watch live TV channels from all over the world directly in your browser.<br>
+      100+ categories • Public M3U playlists • No installation • Mobile friendly
+    </p>
+  </header>
+
+  <main>
+    <!-- Здесь будет рендериться динамический контент твоим JS -->
     <div class="main-categories-panel" id="mainCategoriesPanel"></div>
-
-    <!-- Подменю подкатегорий -->
     <div class="sub-categories-panel" id="subCategoriesPanel"></div>
+    <div class="channels-grid" id="channelsContainer"></div>
+  </main>
 
-    <!-- Сетка каналов -->
-    <main class="channels-grid" id="channelsContainer"></main>
-
-    <!-- Модальное окно плеера -->
-    <div class="modal" id="playerModal">
-        <div class="modal-content">
-            <button class="close-btn" id="closeModal">&times;</button>
-            <video id="videoPlayerElement" controls></video>
-        </div>
+  <!-- Player modal -->
+  <div class="modal" id="playerModal">
+    <div class="modal-content">
+      <button class="close-btn" id="closeModal">×</button>
+      <video id="videoPlayerElement" controls playsinline></video>
     </div>
+  </div>
 
-    <!-- Уведомления -->
-    <div class="toast-container" id="toastContainer"></div>
+  <!-- Toasts -->
+  <div class="toast-container" id="toastContainer"></div>
 
-    <!-- Firebase -->
-    <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-database-compat.js"></script>
+  <!-- Scripts -->
+  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-database-compat.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
+  <script src="/script.js?v=1.0.0"></script>
 
-    <!-- HLS.js -->
-    <script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
+  <!-- Yandex.Metrika (оставил как есть) -->
+  <a href="https://metrika.yandex.ru/stat/?id=104248573&from=informer" target="_blank" rel="nofollow">
+    <img src="https://metrika-informer.com/informer/104248573/3_1_FFFFFFFF_EFEFEFFF_0_pageviews"
+         style="width:88px; height:31px; border:0;"
+         alt="Yandex.Metrica" title="Yandex.Metrica statistics" />
+  </a>
+  <script type="text/javascript">
+    (function(m,e,t,r,i,k,a){m[i]=m[i]||function(){(m[i].a=m[i].a||[]).push(arguments)};
+    m[i].l=1*new Date();
+    for (var j = 0; j < document.scripts.length; j++) {if (document.scripts[j].src === r) { return; }}
+    k=e.createElement(t),a=e.getElementsByTagName(t)[0],k.async=1,k.src=r,a.parentNode.insertBefore(k,a)})
+    (window, document, "script", "https://mc.webvisor.org/metrika/tag_ww.js?id=104248573", "ym");
+    ym(104248573, 'init', {webvisor:true, clickmap:true, trackLinks:true, accurateTrackBounce:true});
+  </script>
+  <noscript><div><img src="https://mc.yandex.ru/watch/104248573" style="position:absolute; left:-9999px;" alt="" /></div></noscript>
 
-    <!-- Основной скрипт -->
-    <script src="/script.js?v=1.0.0"></script>
-
-    <!-- Yandex.Metrika informer -->
-    <a href="https://metrika.yandex.ru/stat/?id=104248573&amp;from=informer" target="_blank" rel="nofollow">
-        <img src="https://metrika-informer.com/informer/104248573/3_1_FFFFFFFF_EFEFEFFF_0_pageviews"
-             style="width:88px; height:31px; border:0;"
-             alt="Яндекс.Метрика"
-             title="Яндекс.Метрика: данные за сегодня (просмотры, визиты и уникальные посетители)" />
+  <!-- Telegram footer -->
+  <footer class="telegram-footer">
+    <a href="https://t.me/worldtvandroidclient" target="_blank" rel="noopener">
+      <i class="fab fa-telegram-plane"></i> Join our Telegram!
     </a>
-    <!-- /Yandex.Metrika informer -->
+  </footer>
 
-    <!-- Yandex.Metrika counter -->
-    <script type="text/javascript">
-        (function(m,e,t,r,i,k,a){
-            m[i]=m[i]||function(){(m[i].a=m[i].a||[]).push(arguments)};
-            m[i].l=1*new Date();
-            for (var j = 0; j < document.scripts.length; j++) {if (document.scripts[j].src === r) { return; }}
-            k=e.createElement(t),a=e.getElementsByTagName(t)[0],k.async=1,k.src=r,a.parentNode.insertBefore(k,a)
-        })(window, document,'script','https://mc.webvisor.org/metrika/tag_ww.js?id=104248573', 'ym');
-
-        ym(104248573, 'init', {ssr:true, webvisor:true, clickmap:true, ecommerce:"dataLayer", accurateTrackBounce:true, trackLinks:true});
-    </script>
-    <noscript>
-        <div>
-            <img src="https://mc.yandex.ru/watch/104248573" style="position:absolute; left:-9999px;" alt="" />
-        </div>
-    </noscript>
-    <!-- /Yandex.Metrika counter -->
-
-    <!-- Telegram Footer -->
-    <footer class="telegram-footer">
-        <a href="https://t.me/worldtvandroidclient" target="_blank" rel="noopener">
-            <i class="fab fa-telegram"></i>
-            Telegram!
-        </a>
-    </footer>
-
-    <style>
-        .telegram-footer {
-            margin-top: 40px;
-            padding: 16px;
-            background-color: #fffff;
-            text-align: center;
-            font-family: Arial, sans-serif;
-            font-size: 14px;
-            color: #333;
-            border-top: 1px solid #e0e0e0;
-        }
-
-        .telegram-footer a {
-            color: #0088cc;
-            text-decoration: none;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            gap: 8px;
-        }
-
-        .telegram-footer a:hover {
-            color: #00bfff;
-        }
-    </style>
+  <!-- Inline styles for footer (можно вынести в css) -->
+  <style>
+    .telegram-footer {
+      margin-top: 60px;
+      padding: 20px;
+      background: #f8f9fa;
+      text-align: center;
+      font-family: system-ui, sans-serif;
+      border-top: 1px solid #ddd;
+    }
+    .telegram-footer a {
+      color: #0088cc;
+      text-decoration: none;
+      font-size: 1.1em;
+      display: inline-flex;
+      align-items: center;
+      gap: 10px;
+    }
+    .telegram-footer a:hover { color: #006699; }
+  </style>
 </body>
 </html>

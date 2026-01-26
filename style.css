@@ -432,3 +432,40 @@ body {
         font-size: 10px;
     }
 }
+
+/* Стили для кнопок шаринга */
+.share-btn {
+    padding: 14px 20px;
+    font-size: 16px;
+    font-weight: 500;
+    border: none;
+    border-radius: 8px;
+    cursor: pointer;
+    color: white;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 12px;
+    transition: all 0.2s ease;
+}
+
+.share-btn:hover {
+    opacity: 0.92;
+    transform: translateY(-1px);
+}
+
+.copy { background: #5a6268; }
+.vk   { background: #4c75a3; }
+.fb   { background: #1877f2; }
+.tw   { background: #000000; }
+.li   { background: #0a66c2; }
+.rd   { background: #ff4500; }
+
+/* Для модалки */
+.modal {
+    transition: opacity 0.3s ease;
+}
+
+.modal-content {
+    position: relative;
+}

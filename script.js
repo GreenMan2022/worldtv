@@ -2738,6 +2738,106 @@ document.addEventListener('DOMContentLoaded', () => {
     initApp();
 });
 
+// Определение языка
+const userLang = (navigator.language || navigator.userLanguage || 'en').toLowerCase();
+const isRussian = userLang.startsWith('ru');
+
+// Переменная для текущего канала
+let currentShareChannel = null;
+
+// Открытие модалки
+function openShareModal(channel) {
+    if (!channel || !channel.url) return;
+    
+    currentShareChannel = channel;
+    
+    document.getElementById('shareChannelName').textContent = 
+        isRussian ? `Канал: ${channel.name}` : `Channel: ${channel.name}`;
+    
+    document.getElementById('shareModal').style.display = 'flex';
+}
+
+// Закрытие модалки
+function closeShareModal() {
+    document.getElementById('shareModal').style.display = 'none';
+}
+
+// Скопировать M3U-ссылку
+function copyDirectLink() {
+    if (!currentShareChannel) return;
+    
+    const name = currentShareChannel.name || 'Channel';
+    const url = currentShareChannel.url;
+    const m3u = `#EXTINF:-1 tvg-name="${name}",${name}\n${url}`;
+    
+    navigator.clipboard.writeText(m3u).then(() => {
+        showToast(isRussian ? 'M3U-ссылка скопирована!' : 'M3U link copied!');
+    }).catch(() => {
+        showToast(isRussian ? 'Не удалось скопировать' : 'Failed to copy');
+    });
+    
+    closeShareModal();
+}
+
+// Общий текст для шаринга
+function getShareText() {
+    const site = 'https://worldtv.onrender.com/';
+    return isRussian 
+        ? `Смотрю ${currentShareChannel.name} бесплатно на WorldTV! Сотни каналов онлайн → ${site}`
+        : `Watching ${currentShareChannel.name} for free on WorldTV! Hundreds of channels online → ${site}`;
+}
+
+// VK
+function shareToVK() {
+    if (!currentShareChannel) return;
+    const url = encodeURIComponent('https://worldtv.onrender.com/');
+    const title = encodeURIComponent(currentShareChannel.name);
+    const desc = encodeURIComponent(getShareText());
+    const vkUrl = `https://vk.com/share.php?url=${url}&title=${title}&description=${desc}`;
+    window.open(vkUrl, '_blank', 'width=620,height=480');
+    closeShareModal();
+}
+
+// Facebook
+function shareToFacebook() {
+    if (!currentShareChannel) return;
+    const url = encodeURIComponent('https://worldtv.onrender.com/');
+    const fbUrl = `https://www.facebook.com/sharer/sharer.php?u=${url}`;
+    window.open(fbUrl, '_blank', 'width=620,height=480');
+    closeShareModal();
+}
+
+// Twitter/X
+function shareToTwitter() {
+    if (!currentShareChannel) return;
+    const text = encodeURIComponent(getShareText());
+    const twUrl = `https://twitter.com/intent/tweet?text=${text}&url=https://worldtv.onrender.com/`;
+    window.open(twUrl, '_blank', 'width=620,height=480');
+    closeShareModal();
+}
+
+// LinkedIn
+function shareToLinkedIn() {
+    if (!currentShareChannel) return;
+    const url = encodeURIComponent('https://worldtv.onrender.com/');
+    const title = encodeURIComponent(currentShareChannel.name);
+    const summary = encodeURIComponent(getShareText());
+    const liUrl = `https://www.linkedin.com/shareArticle?mini=true&url=${url}&title=${title}&summary=${summary}`;
+    window.open(liUrl, '_blank', 'width=620,height=480');
+    closeShareModal();
+}
+
+// Reddit
+function shareToReddit() {
+    if (!currentShareChannel) return;
+    const url = encodeURIComponent('https://worldtv.onrender.com/');
+    const title = encodeURIComponent(`${currentShareChannel.name} — ${getShareText().substring(0, 100)}...`);
+    const rdUrl = `https://www.reddit.com/submit?url=${url}&title=${title}`;
+    window.open(rdUrl, '_blank', 'width=620,height=480');
+    closeShareModal();
+}
+
+
 // ============= MOUSE WHEEL SCROLL FOR HORIZONTAL MENUS =============
 function initMouseWheelScroll() {
     const scrollContainers = [

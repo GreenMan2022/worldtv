@@ -78,7 +78,16 @@ const translations = {
         "Попробуйте позже": "Попробуйте позже",
         "Еще один!": "Еще один!",
         "Поиск по каналам": "Поиск по каналам",
-        "Каналы не найдены": "Каналы не найдены"
+        "Каналы не найдены": "Каналы не найдены",
+        "Проверка доступности...": "Проверка доступности...",
+        "каналов": "каналов",
+        "Не удалось загрузить": "Не удалось загрузить",
+        "Плейлист не найден": "Плейлист не найден",
+        "Поиск...": "Поиск...",
+        "Проверка каналов включена": "Проверка каналов включена",
+        "Проверка каналов отключена": "Проверка каналов отключена",
+        "Международные": "Международные",
+        "Не определено": "Не определено"
     },
  en: {
   // === Системные и UI-сообщения (уже были) ===
@@ -130,6 +139,15 @@ const translations = {
   "Еще один!": "Another one!",
   "Поиск по каналам": "Search channels",
   "Каналы не найдены": "Channels not found",
+  "Проверка доступности...": "Checking availability...",
+  "каналов": "channels",
+  "Не удалось загрузить": "Failed to load",
+  "Плейлист не найден": "Playlist not found",
+  "Поиск...": "Searching...",
+  "Проверка каналов включена": "Channel checking enabled",
+  "Проверка каналов отключена": "Channel checking disabled",
+  "Международные": "International",
+  "Не определено": "Undefined",
 
   // === Категории ===
   "Авто": "Cars",
@@ -475,6 +493,7 @@ let miniPlayers = new Map();
 let focusTimer = null;
 let loadedPlaylists = {};
 let navigationState = 'channels';
+let searchTimeout = null;
 
 // 👇 Просмотренные: Новые переменные
 let currentWatchedChannel = null;
@@ -937,16 +956,25 @@ const categoryTree = {
   }
 };
 
-// Закрытие модального окна
+// Закрытие модального окна (ИСПРАВЛЕНО)
 closeModal.addEventListener('click', function() {
     playerModal.style.display = 'none';
     videoPlayerElement.pause();
-    videoPlayerElement.src = '';
+    
+    // Безопасное уничтожение HLS
     if (videoPlayerElement.hls) {
-        videoPlayerElement.hls.destroy();
+        try {
+            videoPlayerElement.hls.destroy();
+        } catch(e) {
+            console.error("Ошибка при уничтожении HLS:", e);
+        }
         delete videoPlayerElement.hls;
     }
+    
+    videoPlayerElement.src = '';
+    videoPlayerElement.load();
     stopAllMiniPlayers();
+    
     if (currentWatchedChannel && watchStartTime) {
         const watchedSeconds = Math.floor((Date.now() - watchStartTime) / 1000);
         console.log(`📺 Просмотрено: ${watchedSeconds} секунд`);
@@ -958,6 +986,12 @@ closeModal.addEventListener('click', function() {
                 currentWatchedChannel.logo
             );
             addToPopular(
+                currentWatchedChannel.name,
+                currentWatchedChannel.url,
+                currentWatchedChannel.group,
+                currentWatchedChannel.logo
+            );
+            updateWatchingNow(
                 currentWatchedChannel.name,
                 currentWatchedChannel.url,
                 currentWatchedChannel.group,
@@ -980,7 +1014,7 @@ function showToast(message) {
     }, 3000);
 }
 
-// 👇 Просмотренные: Добавление в localStorage
+// 👇 Просмотренные: Добавление в localStorage (ИСПРАВЛЕНО)
 function addToWatched(name, url, group, logo) {
     let watched;
     try {
@@ -994,11 +1028,15 @@ function addToWatched(name, url, group, logo) {
         console.error('❌ Ошибка парсинга watchedChannels:', e);
         watched = [];
     }
-    if (watched.some(item => item.url === url)) {
+    
+    // Проверка по URL ИЛИ имени
+    if (watched.some(item => item.url === url || item.name === name)) {
         console.log(`ℹ️ Канал "${name}" уже в "Просмотренные"`);
         return;
     }
-    watched.push({ name, url, group, logo });
+    
+    watched.push({ name, url, group, logo, watchedAt: Date.now() });
+    
     try {
         localStorage.setItem('watchedChannels', JSON.stringify(watched));
         console.log(`✅ Канал "${name}" добавлен в "Просмотренные"`);
@@ -1007,6 +1045,7 @@ function addToWatched(name, url, group, logo) {
         showToast(translateText('Ошибка сохранения'));
         return;
     }
+    
     if (currentMainCategory === 'Просмотренные') {
         loadAndRenderChannels('Просмотренные', '');
     }
@@ -1228,70 +1267,72 @@ async function performWatchedSearch() {
         return;
     }
 
-    // Сбрасываем состояние
-    initialLoader.style.display = 'none';
-    channelsContainer.innerHTML = `<div style="color:#aaa; padding:40px; text-align:center">${translateText("Поиск...")}</div>`;
-    let allResults = []; // для дедупликации
-    const seen = new Set();
+    // Debounce
+    if (searchTimeout) clearTimeout(searchTimeout);
+    
+    searchTimeout = setTimeout(async () => {
+        // Сбрасываем состояние
+        initialLoader.style.display = 'none';
+        channelsContainer.innerHTML = `<div style="color:#aaa; padding:40px; text-align:center">${translateText("Поиск...")}</div>`;
+        let allResults = [];
+        const seen = new Set();
 
-    // Собираем все URL
-    const allUrls = [];
-    for (const mainCat in categoryTree) {
-        const subCatMap = categoryTree[mainCat];
-        if (typeof subCatMap === 'object' && subCatMap !== null) {
-            for (const url of Object.values(subCatMap)) {
-                if (typeof url === 'string' && url.endsWith('.m3u')) {
-                    allUrls.push({ url, group: mainCat });
+        // Собираем все URL
+        const allUrls = [];
+        for (const mainCat in categoryTree) {
+            const subCatMap = categoryTree[mainCat];
+            if (typeof subCatMap === 'object' && subCatMap !== null) {
+                for (const url of Object.values(subCatMap)) {
+                    if (typeof url === 'string' && url.endsWith('.m3u')) {
+                        allUrls.push({ url, group: mainCat });
+                    }
                 }
             }
         }
-    }
 
-    // Обновляем контейнер по мере поступления данных
-    const updateResults = (newChannels) => {
-        // Фильтруем по запросу и дедуплицируем
-        const filtered = newChannels.filter(ch => {
-            if (seen.has(ch.url)) return false;
-            const matches = ch.name.toLowerCase().includes(query) ||
-                           (ch.group && ch.group.toLowerCase().includes(query));
-            if (matches) seen.add(ch.url);
-            return matches;
-        });
+        const updateResults = (newChannels) => {
+            const filtered = newChannels.filter(ch => {
+                if (seen.has(ch.url)) return false;
+                const matches = ch.name.toLowerCase().includes(query) ||
+                               (ch.group && ch.group.toLowerCase().includes(query));
+                if (matches) seen.add(ch.url);
+                return matches;
+            });
 
-        if (filtered.length === 0) return;
+            if (filtered.length === 0) return;
 
-        allResults.push(...filtered);
-        renderChannels(allResults); // перерисовываем всё с новыми каналами
-    };
+            allResults.push(...filtered);
+            renderChannels(allResults);
+        };
 
-    // Загружаем плейлисты параллельно, но с ограничением (например, по 5 одновременно)
-    const CONCURRENT_LIMIT = 5;
-    for (let i = 0; i < allUrls.length; i += CONCURRENT_LIMIT) {
-        const batch = allUrls.slice(i, i + CONCURRENT_LIMIT);
-        await Promise.allSettled(
-            batch.map(async (item) => {
-                if (loadedPlaylists[item.url]) {
-                    updateResults(loadedPlaylists[item.url]);
-                    return;
-                }
-                try {
-                    const content = await fetchM3U(item.url);
-                    const parsed = parseM3UContent(content, item.group);
-                    loadedPlaylists[item.url] = parsed;
-                    updateResults(parsed);
-                } catch (err) {
-                    console.warn(`⚠️ Пропущен недоступный плейлист: ${item.url}`, err.message);
-                    loadedPlaylists[item.url] = []; // кэшируем
-                }
-            })
-        );
-    }
+        const CONCURRENT_LIMIT = 5;
+        for (let i = 0; i < allUrls.length; i += CONCURRENT_LIMIT) {
+            const batch = allUrls.slice(i, i + CONCURRENT_LIMIT);
+            await Promise.allSettled(
+                batch.map(async (item) => {
+                    if (loadedPlaylists[item.url]) {
+                        updateResults(loadedPlaylists[item.url]);
+                        return;
+                    }
+                    try {
+                        const content = await fetchM3U(item.url);
+                        const parsed = parseM3UContent(content, item.group);
+                        loadedPlaylists[item.url] = parsed;
+                        updateResults(parsed);
+                    } catch (err) {
+                        console.warn(`⚠️ Пропущен недоступный плейлист: ${item.url}`, err.message);
+                        loadedPlaylists[item.url] = [];
+                    }
+                })
+            );
+        }
 
-    // Если ничего не найдено
-    if (allResults.length === 0) {
-        channelsContainer.innerHTML = `<div style="color:#aaa; padding:40px; text-align:center">${translateText("Каналы не найдены")}</div>`;
-    }
+        if (allResults.length === 0) {
+            channelsContainer.innerHTML = `<div style="color:#aaa; padding:40px; text-align:center">${translateText("Каналы не найдены")}</div>`;
+        }
+    }, 300);
 }
+
 // 👇 Установка языка
 function setLanguage(lang) {
     currentLanguage = lang;
@@ -1499,32 +1540,54 @@ async function loadAndRenderPublicPlaylists() {
     }
 }
 
-// 👇 НОВАЯ ФУНКЦИЯ: Выбор публичного плейлиста для загрузки
+// 👇 НОВАЯ ФУНКЦИЯ: Выбор публичного плейлиста для загрузки (ИСПРАВЛЕНО)
 async function selectPublicPlaylist(playlist, index) {
     currentSubcategory = playlist.name;
     currentSubCategoryIndex = index;
+    
+    // Очистить кэш для этого плейлиста при повторном выборе
+    if (loadedPlaylists[playlist.url]) {
+        delete loadedPlaylists[playlist.url];
+    }
+    
     loadAndRenderChannels('Пользовательские плейлисты', playlist.name);
 }
 
-// 👇 Загрузка и кэширование плейлиста с опциональной проверкой каналов
+// 👇 Загрузка и кэширование плейлиста с опциональной проверкой каналов (ИСПРАВЛЕНО)
 async function fetchAndCachePlaylist(url, group) {
     const content = await fetchM3U(url);
     let channels = parseM3UContent(content, group);
+    
+    // Ограничение размера кэша
+    const MAX_CACHE_SIZE = 20;
+    const cacheKeys = Object.keys(loadedPlaylists);
+    if (cacheKeys.length > MAX_CACHE_SIZE) {
+        const oldestKey = cacheKeys[0];
+        delete loadedPlaylists[oldestKey];
+        console.log(`🗑️ Удален из кэша: ${oldestKey}`);
+    }
+    
     if (!checkChannelsOnLoad || channels.length === 0) {
         loadedPlaylists[url] = channels;
         renderChannels(channels);
         return channels;
     }
+    
     initialLoader.style.display = 'flex';
-    initialLoader.innerHTML = `
-        <div style="text-align:center; color:white;">
-            <div>${translateText("Проверка доступности...")}</div>
-            <div id="checkProgress" style="margin-top:10px;">0/${channels.length}</div>
-        </div>
+    const progressDiv = document.createElement('div');
+    progressDiv.style.textAlign = 'center';
+    progressDiv.style.color = 'white';
+    progressDiv.innerHTML = `
+        <div>${translateText("Проверка доступности...")}</div>
+        <div id="checkProgress" style="margin-top:10px;">0/${channels.length}</div>
     `;
+    initialLoader.innerHTML = '';
+    initialLoader.appendChild(progressDiv);
+    
     const progressElement = document.getElementById('checkProgress');
     let availableChannels = [];
     let checkedCount = 0;
+    
     const updateDisplay = () => {
         loadedPlaylists[url] = [...availableChannels];
         renderChannels([...availableChannels]);
@@ -1532,29 +1595,36 @@ async function fetchAndCachePlaylist(url, group) {
             progressElement.textContent = `${checkedCount}/${channels.length}`;
         }
     };
-    initialLoader.style.display = 'none';
-    channels.forEach(channel => {
-        checkChannelAvailability(channel.url)
-            .then(isAvailable => {
-                checkedCount++;
-                if (isAvailable) {
-                    availableChannels.push(channel);
+    
+    // Параллельная проверка с ограничением
+    const CONCURRENT_CHECK = 3;
+    for (let i = 0; i < channels.length; i += CONCURRENT_CHECK) {
+        const batch = channels.slice(i, i + CONCURRENT_CHECK);
+        await Promise.allSettled(
+            batch.map(async (channel) => {
+                try {
+                    const isAvailable = await checkChannelAvailability(channel.url);
+                    checkedCount++;
+                    if (isAvailable) {
+                        availableChannels.push(channel);
+                        updateDisplay();
+                    } else {
+                        console.log(`❌ Канал недоступен: ${channel.name}`);
+                        addToBlacklist(channel.url);
+                    }
+                } catch (error) {
+                    console.error(`Ошибка при проверке канала ${channel.name}:`, error);
+                    checkedCount++;
                     updateDisplay();
-                } else {
-                    console.log(`❌ Канал недоступен: ${channel.name}`);
-                    addToBlacklist(channel.url);
                 }
             })
-            .catch(error => {
-                console.error(`Ошибка при проверке канала ${channel.name}:`, error);
-                checkedCount++;
-                updateDisplay();
-            });
-    });
-    await Promise.allSettled(channels.map(channel => checkChannelAvailability(channel.url)));
+        );
+    }
+    
     console.log(`✅ Доступных каналов: ${availableChannels.length} из ${channels.length}`);
     loadedPlaylists[url] = [...availableChannels];
     renderChannels([...availableChannels]);
+    initialLoader.style.display = 'none';
     return availableChannels;
 }
 
@@ -1635,7 +1705,7 @@ function updateSubCategoryActive() {
     });
 }
 
-// Загрузка и отображение каналов
+// Загрузка и отображение каналов (ИСПРАВЛЕНО для "Прямо сейчас")
 async function loadAndRenderChannels(mainCategory, subcategory) {
     if (currentMainCategory === 'Прямо сейчас' && mainCategory !== 'Прямо сейчас' && window.watchingNowInterval) {
         clearInterval(window.watchingNowInterval);
@@ -1664,6 +1734,10 @@ async function loadAndRenderChannels(mainCategory, subcategory) {
     if (mainCategory === 'Прямо сейчас') {
         initialLoader.style.display = 'none';
         channelsContainer.innerHTML = `<div style="color:#aaa; padding:40px; text-align:center">${translateText("Загрузка...")}</div>`;
+        
+        // Очищаем мини-плееры при обновлении
+        miniPlayers.clear();
+        
         const loadWatchingNow = async () => {
             try {
                 const snapshot = await database.ref('watching').get();
@@ -1848,15 +1922,17 @@ async function loadAndRenderChannels(mainCategory, subcategory) {
     }
 }
 
-// 👇 Загрузка и проверка случайных каналов (до 12 шт.)
+// 👇 Загрузка и проверка случайных каналов (ИСПРАВЛЕНО)
 let cachedGlobalPlaylist = null;
 async function loadRandomChannel() {
     initialLoader.style.display = 'flex';
     channelsContainer.innerHTML = `<div style="color:#aaa; padding:40px; text-align:center">${translateText("Загрузка...")}</div>`;
-    const MAX_ATTEMPTS = 12;
+    const MAX_ATTEMPTS = 30;
     const TARGET_COUNT = 6;
     const TIMEOUT_MS = 12000;
+    const MAX_BLACKLIST_RETRY = 3;
     const startTime = Date.now();
+    
     try {
         if (!cachedGlobalPlaylist) {
             const content = await fetchM3U('https://iptv-org.github.io/iptv/index.m3u');
@@ -1866,34 +1942,42 @@ async function loadRandomChannel() {
         if (cachedGlobalPlaylist.length === 0) {
             throw new Error('Плейлист пуст');
         }
-        const blacklist = JSON.parse(localStorage.getItem('blacklist') || '[]');
-        let candidates = cachedGlobalPlaylist.filter(ch => !blacklist.includes(ch.url));
-        if (candidates.length === 0) {
-            throw new Error('Все каналы в чёрном списке');
-        }
-        candidates.sort(() => 0.5 - Math.random());
-        const validChannels = [];
-        let checked = 0;
-        for (const ch of candidates) {
-            if (
-                validChannels.length >= TARGET_COUNT ||
-                checked >= MAX_ATTEMPTS ||
-                Date.now() - startTime > TIMEOUT_MS
-            ) {
-                break;
+        
+        let blacklistRetryCount = 0;
+        let validChannels = [];
+        
+        while (validChannels.length < TARGET_COUNT && blacklistRetryCount < MAX_BLACKLIST_RETRY) {
+            const blacklist = JSON.parse(localStorage.getItem('blacklist') || '[]');
+            let candidates = cachedGlobalPlaylist.filter(ch => !blacklist.includes(ch.url));
+            
+            if (candidates.length === 0 && blacklistRetryCount < MAX_BLACKLIST_RETRY - 1) {
+                console.log("Черный список очищен для повторной попытки");
+                blacklistRetryCount++;
+                continue;
             }
-            checked++;
-            try {
-                const isOk = await checkChannelAvailability(ch.url);
-                if (isOk) {
-                    validChannels.push(ch);
-                } else {
+            
+            candidates.sort(() => 0.5 - Math.random());
+            let checked = 0;
+            
+            for (const ch of candidates) {
+                if (validChannels.length >= TARGET_COUNT || checked >= MAX_ATTEMPTS || Date.now() - startTime > TIMEOUT_MS) {
+                    break;
+                }
+                checked++;
+                try {
+                    const isOk = await checkChannelAvailability(ch.url);
+                    if (isOk) {
+                        validChannels.push(ch);
+                    } else {
+                        addToBlacklist(ch.url);
+                    }
+                } catch (e) {
                     addToBlacklist(ch.url);
                 }
-            } catch (e) {
-                addToBlacklist(ch.url);
             }
+            blacklistRetryCount++;
         }
+        
         if (validChannels.length === 0) {
             channelsContainer.innerHTML = `
                 <div style="color:#aaa; padding:60px 20px; text-align:center; font-size:16px;">
@@ -1924,7 +2008,7 @@ async function loadRandomChannel() {
     }
 }
 
-// 👇 Вспомогательная функция для проверки доступности канала (оптимизированная)
+// 👇 Вспомогательная функция для проверки доступности канала (ИСПРАВЛЕНО)
 function checkChannelAvailability(url) {
     return new Promise((resolve) => {
         const video = document.createElement('video');
@@ -1932,6 +2016,8 @@ function checkChannelAvailability(url) {
         video.playsInline = true;
         let manifestLoaded = false;
         let errorOccurred = false;
+        let hlsInstance = null;
+        
         const timeoutId = setTimeout(() => {
             if (!manifestLoaded && !errorOccurred) {
                 console.warn("Таймаут проверки доступности:", url);
@@ -1939,15 +2025,20 @@ function checkChannelAvailability(url) {
                 resolve(false);
             }
         }, 5000);
+        
         function cleanup() {
             clearTimeout(timeoutId);
             if (hlsInstance) {
-                hlsInstance.destroy();
+                try {
+                    hlsInstance.destroy();
+                } catch(e) {}
+                hlsInstance = null;
             }
+            video.pause();
             video.src = '';
             video.load();
         }
-        let hlsInstance = null;
+        
         if (Hls.isSupported()) {
             hlsInstance = new Hls();
             hlsInstance.loadSource(url);
@@ -1970,16 +2061,17 @@ function checkChannelAvailability(url) {
                 manifestLoaded = true;
                 cleanup();
                 resolve(true);
-            });
+            }, { once: true });
             video.addEventListener('error', () => {
                 errorOccurred = true;
                 cleanup();
                 resolve(false);
-            });
+            }, { once: true });
         } else {
             cleanup();
             resolve(false);
         }
+        
         video.play().catch(() => {});
     });
 }
@@ -2002,8 +2094,6 @@ async function updateWatchingNow(name, url, group, logo) {
     }
 }
 
-
-
 // Загрузка M3U
 async function fetchM3U(url) {
     const response = await fetch(url);
@@ -2011,16 +2101,27 @@ async function fetchM3U(url) {
     return await response.text();
 }
 
-// Парсинг M3U с поддержкой tvg-group-title
+// Парсинг M3U с поддержкой tvg-group-title (ИСПРАВЛЕНО)
 function parseM3UContent(content, assignedCategory) {
     const channels = [];
     const lines = content.split('\n');
     for (let i = 0; i < lines.length; i++) {
         if (lines[i].startsWith('#EXTINF:')) {
             const infoLine = lines[i];
-            const urlLine = lines[i + 1];
+            let urlLine = lines[i + 1];
+            
+            // Пропускаем пустые строки
+            while (urlLine && urlLine.trim() === '') {
+                i++;
+                urlLine = lines[i + 1];
+            }
+            
             if (urlLine && !urlLine.startsWith('#')) {
                 let name = infoLine.split(',')[1] || 'Канал';
+                if (name.includes('tvg-name=')) {
+                    const tvgNameMatch = infoLine.match(/tvg-name="([^"]*)"/);
+                    if (tvgNameMatch) name = tvgNameMatch[1];
+                }
                 name = name.trim();
                 const logoMatch = infoLine.match(/tvg-logo="([^"]*)"/);
                 const logo = logoMatch ? logoMatch[1] : '';
@@ -2042,19 +2143,22 @@ function filterBlacklistedChannels(channelsList) {
     return channelsList.filter(channel => !blacklist.includes(channel.url));
 }
 
-// Отрисовка каналов
+// Отрисовка каналов (ИСПРАВЛЕНО с dataset.url)
 function renderChannels(channelsToRender) {
     channelsContainer.innerHTML = '';
     if (channelsToRender.length === 0 && initialLoader.style.display === 'none') {
         channelsContainer.innerHTML = `<div style="color:#aaa; padding:40px; text-align:center">${translateText("Каналы не найдены")}</div>`;
         return;
     }
+    
     channelsToRender.forEach((channel, index) => {
         const groupIcon = getGroupIcon(channel.group);
         const channelCard = document.createElement('div');
         channelCard.className = 'channel-card';
         channelCard.setAttribute('tabindex', '0');
         channelCard.dataset.index = index;
+        channelCard.dataset.url = channel.url; // Добавлено!
+        
         const mediaContainer = document.createElement('div');
         mediaContainer.className = 'channel-media';
         if (channel.logo) {
@@ -2069,6 +2173,7 @@ function renderChannels(channelsToRender) {
         mediaContainer.appendChild(icon);
         const miniPlayer = createMiniPlayer(channel.url);
         mediaContainer.appendChild(miniPlayer);
+        
         let viewsText = '';
         if (channel.views) {
             viewsText = ` 👥 ${channel.views}`;
@@ -2079,11 +2184,13 @@ function renderChannels(channelsToRender) {
                 viewsText += ` ⚡`;
             }
         }
+        
         const infoContainer = document.createElement('div');
         infoContainer.className = 'channel-info';
         infoContainer.innerHTML = `<h3>${channel.name}${viewsText}</h3><p>${channel.group}</p>`;
         channelCard.appendChild(mediaContainer);
         channelCard.appendChild(infoContainer);
+        
         channelCard.addEventListener('focus', function() {
             if (window.watchingNowInterval && currentMainCategory !== 'Прямо сейчас') {
                 clearInterval(window.watchingNowInterval);
@@ -2113,6 +2220,7 @@ function renderChannels(channelsToRender) {
                 }
             }, 3000);
         });
+        
         channelCard.addEventListener('blur', function() {
             if (focusTimer) clearTimeout(focusTimer);
             setTimeout(() => {
@@ -2124,6 +2232,7 @@ function renderChannels(channelsToRender) {
                 }
             }, 100);
         });
+        
         channelCard.addEventListener('click', () => openFullScreenPlayer(channel.name, channel.url, channel.group, channel.logo));
         channelCard.addEventListener('keydown', (e) => {
             if (e.key === 'Enter') {
@@ -2134,8 +2243,6 @@ function renderChannels(channelsToRender) {
         channelsContainer.appendChild(channelCard);
     });
 }
-
-
 
 // Создание мини-плеера
 function createMiniPlayer(url) {
@@ -2155,29 +2262,35 @@ function createMiniPlayer(url) {
     return container;
 }
 
-// Инициализация мини-плеера (обновленная)
+// Инициализация мини-плеера
 function initializeMiniPlayer(video, url, miniPlayer, icon) {
     video.dataset.initialized = 'true';
     let manifestLoaded = false;
     let networkErrorOccurred = false;
+    let hlsInstance = null;
+    
     const timeoutId = setTimeout(() => {
         if (!manifestLoaded && !networkErrorOccurred) {
             console.warn("Таймаут мини-плеера:", url);
+            if (hlsInstance) {
+                try { hlsInstance.destroy(); } catch(e) {}
+            }
             miniPlayer.style.display = 'none';
             icon.style.display = 'block';
         }
     }, 30000);
+    
     if (Hls.isSupported()) {
-        const hls = new Hls();
-        video.hlsInstance = hls;
-        hls.loadSource(url);
-        hls.attachMedia(video);
-        hls.on(Hls.Events.MANIFEST_PARSED, () => {
+        hlsInstance = new Hls();
+        video.hlsInstance = hlsInstance;
+        hlsInstance.loadSource(url);
+        hlsInstance.attachMedia(video);
+        hlsInstance.on(Hls.Events.MANIFEST_PARSED, () => {
             clearTimeout(timeoutId);
             manifestLoaded = true;
             video.play().catch(e => console.log("Autoplay (mini):", e));
         });
-        hls.on(Hls.Events.ERROR, (event, data) => {
+        hlsInstance.on(Hls.Events.ERROR, (event, data) => {
             if (data.fatal && data.type === Hls.ErrorTypes.NETWORK_ERROR) {
                 networkErrorOccurred = true;
                 clearTimeout(timeoutId);
@@ -2185,7 +2298,7 @@ function initializeMiniPlayer(video, url, miniPlayer, icon) {
                 icon.style.display = 'block';
                 video.pause();
                 if (video.hlsInstance) {
-                    video.hlsInstance.destroy();
+                    try { video.hlsInstance.destroy(); } catch(e) {}
                     delete video.hlsInstance;
                 }
             }
@@ -2213,7 +2326,7 @@ function stopAllMiniPlayers() {
         if (video) {
             video.pause();
             if (video.hlsInstance) {
-                video.hlsInstance.destroy();
+                try { video.hlsInstance.destroy(); } catch(e) {}
                 delete video.hlsInstance;
             }
             video.src = '';
@@ -2237,26 +2350,37 @@ function addToBlacklist(url) {
     }
 }
 
-// 👇 Просмотренные: Открытие полноэкранного плеера (улучшенная версия)
+// 👇 Просмотренные: Открытие полноэкранного плеера (ИСПРАВЛЕНО)
 function openFullScreenPlayer(name, url, group, logo) {
     stopAllMiniPlayers();
     currentWatchedChannel = { name, url, group, logo };
     watchStartTime = Date.now();
+    
+    // Добавляем в статистику просмотра
+    updateWatchingNow(name, url, group, logo);
+    
     playerModal.style.display = 'flex';
     videoPlayerElement.src = '';
     videoPlayerElement.load();
     videoPlayerElement.muted = false;
+    
     let manifestLoaded = false;
+    let hlsInstance = null;
+    
     const timeoutId = setTimeout(() => {
         if (!manifestLoaded) {
             console.warn("Таймаут полный экран:", url);
             showToast(translateText('Канал не отвечает'));
             addToBlacklist(url);
             playerModal.style.display = 'none';
+            if (hlsInstance) {
+                try { hlsInstance.destroy(); } catch(e) {}
+            }
         }
     }, 30000);
+    
     if (Hls.isSupported()) {
-        const hls = new Hls({
+        hlsInstance = new Hls({
             liveDurationInfinity: true,
             enableWorker: true,
             lowLatencyMode: false,
@@ -2267,10 +2391,10 @@ function openFullScreenPlayer(name, url, group, logo) {
             levelLoadingMaxRetry: 4,
             manifestLoadingMaxRetry: 3
         });
-        videoPlayerElement.hls = hls;
-        hls.loadSource(url);
-        hls.attachMedia(videoPlayerElement);
-        hls.on(Hls.Events.MANIFEST_PARSED, () => {
+        videoPlayerElement.hls = hlsInstance;
+        hlsInstance.loadSource(url);
+        hlsInstance.attachMedia(videoPlayerElement);
+        hlsInstance.on(Hls.Events.MANIFEST_PARSED, () => {
             clearTimeout(timeoutId);
             manifestLoaded = true;
             videoPlayerElement.play().catch(e => {
@@ -2279,8 +2403,9 @@ function openFullScreenPlayer(name, url, group, logo) {
             });
             setTimeout(() => requestNativeFullscreen(), 1000);
         });
+        
         let errorCount = 0;
-        hls.on(Hls.Events.ERROR, (event, data) => {
+        hlsInstance.on(Hls.Events.ERROR, (event, data) => {
             console.warn('HLS Error:', data.type, data.details, data.fatal);
             if (data.fatal) {
                 errorCount++;
@@ -2290,14 +2415,14 @@ function openFullScreenPlayer(name, url, group, logo) {
                     addToBlacklist(url);
                     playerModal.style.display = 'none';
                     if (videoPlayerElement.hls) {
-                        videoPlayerElement.hls.destroy();
+                        try { videoPlayerElement.hls.destroy(); } catch(e) {}
                         delete videoPlayerElement.hls;
                     }
                 } else {
                     if (data.type === Hls.ErrorTypes.NETWORK_ERROR) {
-                        hls.startLoad();
+                        hlsInstance.startLoad();
                     } else if (data.type === Hls.ErrorTypes.MEDIA_ERROR) {
-                        hls.recoverMediaError();
+                        hlsInstance.recoverMediaError();
                     }
                 }
             }
@@ -2312,13 +2437,13 @@ function openFullScreenPlayer(name, url, group, logo) {
                 showToast(translateText("Нажмите на видео для воспроизведения"));
             });
             setTimeout(() => requestNativeFullscreen(), 1000);
-        });
+        }, { once: true });
         videoPlayerElement.addEventListener('error', () => {
             clearTimeout(timeoutId);
             showToast(translateText('Канал недоступен'));
             addToBlacklist(url);
             playerModal.style.display = 'none';
-        });
+        }, { once: true });
     } else {
         clearTimeout(timeoutId);
         showToast(translateText('Формат не поддерживается'));

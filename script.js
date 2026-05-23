@@ -27,19 +27,6 @@ let currentLanguage = localStorage.getItem('appLanguage') || 'ru';
 let checkChannelsOnLoad = localStorage.getItem('checkChannelsOnLoad') === 'true';
 let openInExternalPlayer = localStorage.getItem('openInExternalPlayer') === 'true';
 
-let currentMainCategory = 'Просмотренные';
-let currentSubcategory = '';
-let currentMainCategoryIndex = 0;
-let currentSubCategoryIndex = 0;
-let currentChannelIndex = 0;
-let currentMiniPlayer = null;
-let miniPlayers = new Map();
-let focusTimer = null;
-let loadedPlaylists = {};
-let navigationState = 'channels';
-let searchTimeout = null;
-let currentWatchedChannel = null;
-let watchStartTime = null;
 
 // 👇 Словарь переводов
 const translations = {

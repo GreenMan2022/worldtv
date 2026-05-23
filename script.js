@@ -2352,21 +2352,10 @@ function addToBlacklist(url) {
 
 // 👇 Просмотренные: Открытие полноэкранного плеера (ИСПРАВЛЕНО)
 function openFullScreenPlayer(name, url, group, logo) {
-    console.log(`▶️ Открытие канала: ${name} | URL: ${url}`);
-    videoPlayerElement.addEventListener('error', (e) => {
-        console.error('🎬 Native video error:', videoPlayerElement.error);
-    });
-    videoPlayerElement.addEventListener('stalled', () => {
-        console.warn('⏳ Поток остановился (stalled)');
-    });
-    videoPlayerElement.addEventListener('waiting', () => {
-        console.log('⏱️ Ожидание данных (buffering)');
-    });
     stopAllMiniPlayers();
     currentWatchedChannel = { name, url, group, logo };
     watchStartTime = Date.now();
     
-    // Добавляем в статистику просмотра
     updateWatchingNow(name, url, group, logo);
     
     playerModal.style.display = 'flex';
@@ -2377,36 +2366,54 @@ function openFullScreenPlayer(name, url, group, logo) {
     let manifestLoaded = false;
     let hlsInstance = null;
     
-    const timeoutId = setTimeout(() => {
+    // 🔥 Таймаут ТОЛЬКО на загрузку манифеста (не на воспроизведение!)
+    const manifestTimeout = setTimeout(() => {
         if (!manifestLoaded) {
-            console.warn("Таймаут полный экран:", url);
+            console.warn("⏱ Таймаут загрузки манифеста:", url);
             showToast(translateText('Канал не отвечает'));
             addToBlacklist(url);
-            playerModal.style.display = 'none';
-            if (hlsInstance) {
-                try { hlsInstance.destroy(); } catch(e) {}
-            }
+            closePlayerModal();
         }
-    }, 30000);
+    }, 20000); // 20 сек на загрузку манифеста — достаточно
     
     if (Hls.isSupported()) {
+        // 🔥 Увеличенные таймауты для нестабильных потоков
         hlsInstance = new Hls({
             liveDurationInfinity: true,
             enableWorker: true,
             lowLatencyMode: false,
-            manifestLoadingTimeOut: 15000,
-            levelLoadingTimeOut: 15000,
-            fragLoadingTimeOut: 15000,
-            fragLoadingMaxRetry: 6,
-            levelLoadingMaxRetry: 4,
-            manifestLoadingMaxRetry: 3
+            
+            // ⏱ Таймауты (в мс) — увеличены в 2-3 раза
+            manifestLoadingTimeOut: 20000,
+            levelLoadingTimeOut: 20000,    // было 10000
+            fragLoadingTimeOut: 20000,      // было 10000
+            
+            // 🔁 Повторные попытки
+            fragLoadingMaxRetry: 8,         // было 6
+            levelLoadingMaxRetry: 6,        // было 4
+            manifestLoadingMaxRetry: 4,     // было 3
+            
+            // ⏱ Задержка между попытками (экспоненциальная)
+            fragLoadingMaxRetryTimeout: 16000,
+            levelLoadingMaxRetryTimeout: 16000,
+            
+            // 🎯 Буферизация
+            maxBufferLength: 30,
+            maxMaxBufferLength: 60,
         });
+        
         videoPlayerElement.hls = hlsInstance;
         hlsInstance.loadSource(url);
         hlsInstance.attachMedia(videoPlayerElement);
+        
+        // ✅ Манифест загружен — ОТМЕНЯЕМ таймаут НАВСЕГДА
         hlsInstance.on(Hls.Events.MANIFEST_PARSED, () => {
-            clearTimeout(timeoutId);
+            if (manifestTimeout) {
+                clearTimeout(manifestTimeout);
+                console.log("✅ Манифест загружен, таймаут отменён");
+            }
             manifestLoaded = true;
+            
             videoPlayerElement.play().catch(e => {
                 console.log("Autoplay blocked:", e);
                 showToast(translateText("Нажмите на видео для воспроизведения"));
@@ -2414,50 +2421,85 @@ function openFullScreenPlayer(name, url, group, logo) {
             setTimeout(() => requestNativeFullscreen(), 1000);
         });
         
-        let errorCount = 0;
+        // 🔥 Умный обработчик ошибок
+        let errorStreak = 0;
+        let lastErrorTime = 0;
+        
         hlsInstance.on(Hls.Events.ERROR, (event, data) => {
-            console.warn('HLS Error:', data.type, data.details, data.fatal);
-            if (data.fatal) {
-                errorCount++;
-                if (errorCount >= 2) {
-                    clearTimeout(timeoutId);
+            console.warn('HLS Error:', data.type, data.details, 'fatal:', data.fatal);
+            
+            if (!data.fatal) return;
+            
+            const now = Date.now();
+            // Сбрасываем "серии" ошибок, если пауза > 20 сек
+            if (now - lastErrorTime > 20000) {
+                errorStreak = 0;
+            }
+            lastErrorTime = now;
+            errorStreak++;
+            
+            // 🔄 NETWORK ошибки — пробуем восстановить
+            if (data.type === Hls.ErrorTypes.NETWORK_ERROR) {
+                console.log(`🔄 Network error #${errorStreak}, восстановление...`);
+                
+                // Для levelLoadTimeOut / fragLoadTimeOut — просто перезагружаем
+                if (data.details === Hls.ErrorDetails.LEVEL_LOAD_TIMEOUT || 
+                    data.details === Hls.ErrorDetails.FRAG_LOAD_TIMEOUT) {
+                    hlsInstance.startLoad();
+                    return; // НЕ закрываем!
+                }
+                
+                if (errorStreak >= 6) {
+                    console.error('❌ Сли много сетевых ошибок');
                     showToast(translateText('Канал недоступен'));
                     addToBlacklist(url);
-                    playerModal.style.display = 'none';
-                    if (videoPlayerElement.hls) {
-                        try { videoPlayerElement.hls.destroy(); } catch(e) {}
-                        delete videoPlayerElement.hls;
-                    }
-                } else {
-                    if (data.type === Hls.ErrorTypes.NETWORK_ERROR) {
-                        hlsInstance.startLoad();
-                    } else if (data.type === Hls.ErrorTypes.MEDIA_ERROR) {
-                        hlsInstance.recoverMediaError();
-                    }
+                    closePlayerModal();
                 }
+                return;
+            }
+            
+            // 🔄 MEDIA ошибки — пробуем восстановить
+            if (data.type === Hls.ErrorTypes.MEDIA_ERROR) {
+                console.log(`🔄 Media error #${errorStreak}, восстановление...`);
+                hlsInstance.recoverMediaError();
+                if (errorStreak >= 4) {
+                    closePlayerModal();
+                }
+                return;
+            }
+            
+            // ❌ Другие фатальные ошибки — закрываем быстрее
+            if (errorStreak >= 3) {
+                console.error('❌ Фатальная ошибка, закрываем');
+                showToast(translateText('Канал недоступен'));
+                addToBlacklist(url);
+                closePlayerModal();
             }
         });
+        
     } else if (videoPlayerElement.canPlayType('application/vnd.apple.mpegurl')) {
+        // Native HLS (Safari)
         videoPlayerElement.src = url;
+        
         videoPlayerElement.addEventListener('loadedmetadata', () => {
-            clearTimeout(timeoutId);
+            clearTimeout(manifestTimeout);
             manifestLoaded = true;
             videoPlayerElement.play().catch(e => {
-                console.log("Autoplay blocked:", e);
                 showToast(translateText("Нажмите на видео для воспроизведения"));
             });
             setTimeout(() => requestNativeFullscreen(), 1000);
         }, { once: true });
+        
         videoPlayerElement.addEventListener('error', () => {
-            clearTimeout(timeoutId);
+            clearTimeout(manifestTimeout);
             showToast(translateText('Канал недоступен'));
             addToBlacklist(url);
-            playerModal.style.display = 'none';
+            closePlayerModal();
         }, { once: true });
     } else {
-        clearTimeout(timeoutId);
+        clearTimeout(manifestTimeout);
         showToast(translateText('Формат не поддерживается'));
-        playerModal.style.display = 'none';
+        closePlayerModal();
     }
 }
 

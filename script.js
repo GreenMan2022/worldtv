@@ -2352,6 +2352,16 @@ function addToBlacklist(url) {
 
 // 👇 Просмотренные: Открытие полноэкранного плеера (ИСПРАВЛЕНО)
 function openFullScreenPlayer(name, url, group, logo) {
+    console.log(`▶️ Открытие канала: ${name} | URL: ${url}`);
+    videoPlayerElement.addEventListener('error', (e) => {
+        console.error('🎬 Native video error:', videoPlayerElement.error);
+    });
+    videoPlayerElement.addEventListener('stalled', () => {
+        console.warn('⏳ Поток остановился (stalled)');
+    });
+    videoPlayerElement.addEventListener('waiting', () => {
+        console.log('⏱️ Ожидание данных (buffering)');
+    });
     stopAllMiniPlayers();
     currentWatchedChannel = { name, url, group, logo };
     watchStartTime = Date.now();

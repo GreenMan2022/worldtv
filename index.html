@@ -10,8 +10,8 @@
 
     <!-- 🔍 SEO & GLOBAL TARGETING -->
     <title>World TV — Watch Free Live TV Channels Online (HD, Worldwide)</title>
-    <meta name="description" content="Stream free live TV channels from around the world: news, sports, movies, kids. No registration, HD quality, works globally.">
-    <meta name="keywords" content="free iptv, live tv online, watch tv free, global tv channels, hd streaming">
+    <meta name="description" content="Stream free live TV channels from around the world: news, sports, movies, kids. No registration, HD quality, works globally. Open in external player support!">
+    <meta name="keywords" content="free iptv, live tv online, watch tv free, global tv channels, hd streaming, external player, vlc">
     <meta name="robots" content="index, follow">
     <meta name="language" content="en">
     <meta name="geo.region" content="world">
@@ -21,17 +21,369 @@
 
     <!-- Open Graph / Social -->
     <meta property="og:title" content="World TV — Free Global Live TV Streaming">
-    <meta property="og:description" content="Watch live TV channels from any country: sports, news, movies, entertainment — in HD and totally free.">
+    <meta property="og:description" content="Watch live TV channels from any country: sports, news, movies, entertainment — in HD and totally free. Supports external players!">
     <meta property="og:type" content="website">
     <meta property="og:url" content="https://worldtv.onrender.com/">
     <meta property="og:image" content="https://worldtv.onrender.com/logo.jpg">
     <meta property="og:locale" content="en_US">
 
     <!-- Favicon -->
-    <link rel="icon" href="/favicon.ico" type="image/x-icon">
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>📺</text></svg>">
 
     <!-- Styles -->
-    <link rel="stylesheet" href="/style.css?v=1.0.1">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #0a0a0a 0%, #1a1a2e 100%);
+            color: #fff;
+            min-height: 100vh;
+            overflow-x: hidden;
+        }
+
+        /* Загрузочный экран */
+        .loader {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.95);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 10000;
+            backdrop-filter: blur(10px);
+        }
+
+        .loader-content {
+            text-align: center;
+        }
+
+        .loader-content i {
+            font-size: 48px;
+            color: #ff375f;
+            margin-bottom: 20px;
+        }
+
+        .loader-content p {
+            font-size: 18px;
+            color: #fff;
+        }
+
+        /* Панели меню */
+        .main-categories-panel,
+        .sub-categories-panel {
+            position: sticky;
+            top: 0;
+            background: rgba(0, 0, 0, 0.9);
+            backdrop-filter: blur(20px);
+            padding: 12px 20px;
+            display: flex;
+            gap: 12px;
+            overflow-x: auto;
+            overflow-y: hidden;
+            white-space: nowrap;
+            scrollbar-width: thin;
+            z-index: 100;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .sub-categories-panel {
+            top: 60px;
+            background: rgba(0, 0, 0, 0.8);
+            border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+        }
+
+        .category-btn,
+        .subcategory-btn {
+            background: rgba(255, 255, 255, 0.1);
+            border: none;
+            padding: 10px 20px;
+            border-radius: 25px;
+            color: #fff;
+            font-size: 14px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            white-space: nowrap;
+            backdrop-filter: blur(5px);
+        }
+
+        .category-btn:hover,
+        .subcategory-btn:hover {
+            background: rgba(255, 255, 255, 0.2);
+            transform: translateY(-2px);
+        }
+
+        .category-btn.active,
+        .subcategory-btn.active {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            box-shadow: 0 4px 15px rgba(102, 126, 234, 0.4);
+        }
+
+        /* Сетка каналов */
+        .channels-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+            gap: 20px;
+            padding: 20px;
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+
+        /* Карточка канала */
+        .channel-card {
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 12px;
+            overflow: hidden;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .channel-card:hover {
+            transform: translateY(-5px);
+            background: rgba(255, 255, 255, 0.1);
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+        }
+
+        .channel-card:focus {
+            outline: none;
+            transform: translateY(-5px);
+            background: rgba(255, 255, 255, 0.15);
+            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.5);
+        }
+
+        .channel-media {
+            position: relative;
+            width: 100%;
+            height: 160px;
+            background: #000;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            overflow: hidden;
+        }
+
+        .channel-media img {
+            max-width: 80%;
+            max-height: 80%;
+            object-fit: contain;
+        }
+
+        .channel-media i {
+            font-size: 48px;
+            color: rgba(255, 255, 255, 0.5);
+        }
+
+        .mini-player {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            display: none;
+            background: #000;
+        }
+
+        .mini-player video {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+
+        .channel-info {
+            padding: 12px;
+        }
+
+        .channel-info h3 {
+            font-size: 16px;
+            margin-bottom: 5px;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .channel-info p {
+            font-size: 12px;
+            color: rgba(255, 255, 255, 0.6);
+        }
+
+        /* Модальное окно плеера */
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.95);
+            z-index: 1000;
+            backdrop-filter: blur(20px);
+        }
+
+        .modal-content {
+            position: relative;
+            width: 100%;
+            height: 100%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .modal-content video {
+            width: 100%;
+            height: auto;
+            max-height: 100vh;
+            background: #000;
+        }
+
+        .close-btn {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            background: rgba(255, 255, 255, 0.2);
+            border: none;
+            font-size: 30px;
+            color: white;
+            cursor: pointer;
+            width: 50px;
+            height: 50px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.3s ease;
+            z-index: 1001;
+        }
+
+        .close-btn:hover {
+            background: rgba(255, 255, 255, 0.3);
+            transform: rotate(90deg);
+        }
+
+        /* Уведомления */
+        .toast-container {
+            position: fixed;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            z-index: 10000;
+            pointer-events: none;
+        }
+
+        .toast {
+            background: rgba(0, 0, 0, 0.9);
+            backdrop-filter: blur(10px);
+            color: white;
+            padding: 12px 24px;
+            border-radius: 50px;
+            margin-top: 10px;
+            font-size: 14px;
+            animation: slideUp 0.3s ease;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            pointer-events: auto;
+        }
+
+        @keyframes slideUp {
+            from {
+                opacity: 0;
+                transform: translateY(20px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        /* Скроллбары */
+        ::-webkit-scrollbar {
+            width: 8px;
+            height: 8px;
+        }
+
+        ::-webkit-scrollbar-track {
+            background: rgba(255, 255, 255, 0.1);
+        }
+
+        ::-webkit-scrollbar-thumb {
+            background: rgba(255, 255, 255, 0.3);
+            border-radius: 4px;
+        }
+
+        ::-webkit-scrollbar-thumb:hover {
+            background: rgba(255, 255, 255, 0.5);
+        }
+
+        /* Адаптивность */
+        @media (max-width: 768px) {
+            .channels-grid {
+                grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+                gap: 15px;
+                padding: 15px;
+            }
+
+            .category-btn,
+            .subcategory-btn {
+                padding: 8px 16px;
+                font-size: 12px;
+            }
+
+            .channel-media {
+                height: 140px;
+            }
+        }
+
+        @media (max-width: 480px) {
+            .channels-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        /* Footer */
+        .telegram-footer {
+            margin-top: 40px;
+            padding: 20px;
+            background: rgba(0, 0, 0, 0.5);
+            text-align: center;
+            font-size: 14px;
+            border-top: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .telegram-footer a {
+            color: #0088cc;
+            text-decoration: none;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            transition: color 0.3s ease;
+        }
+
+        .telegram-footer a:hover {
+            color: #00bfff;
+        }
+
+        /* Анимации */
+        @keyframes pulse {
+            0%, 100% {
+                opacity: 1;
+            }
+            50% {
+                opacity: 0.5;
+            }
+        }
+
+        .loading-pulse {
+            animation: pulse 1s ease-in-out infinite;
+        }
+    </style>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
 </head>
 <body>
@@ -39,12 +391,13 @@
         <div style="padding: 30px; background: #f9f9f9; margin: 20px; border-radius: 8px; font-family: Arial, sans-serif;">
             <h1>World TV — Free Live TV Streaming for Global Audience</h1>
             <p>Watch hundreds of live TV channels from around the world — completely free. No registration, no ads, HD quality.</p>
-            <h2>Categories:</h2>
+            <h2>Features:</h2>
             <ul>
-                <li><a href="#news">📺 News Channels</a></li>
-                <li><a href="#sports">⚽ Sports Channels</a></li>
-                <li><a href="#movies">🎬 Movie Channels</a></li>
-                <li><a href="#kids">🧸 Kids Channels</a></li>
+                <li>📺 News Channels</li>
+                <li>⚽ Sports Channels</li>
+                <li>🎬 Movie Channels</li>
+                <li>🧸 Kids Channels</li>
+                <li>📱 External Player Support (VLC, MX Player)</li>
             </ul>
             <p>Available worldwide. Updated daily. Works on any device.</p>
             <p><strong>Note:</strong> JavaScript is required to play streams. Enable JS for full experience.</p>
@@ -87,16 +440,15 @@
     <script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
 
     <!-- Основной скрипт -->
-    <script src="/script.js?v=1.0.0"></script>
+    <script src="script.js"></script>
 
     <!-- Yandex.Metrika informer -->
-    <a href="https://metrika.yandex.ru/stat/?id=104248573&amp;from=informer" target="_blank" rel="nofollow">
+    <a href="https://metrika.yandex.ru/stat/?id=104248573&amp;from=informer" target="_blank" rel="nofollow" style="position: fixed; bottom: 10px; left: 10px; z-index: 999;">
         <img src="https://metrika-informer.com/informer/104248573/3_1_FFFFFFFF_EFEFEFFF_0_pageviews"
              style="width:88px; height:31px; border:0;"
              alt="Яндекс.Метрика"
              title="Яндекс.Метрика: данные за сегодня (просмотры, визиты и уникальные посетители)" />
     </a>
-    <!-- /Yandex.Metrika informer -->
 
     <!-- Yandex.Metrika counter -->
     <script type="text/javascript">
@@ -114,96 +466,13 @@
             <img src="https://mc.yandex.ru/watch/104248573" style="position:absolute; left:-9999px;" alt="" />
         </div>
     </noscript>
-    <!-- /Yandex.Metrika counter -->
 
     <!-- Telegram Footer -->
     <footer class="telegram-footer">
         <a href="https://t.me/worldtvandroidclient" target="_blank" rel="noopener">
             <i class="fab fa-telegram"></i>
-            Telegram!
+            Join our Telegram!
         </a>
     </footer>
-
-    <style>
-        .telegram-footer {
-            margin-top: 40px;
-            padding: 16px;
-            background-color: #fffff;
-            text-align: center;
-            font-family: Arial, sans-serif;
-            font-size: 14px;
-            color: #333;
-            border-top: 1px solid #e0e0e0;
-        }
-
-        .telegram-footer a {
-            color: #0088cc;
-            text-decoration: none;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            gap: 8px;
-        }
-
-        .telegram-footer a:hover {
-            color: #00bfff;
-        }
-    </style>
-    <!-- Модальное окно для шаринга -->
-<div class="share-modal" id="shareModal">
-    <div class="share-modal-content">
-        <div class="share-modal-header">
-            <span>Поделиться каналом</span>
-            <button class="share-close-btn" id="shareCloseBtn">&times;</button>
-        </div>
-        
-        <div class="share-channel-info" id="shareChannelInfo">
-            <!-- Информация о канале -->
-        </div>
-        
-        <textarea 
-            class="share-custom-message" 
-            id="shareCustomMessage" 
-            placeholder="Добавьте своё сообщение..."
-        ></textarea>
-        
-        <div class="share-social-grid">
-            <button class="share-social-btn share-telegram" data-platform="telegram">
-                <i class="fab fa-telegram share-social-icon"></i>
-                <span class="share-social-name">Telegram</span>
-            </button>
-            
-            <button class="share-social-btn share-whatsapp" data-platform="whatsapp">
-                <i class="fab fa-whatsapp share-social-icon"></i>
-                <span class="share-social-name">WhatsApp</span>
-            </button>
-            
-            <button class="share-social-btn share-vk" data-platform="vk">
-                <i class="fab fa-vk share-social-icon"></i>
-                <span class="share-social-name">ВКонтакте</span>
-            </button>
-            
-            <button class="share-social-btn share-twitter" data-platform="twitter">
-                <i class="fab fa-twitter share-social-icon"></i>
-                <span class="share-social-name">Twitter</span>
-            </button>
-            
-            <button class="share-social-btn share-facebook" data-platform="facebook">
-                <i class="fab fa-facebook share-social-icon"></i>
-                <span class="share-social-name">Facebook</span>
-            </button>
-            
-            <button class="share-social-btn share-reddit" data-platform="reddit">
-                <i class="fab fa-reddit share-social-icon"></i>
-                <span class="share-social-name">Reddit</span>
-            </button>
-            
-            <button class="share-social-btn share-copy" data-platform="copy">
-                <i class="fas fa-copy share-social-icon"></i>
-                <span class="share-social-name">Копировать</span>
-            </button>
-        </div>
-    </div>
-</div>
 </body>
 </html>

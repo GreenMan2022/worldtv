@@ -8,7 +8,7 @@ const closeModal = document.getElementById('closeModal');
 const initialLoader = document.getElementById('initialLoader');
 const toastContainer = document.getElementById('toastContainer');
 
-// 👇 Firebase: Инициализация
+// Firebase: Инициализация
 const firebaseConfig = {
   apiKey: "AIzaSyD9mAjCqyhJix9Tiyr-vQXWj-Mejysws44",
   authDomain: "tv-channels-watching.firebaseapp.com",
@@ -22,16 +22,26 @@ const firebaseConfig = {
 const app = firebase.initializeApp(firebaseConfig);
 const database = firebase.database();
 
-// 👇 Язык интерфейса
+// Глобальные переменные
 let currentLanguage = localStorage.getItem('appLanguage') || 'ru';
-
-// 👇 Флаг проверки каналов
 let checkChannelsOnLoad = localStorage.getItem('checkChannelsOnLoad') === 'true';
-
-// 👇 Флаг открытия в стороннем плеере
 let openInExternalPlayer = localStorage.getItem('openInExternalPlayer') === 'true';
 
-// 👇 Словарь переводов (БАЗОВЫЙ - добавьте свои переводы)
+let currentMainCategory = 'Просмотренные';
+let currentSubcategory = '';
+let currentMainCategoryIndex = 0;
+let currentSubCategoryIndex = 0;
+let currentChannelIndex = 0;
+let currentMiniPlayer = null;
+let miniPlayers = new Map();
+let focusTimer = null;
+let loadedPlaylists = {};
+let navigationState = 'channels';
+let searchTimeout = null;
+let currentWatchedChannel = null;
+let watchStartTime = null;
+
+// Базовый словарь переводов (добавьте свои переводы)
 const translations = {
     ru: {
         "Проверять каналы": "Проверять каналы",
@@ -119,7 +129,7 @@ const translations = {
     }
 };
 
-// 👇 ДЕРЕВО КАТЕГОРИЙ - ВСТАВЬТЕ СВОЕ!
+// ДЕРЕВО КАТЕГОРИЙ - ВСТАВЬТЕ СВОЕ ЗДЕСЬ
 const categoryTree = {
   "Просмотренные": {},
   "Прямо сейчас": {},
@@ -127,28 +137,13 @@ const categoryTree = {
   "Свой плейлист": {},
   "Пользовательские плейлисты": {},
   "Случайный канал": {},
-  // ДОБАВЬТЕ СВОИ КАТЕГОРИИ, СТРАНЫ, ЯЗЫКИ, РЕГИОНЫ ЗДЕСЬ
+  // ДОБАВЬТЕ ВАШИ КАТЕГОРИИ, СТРАНЫ, ЯЗЫКИ, РЕГИОНЫ
 };
 
 // Функция перевода
 function translateText(key) {
     return translations[currentLanguage][key] || key;
 }
-
-// Глобальные переменные
-let currentMainCategory = 'Просмотренные';
-let currentSubcategory = '';
-let currentMainCategoryIndex = 0;
-let currentSubCategoryIndex = 0;
-let currentChannelIndex = 0;
-let currentMiniPlayer = null;
-let miniPlayers = new Map();
-let focusTimer = null;
-let loadedPlaylists = {};
-let navigationState = 'channels';
-let searchTimeout = null;
-let currentWatchedChannel = null;
-let watchStartTime = null;
 
 // ============= ВСПОМОГАТЕЛЬНЫЕ ФУНКЦИИ =============
 
@@ -160,7 +155,7 @@ function showToast(message, duration = 3000) {
     setTimeout(() => toast.remove(), duration);
 }
 
-function openInExternalPlayer(url, name) {
+function openInExternalPlayerFunc(url, name) {
     try {
         window.open(url, '_blank');
         showToast(`📺 ${translateText("Открыто во внешнем плеере")}: ${name}`);
@@ -196,7 +191,7 @@ function exportToM3U(channels, filename = 'playlist.m3u') {
     showToast(`📥 ${translateText("Экспорт M3U плейлиста")}: ${channels.length} ${translateText("каналов")}`);
 }
 
-function openAllInExternalPlayer(channels) {
+function openAllInExternalPlayerFunc(channels) {
     if (!channels || channels.length === 0) {
         showToast(translateText("Нет каналов для открытия"));
         return;
@@ -365,12 +360,12 @@ async function fetchAndCachePlaylist(url, group) {
     return availableChannels;
 }
 
-// ============= ОСНОВНОЙ ПЛЕЕР С УЛУЧШЕННОЙ СТАБИЛЬНОСТЬЮ =============
+// ============= ОСНОВНОЙ ПЛЕЕР =============
 
 function openFullScreenPlayer(name, url, group, logo) {
     if (openInExternalPlayer) {
         stopAllMiniPlayers();
-        openInExternalPlayer(url, name);
+        openInExternalPlayerFunc(url, name);
         addToWatched(name, url, group, logo);
         addToPopular(name, url, group, logo);
         updateWatchingNow(name, url, group, logo);
@@ -401,7 +396,7 @@ function openFullScreenPlayer(name, url, group, logo) {
     externalBtn.id = 'externalPlayerModalBtn';
     externalBtn.innerHTML = '📱 ' + translateText("Открыть в плеере");
     externalBtn.style.cssText = `position:absolute; bottom:20px; right:70px; padding:10px 20px; background:linear-gradient(90deg,#ff375f,#ff5e41); border:none; border-radius:8px; color:white; cursor:pointer; font-size:14px; z-index:1001;`;
-    externalBtn.onclick = () => openInExternalPlayer(url, name);
+    externalBtn.onclick = () => openInExternalPlayerFunc(url, name);
     modalContent.appendChild(externalBtn);
     
     let manifestLoaded = false;
@@ -410,7 +405,6 @@ function openFullScreenPlayer(name, url, group, logo) {
     let stallDetectionTimer = null;
     let lastPlayTime = 0;
     let stallCount = 0;
-    let bufferStalled = false;
     
     function startStallDetection() {
         if (stallDetectionTimer) clearInterval(stallDetectionTimer);
@@ -516,11 +510,7 @@ function openFullScreenPlayer(name, url, group, logo) {
             }
         });
         
-        videoPlayerElement.addEventListener('waiting', () => {
-            bufferStalled = true;
-            showToast(translateText("Буферизация..."), 1000);
-        });
-        videoPlayerElement.addEventListener('canplay', () => { if (bufferStalled) bufferStalled = false; });
+        videoPlayerElement.addEventListener('waiting', () => showToast(translateText("Буферизация..."), 1000));
         videoPlayerElement.addEventListener('error', (e) => {
             if (videoPlayerElement.error?.code === 3) attemptReconnect();
         });
@@ -963,7 +953,7 @@ function renderSubCategories() {
                         const content = await fetchM3U(url);
                         ch = parseM3UContent(content, currentSubcategory);
                     }
-                    if (ch?.length) openAllInExternalPlayer(ch);
+                    if (ch?.length) openAllInExternalPlayerFunc(ch);
                 } catch(e) { showToast(translateText("Ошибка загрузки каналов")); }
             }
         };

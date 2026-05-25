@@ -1554,24 +1554,23 @@ async function selectPublicPlaylist(playlist, index) {
 }
 
 
+// 3. Фоновая проверка воспроизведения
 async function checkChannelsInBackground(channels, playlistUrl) {
-    const CONCURRENT_CHECK = 5; // Параллельных запросов
+    const CONCURRENT = 3;
     const checked = new Set();
 
-    for (let i = 0; i < channels.length; i += CONCURRENT_CHECK) {
-        const batch = channels.slice(i, i + CONCURRENT_CHECK);
+    for (let i = 0; i < channels.length; i += CONCURRENT) {
+        const batch = channels.slice(i, i + CONCURRENT);
         await Promise.allSettled(
             batch.map(async (ch) => {
                 if (checked.has(ch.url)) return;
                 checked.add(ch.url);
-                try {
-                    const ok = await checkChannelAvailability(ch.url);
-                    if (!ok) handleUnavailable(ch.url);
-                } catch { handleUnavailable(ch.url); }
+                const ok = await checkChannelPlayback(ch.url);
+                if (!ok) handleUnavailable(ch.url);
             })
         );
     }
-    // Обновляем кэш только рабочими каналами
+    // Обновляем кэш только рабочими
     const bl = JSON.parse(localStorage.getItem('blacklist') || '[]');
     loadedPlaylists[playlistUrl] = channels.filter(c => !bl.includes(c.url));
 }
@@ -1585,13 +1584,11 @@ function removeChannelFromUI(url) {
     const card = document.querySelector(`.channel-card[data-url="${url}"]`);
     if (!card) return;
 
-    // Визуальная пометка
     card.style.filter = 'grayscale(1) brightness(0.5)';
     card.style.pointerEvents = 'none';
     const title = card.querySelector('h3');
-    if (!title.innerHTML.includes('🚫')) title.innerHTML += ' <span style="color:#ff375f">🚫 Недоступен</span>';
+    if (title && !title.innerHTML.includes('🚫')) title.innerHTML += ' <span style="color:#ff375f">🚫 Не грузится</span>';
 
-    // Очистка мини-плеера
     const mini = miniPlayers.get(url);
     if (mini) {
         const vid = mini.querySelector('video');
@@ -1599,21 +1596,53 @@ function removeChannelFromUI(url) {
         miniPlayers.delete(url);
     }
 
-    // Удаление из DOM через 1.5 сек
     setTimeout(() => {
         if (card === document.activeElement) (card.nextElementSibling || channelsContainer).focus();
-        card.style.transition = 'opacity 0.3s, transform 0.3s';
+        card.style.transition = 'opacity 0.3s';
         card.style.opacity = '0';
-        card.style.transform = 'scale(0.8)';
-        setTimeout(() => {
-            card.remove();
-            if (!channelsContainer.querySelector('.channel-card')) {
-                channelsContainer.innerHTML = `<div style="color:#aaa; padding:40px; text-align:center">${translateText("Каналы не найдены")}</div>`;
-            }
-        }, 300);
+        setTimeout(() => card.remove(), 300);
     }, 1500);
 }
 
+
+function checkChannelPlayback(url) {
+    return new Promise((resolve) => {
+        const video = document.createElement('video');
+        video.muted = true;
+        video.playsInline = true;
+        let resolved = false;
+        let hls = null;
+
+        const timeout = setTimeout(() => {
+            if (!resolved) { resolved = true; cleanup(); resolve(false); }
+        }, 8000); // 8 сек на запуск воспроизведения
+
+        function cleanup() {
+            clearTimeout(timeout);
+            video.pause(); video.src = ''; video.load();
+            if (hls) { try { hls.destroy(); } catch(e){} hls = null; }
+        }
+
+        if (Hls.isSupported()) {
+            hls = new Hls({
+                manifestLoadingMaxRetry: 1, levelLoadingMaxRetry: 1, fragLoadingMaxRetry: 1,
+                fragLoadingTimeOut: 4000, levelLoadingTimeOut: 4000
+            });
+            hls.loadSource(url);
+            hls.attachMedia(video);
+            hls.on(Hls.Events.MANIFEST_PARSED, () => video.play().catch(()=>{}));
+            hls.on(Hls.Events.FRAG_BUFFERED, () => { if(!resolved){ resolved=true; cleanup(); resolve(true); } });
+            hls.on(Hls.Events.ERROR, (e, data) => { if(data.fatal && !resolved){ resolved=true; cleanup(); resolve(false); } });
+        } else if (video.canPlayType('application/vnd.apple.mpegurl')) {
+            video.src = url;
+            video.addEventListener('loadedmetadata', () => video.play().catch(()=>{}), { once: true });
+            video.addEventListener('playing', () => { if(!resolved){ resolved=true; cleanup(); resolve(true); } }, { once: true });
+            video.addEventListener('error', () => { if(!resolved){ resolved=true; cleanup(); resolve(false); } }, { once: true });
+        } else { cleanup(); resolve(false); }
+    });
+}
+
+// 2. Обновлённая fetchAndCachePlaylist
 async function fetchAndCachePlaylist(url, group) {
     const content = await fetchM3U(url);
     let channels = parseM3UContent(content, group);
@@ -1624,10 +1653,8 @@ async function fetchAndCachePlaylist(url, group) {
     if (cacheKeys.length > MAX_CACHE_SIZE) delete loadedPlaylists[cacheKeys[0]];
 
     loadedPlaylists[url] = channels;
-    // 🚀 Мгновенная отрисовка ВСЕХ каналов (без лоадера)
-    renderChannels(channels);
+    renderChannels(channels); // 🚀 Мгновенная отрисовка всех
 
-    // 🔍 Фоновая параллельная проверка
     if (checkChannelsOnLoad && channels.length > 0) {
         checkChannelsInBackground(channels, url);
     }

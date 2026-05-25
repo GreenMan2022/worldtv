@@ -523,13 +523,19 @@ function changeChannelInFullscreen(channel, index) {
   if (videoPlayerElement.hls) { try { videoPlayerElement.hls.destroy(); } catch(e){} delete videoPlayerElement.hls; }
   videoPlayerElement.src = ''; videoPlayerElement.load();
 
+  const tryGoFullscreen = () => {
+    videoPlayerElement.play().catch(()=>{});
+    requestNativeFullscreen();
+  };
+
   if (Hls.isSupported()) {
     const hls = new Hls({ liveDurationInfinity: true, manifestLoadingTimeOut: 20000, levelLoadingTimeOut: 20000, fragLoadingTimeOut: 20000, fragLoadingMaxRetry: 8, levelLoadingMaxRetry: 6, manifestLoadingMaxRetry: 4 });
     videoPlayerElement.hls = hls;
     hls.loadSource(channel.url); hls.attachMedia(videoPlayerElement);
-    hls.on(Hls.Events.MANIFEST_PARSED, () => videoPlayerElement.play().catch(()=>{}));
+    hls.on(Hls.Events.MANIFEST_PARSED, tryGoFullscreen);
   } else if (videoPlayerElement.canPlayType('application/vnd.apple.mpegurl')) {
     videoPlayerElement.src = channel.url;
+    videoPlayerElement.addEventListener('loadedmetadata', tryGoFullscreen, { once: true });
     videoPlayerElement.play().catch(()=>{});
   }
   showRibbon();
@@ -3051,4 +3057,10 @@ document.addEventListener('DOMContentLoaded', () => {
 
 ['mousemove', 'touchstart', 'keydown'].forEach(evt => {
   document.addEventListener(evt, () => { if (playerModal.style.display === 'flex') showRibbon(); });
+});
+
+document.addEventListener('fullscreenchange', () => {
+  if (!document.fullscreenElement) {
+    hideRibbon();
+  }
 });

@@ -491,6 +491,79 @@ let currentChannelIndex = 0;
 let currentMiniPlayer = null;
 let miniPlayers = new Map();
 let focusTimer = null;
+// Стили ленты
+const ribbonCSS = `#fullscreenChannelRibbon{position:absolute;bottom:0;left:0;right:0;height:110px;background:linear-gradient(to top,rgba(0,0,0,.95),rgba(0,0,0,.5));display:flex;align-items:center;padding:10px 15px;overflow-x:auto;gap:10px;transition:transform .3s ease,opacity .3s ease;z-index:100}#fullscreenChannelRibbon::-webkit-scrollbar{height:4px}#fullscreenChannelRibbon::-webkit-scrollbar-thumb{background:#555;border-radius:2px}#fullscreenChannelRibbon.hidden{transform:translateY(100%);opacity:0;pointer-events:none}.ribbon-item{min-width:75px;height:75px;background:rgba(255,255,255,.1);border-radius:8px;cursor:pointer;display:flex;flex-direction:column;align-items:center;justify-content:center;color:#fff;font-size:11px;text-align:center;border:2px solid transparent;transition:all .2s;flex-shrink:0}.ribbon-item:hover,.ribbon-item.active{border-color:#ff375f;background:rgba(255,55,95,.2);transform:scale(1.05)}.ribbon-item img{width:36px;height:36px;object-fit:contain;margin-bottom:4px;pointer-events:none}`;
+document.head.insertAdjacentHTML('beforeend', `<style>${ribbonCSS}</style>`);
+
+let ribbonTimeout = null;
+let currentRibbonIndex = 0;
+let ribbonChannels = [];
+
+function showRibbon() {
+  const ribbon = document.getElementById('fullscreenChannelRibbon');
+  if (!ribbon) return;
+  ribbon.classList.remove('hidden');
+  resetRibbonTimeout();
+}
+function hideRibbon() {
+  const ribbon = document.getElementById('fullscreenChannelRibbon');
+  if (ribbon) ribbon.classList.add('hidden');
+}
+function resetRibbonTimeout() {
+  clearTimeout(ribbonTimeout);
+  ribbonTimeout = setTimeout(() => { if (playerModal.style.display === 'flex') hideRibbon(); }, 5000);
+}
+function changeChannelInFullscreen(channel, index) {
+  if (!channel?.url || playerModal.style.display !== 'flex') return;
+  currentRibbonIndex = index ?? currentRibbonIndex;
+  currentWatchedChannel = channel;
+  watchStartTime = Date.now();
+  updateWatchingNow(channel.name, channel.url, channel.group, channel.logo);
+
+  if (videoPlayerElement.hls) { try { videoPlayerElement.hls.destroy(); } catch(e){} delete videoPlayerElement.hls; }
+  videoPlayerElement.src = ''; videoPlayerElement.load();
+
+  if (Hls.isSupported()) {
+    const hls = new Hls({ liveDurationInfinity: true, manifestLoadingTimeOut: 20000, levelLoadingTimeOut: 20000, fragLoadingTimeOut: 20000, fragLoadingMaxRetry: 8, levelLoadingMaxRetry: 6, manifestLoadingMaxRetry: 4 });
+    videoPlayerElement.hls = hls;
+    hls.loadSource(channel.url); hls.attachMedia(videoPlayerElement);
+    hls.on(Hls.Events.MANIFEST_PARSED, () => videoPlayerElement.play().catch(()=>{}));
+  } else if (videoPlayerElement.canPlayType('application/vnd.apple.mpegurl')) {
+    videoPlayerElement.src = channel.url;
+    videoPlayerElement.play().catch(()=>{});
+  }
+  showRibbon();
+}
+function renderFullscreenRibbon() {
+  let channels = [];
+  if (currentMainCategory && currentSubcategory && categoryTree[currentMainCategory]?.[currentSubcategory]) {
+    channels = loadedPlaylists[categoryTree[currentMainCategory][currentSubcategory]] || [];
+  } else if (currentMainCategory === 'Просмотренные') {
+    channels = JSON.parse(localStorage.getItem('watchedChannels') || '[]');
+  } else if (currentMainCategory === 'Свой плейлист') {
+    channels = JSON.parse(localStorage.getItem('customPlaylist') || '[]');
+  } else {
+    for (const k in loadedPlaylists) { channels = loadedPlaylists[k]; break; }
+  }
+
+  document.getElementById('fullscreenChannelRibbon')?.remove();
+  ribbonChannels = channels.slice(0, 60);
+  if (!ribbonChannels.length) return;
+
+  const ribbon = document.createElement('div');
+  ribbon.id = 'fullscreenChannelRibbon';
+  ribbon.innerHTML = ribbonChannels.map((ch, i) => `
+    <div class="ribbon-item" data-index="${i}">
+      ${ch.logo ? `<img src="${ch.logo}" onerror="this.style.display='none'">` : '📺'}
+      <div style="max-width:70px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${ch.name}</div>
+    </div>`).join('');
+
+  ribbon.querySelectorAll('.ribbon-item').forEach(item => {
+    item.addEventListener('click', e => { e.stopPropagation(); changeChannelInFullscreen(ribbonChannels[+item.dataset.index], +item.dataset.index); });
+  });
+  playerModal.appendChild(ribbon);
+  showRibbon();
+}
 let loadedPlaylists = {};
 let navigationState = 'channels';
 let searchTimeout = null;
@@ -956,51 +1029,23 @@ const categoryTree = {
   }
 };
 
-// Закрытие модального окна (ИСПРАВЛЕНО)
 closeModal.addEventListener('click', function() {
-    playerModal.style.display = 'none';
-    videoPlayerElement.pause();
-    
-    // Безопасное уничтожение HLS
-    if (videoPlayerElement.hls) {
-        try {
-            videoPlayerElement.hls.destroy();
-        } catch(e) {
-            console.error("Ошибка при уничтожении HLS:", e);
-        }
-        delete videoPlayerElement.hls;
+  playerModal.style.display = 'none';
+  clearTimeout(ribbonTimeout);
+  hideRibbon();
+  videoPlayerElement.pause();
+  if (videoPlayerElement.hls) { try { videoPlayerElement.hls.destroy(); } catch(e) {} delete videoPlayerElement.hls; }
+  videoPlayerElement.src = ''; videoPlayerElement.load();
+  stopAllMiniPlayers();
+  if (currentWatchedChannel && watchStartTime) {
+    const watchedSeconds = Math.floor((Date.now() - watchStartTime) / 1000);
+    if (watchedSeconds >= 60) {
+      addToWatched(currentWatchedChannel.name, currentWatchedChannel.url, currentWatchedChannel.group, currentWatchedChannel.logo);
+      addToPopular(currentWatchedChannel.name, currentWatchedChannel.url, currentWatchedChannel.group, currentWatchedChannel.logo);
+      updateWatchingNow(currentWatchedChannel.name, currentWatchedChannel.url, currentWatchedChannel.group, currentWatchedChannel.logo);
     }
-    
-    videoPlayerElement.src = '';
-    videoPlayerElement.load();
-    stopAllMiniPlayers();
-    
-    if (currentWatchedChannel && watchStartTime) {
-        const watchedSeconds = Math.floor((Date.now() - watchStartTime) / 1000);
-        console.log(`📺 Просмотрено: ${watchedSeconds} секунд`);
-        if (watchedSeconds >= 60) {
-            addToWatched(
-                currentWatchedChannel.name,
-                currentWatchedChannel.url,
-                currentWatchedChannel.group,
-                currentWatchedChannel.logo
-            );
-            addToPopular(
-                currentWatchedChannel.name,
-                currentWatchedChannel.url,
-                currentWatchedChannel.group,
-                currentWatchedChannel.logo
-            );
-            updateWatchingNow(
-                currentWatchedChannel.name,
-                currentWatchedChannel.url,
-                currentWatchedChannel.group,
-                currentWatchedChannel.logo
-            );
-        }
-        currentWatchedChannel = null;
-        watchStartTime = null;
-    }
+    currentWatchedChannel = null; watchStartTime = null;
+  }
 });
 
 // Показать уведомление
@@ -2534,6 +2579,7 @@ function openFullScreenPlayer(name, url, group, logo) {
         showToast(translateText('Формат не поддерживается'));
         closePlayerModal();
     }
+	renderFullscreenRibbon();
 }
 
 // Fullscreen API
@@ -2695,6 +2741,28 @@ function moveFocus(direction) {
 
 // Обработчик клавиш
 document.addEventListener('keydown', function(e) {
+
+	if (playerModal.style.display === 'flex') {
+	  if (e.key === 'ArrowRight' || e.key === 'ArrowLeft') {
+		e.preventDefault();
+		const dir = e.key === 'ArrowRight' ? 1 : -1;
+		currentRibbonIndex = (currentRibbonIndex + dir + ribbonChannels.length) % ribbonChannels.length;
+		const items = document.querySelectorAll('.ribbon-item');
+		items.forEach(i => i.classList.remove('active'));
+		if (items[currentRibbonIndex]) {
+		  items[currentRibbonIndex].classList.add('active');
+		  items[currentRibbonIndex].scrollIntoView({ behavior: 'smooth', inline: 'center' });
+		}
+		showRibbon(); return;
+	  }
+	  if (e.key === 'Enter') {
+		e.preventDefault();
+		changeChannelInFullscreen(ribbonChannels[currentRibbonIndex]);
+		return;
+	  }
+	  if (e.key === 'Escape') { closeModal.click(); return; }
+	}
+
     if (playerModal.style.display === 'flex') {
         if (e.key === 'Escape') closeModal.click();
         return;
@@ -2979,4 +3047,8 @@ function initMouseWheelScroll() {
 // Запускаем после инициализации приложения
 document.addEventListener('DOMContentLoaded', () => {
     initMouseWheelScroll();
+});
+
+['mousemove', 'touchstart', 'keydown'].forEach(evt => {
+  document.addEventListener(evt, () => { if (playerModal.style.display === 'flex') showRibbon(); });
 });

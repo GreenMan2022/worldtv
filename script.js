@@ -1553,79 +1553,85 @@ async function selectPublicPlaylist(playlist, index) {
     loadAndRenderChannels('Пользовательские плейлисты', playlist.name);
 }
 
-// 👇 Загрузка и кэширование плейлиста с опциональной проверкой каналов (ИСПРАВЛЕНО)
-async function fetchAndCachePlaylist(url, group) {
-    const content = await fetchM3U(url);
-    let channels = parseM3UContent(content, group);
-    
-    // Ограничение размера кэша
-    const MAX_CACHE_SIZE = 20;
-    const cacheKeys = Object.keys(loadedPlaylists);
-    if (cacheKeys.length > MAX_CACHE_SIZE) {
-        const oldestKey = cacheKeys[0];
-        delete loadedPlaylists[oldestKey];
-        console.log(`🗑️ Удален из кэша: ${oldestKey}`);
-    }
-    
-    if (!checkChannelsOnLoad || channels.length === 0) {
-        loadedPlaylists[url] = channels;
-        renderChannels(channels);
-        return channels;
-    }
-    
-    initialLoader.style.display = 'flex';
-    const progressDiv = document.createElement('div');
-    progressDiv.style.textAlign = 'center';
-    progressDiv.style.color = 'white';
-    progressDiv.innerHTML = `
-        <div>${translateText("Проверка доступности...")}</div>
-        <div id="checkProgress" style="margin-top:10px;">0/${channels.length}</div>
-    `;
-    initialLoader.innerHTML = '';
-    initialLoader.appendChild(progressDiv);
-    
-    const progressElement = document.getElementById('checkProgress');
-    let availableChannels = [];
-    let checkedCount = 0;
-    
-    const updateDisplay = () => {
-        loadedPlaylists[url] = [...availableChannels];
-        renderChannels([...availableChannels]);
-        if (progressElement) {
-            progressElement.textContent = `${checkedCount}/${channels.length}`;
-        }
-    };
-    
-    // Параллельная проверка с ограничением
-    const CONCURRENT_CHECK = 3;
+
+async function checkChannelsInBackground(channels, playlistUrl) {
+    const CONCURRENT_CHECK = 5; // Параллельных запросов
+    const checked = new Set();
+
     for (let i = 0; i < channels.length; i += CONCURRENT_CHECK) {
         const batch = channels.slice(i, i + CONCURRENT_CHECK);
         await Promise.allSettled(
-            batch.map(async (channel) => {
+            batch.map(async (ch) => {
+                if (checked.has(ch.url)) return;
+                checked.add(ch.url);
                 try {
-                    const isAvailable = await checkChannelAvailability(channel.url);
-                    checkedCount++;
-                    if (isAvailable) {
-                        availableChannels.push(channel);
-                        updateDisplay();
-                    } else {
-                        console.log(`❌ Канал недоступен: ${channel.name}`);
-                        addToBlacklist(channel.url);
-                    }
-                } catch (error) {
-                    console.error(`Ошибка при проверке канала ${channel.name}:`, error);
-                    checkedCount++;
-                    updateDisplay();
-                }
+                    const ok = await checkChannelAvailability(ch.url);
+                    if (!ok) handleUnavailable(ch.url);
+                } catch { handleUnavailable(ch.url); }
             })
         );
     }
-    
-    console.log(`✅ Доступных каналов: ${availableChannels.length} из ${channels.length}`);
-    loadedPlaylists[url] = [...availableChannels];
-    renderChannels([...availableChannels]);
-    initialLoader.style.display = 'none';
-    return availableChannels;
+    // Обновляем кэш только рабочими каналами
+    const bl = JSON.parse(localStorage.getItem('blacklist') || '[]');
+    loadedPlaylists[playlistUrl] = channels.filter(c => !bl.includes(c.url));
+}
+
+function handleUnavailable(url) {
+    addToBlacklist(url);
+    removeChannelFromUI(url);
+}
+
+function removeChannelFromUI(url) {
+    const card = document.querySelector(`.channel-card[data-url="${url}"]`);
+    if (!card) return;
+
+    // Визуальная пометка
+    card.style.filter = 'grayscale(1) brightness(0.5)';
+    card.style.pointerEvents = 'none';
+    const title = card.querySelector('h3');
+    if (!title.innerHTML.includes('🚫')) title.innerHTML += ' <span style="color:#ff375f">🚫 Недоступен</span>';
+
+    // Очистка мини-плеера
+    const mini = miniPlayers.get(url);
+    if (mini) {
+        const vid = mini.querySelector('video');
+        if (vid) { vid.pause(); vid.src = ''; vid.load(); }
+        miniPlayers.delete(url);
+    }
+
+    // Удаление из DOM через 1.5 сек
+    setTimeout(() => {
+        if (card === document.activeElement) (card.nextElementSibling || channelsContainer).focus();
+        card.style.transition = 'opacity 0.3s, transform 0.3s';
+        card.style.opacity = '0';
+        card.style.transform = 'scale(0.8)';
+        setTimeout(() => {
+            card.remove();
+            if (!channelsContainer.querySelector('.channel-card')) {
+                channelsContainer.innerHTML = `<div style="color:#aaa; padding:40px; text-align:center">${translateText("Каналы не найдены")}</div>`;
+            }
+        }, 300);
+    }, 1500);
+}
+
+async function fetchAndCachePlaylist(url, group) {
+    const content = await fetchM3U(url);
+    let channels = parseM3UContent(content, group);
+
+    // Лимит кэша
+    const MAX_CACHE_SIZE = 20;
+    const cacheKeys = Object.keys(loadedPlaylists);
+    if (cacheKeys.length > MAX_CACHE_SIZE) delete loadedPlaylists[cacheKeys[0]];
+
+    loadedPlaylists[url] = channels;
+    // 🚀 Мгновенная отрисовка ВСЕХ каналов (без лоадера)
+    renderChannels(channels);
+
+    // 🔍 Фоновая параллельная проверка
+    if (checkChannelsOnLoad && channels.length > 0) {
+        checkChannelsInBackground(channels, url);
+    }
+    return channels;
 }
 
 // Выбор главной категории

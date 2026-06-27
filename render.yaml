@@ -1,0 +1,17 @@
+# render.yaml
+services:
+  - type: web
+    name: worldtv-seo
+    runtime: node
+    plan: free
+    buildCommand: npm install
+    startCommand: npm start
+    envVars:
+      - key: NODE_VERSION
+        value: 18.17.0
+      - key: PORT
+        value: 3000
+    healthCheckPath: /health
+    autoDeploy: true
+    domains:
+      - worldtv.onrender.com

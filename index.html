@@ -1184,6 +1184,44 @@
         ym(104248573, 'init', {ssr:true, webvisor:true, clickmap:true, ecommerce:"dataLayer", accurateTrackBounce:true, trackLinks:true});
     </script>
     <noscript><div><img src="https://mc.yandex.ru/watch/104248573" style="position:absolute; left:-9999px;" alt="" /></div></noscript>
+    <script>
+        // Автоскрытие скелетона при появлении каналов
+        (function() {
+            var skel = document.getElementById('skeletonGrid');
+            var grid = document.getElementById('channelsContainer');
+            if (!skel || !grid) return;
 
+            var observer = new MutationObserver(function() {
+                if (grid.children.length > 0) {
+                    skel.style.display = 'none';
+                    observer.disconnect();
+                }
+            });
+            observer.observe(grid, { childList: true });
+
+            // Фолбэк: скрыть через 15 сек в любом случае
+            setTimeout(function() {
+                skel.style.display = 'none';
+                observer.disconnect();
+            }, 15000);
+        })();
+
+        // Автогенерация скелетонных карточек
+        (function() {
+            var skel = document.getElementById('skeletonGrid');
+            if (!skel) return;
+            var count = Math.max(4, Math.min(12, Math.floor(window.innerWidth / 280) * 2));
+            var html = '';
+            for (var i = 0; i < count; i++) {
+                html += '<div class="skeleton-card">'
+                    + '<div class="skeleton-thumb"></div>'
+                    + '<div class="skeleton-body">'
+                    + '<div class="skeleton-line"></div>'
+                    + '<div class="skeleton-line"></div>'
+                    + '</div></div>';
+            }
+            skel.innerHTML = html;
+        })();
+    </script>
 </body>
 </html>

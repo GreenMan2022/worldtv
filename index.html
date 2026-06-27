@@ -17,60 +17,81 @@
     <meta name="geo.placename" content="Worldwide">
     <meta name="geo.position" content="0;0">
     <meta name="ICBM" content="0, 0">
+    
+    <!-- Hreflang для мультиязычности -->
     <link rel="alternate" hreflang="ru" href="https://worldtv.onrender.com/?lang=ru" />
     <link rel="alternate" hreflang="en" href="https://worldtv.onrender.com/?lang=en" />
     <link rel="alternate" hreflang="x-default" href="https://worldtv.onrender.com/" />
+    
+    <!-- Canonical -->
+    <link rel="canonical" href="https://worldtv.onrender.com/" />
+
+    <!-- Open Graph -->
     <meta property="og:title" content="World TV — Free Global Live TV Streaming">
     <meta property="og:description" content="Watch live TV channels from any country: sports, news, movies, entertainment — in HD and totally free. Supports external players!">
     <meta property="og:type" content="website">
     <meta property="og:url" content="https://worldtv.onrender.com/">
-    <meta property="og:image" content="https://worldtv.onrender.com/logo.jpg">
+    <meta property="og:image" content="https://worldtv.onrender.com/og-image.jpg">
     <meta property="og:locale" content="en_US">
+    <meta property="og:site_name" content="World TV">
 
+    <!-- Twitter Cards -->
+    <meta name="twitter:card" content="summary_large_image">
+    <meta name="twitter:title" content="World TV — Free Global Live TV Streaming">
+    <meta name="twitter:description" content="Watch live TV channels from any country: sports, news, movies, entertainment — in HD and totally free.">
+    <meta name="twitter:image" content="https://worldtv.onrender.com/og-image.jpg">
+
+    <!-- PWA -->
+    <link rel="manifest" href="/manifest.json">
     <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>📺</text></svg>">
 
-    <!-- Font Awesome для иконок -->
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <!-- Google Fonts: Space Grotesk (дисплейный) + DM Sans (UI) -->
+    <!-- Preconnect для ускорения -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700;1,9..40,400&family=Space+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="preconnect" href="https://cdnjs.cloudflare.com">
+    <link rel="preconnect" href="https://www.gstatic.com">
+    <link rel="dns-prefetch" href="https://iptv-org.github.io">
 
+    <!-- Font Awesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700;1,9..40,400&family=Space+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet">
     <style>
         /* ═══════════════════════════════════════════
            CSS-переменные (дизайн-токены)
         ═══════════════════════════════════════════ */
         :root {
-            --bg:            #0B0B0E;
-            --bg-elevated:   #131318;
-            --bg-card:       #1A1A21;
+            --bg: #0B0B0E;
+            --bg-elevated: #131318;
+            --bg-card: #1A1A21;
             --bg-card-hover: #222230;
-            --fg:            #EDEDF0;
-            --fg-muted:      #7A7A88;
-            --fg-dim:        #4A4A56;
-            --accent:        #FF375F;
-            --accent-glow:   rgba(255, 55, 95, 0.25);
-            --accent-soft:   rgba(255, 55, 95, 0.1);
-            --accent2:       #FF6B35;
-            --green:         #34D399;
-            --yellow:        #FBBF24;
-            --border:        rgba(255,255,255,0.06);
-            --border-light:  rgba(255,255,255,0.1);
-            --glass:         rgba(11,11,14,0.82);
-            --glass-border:  rgba(255,255,255,0.08);
-            --radius-sm:     8px;
-            --radius-md:     12px;
-            --radius-lg:     16px;
-            --radius-xl:     20px;
-            --radius-full:   9999px;
-            --shadow-card:   0 2px 12px rgba(0,0,0,0.3), 0 0 0 1px var(--border);
+            --fg: #EDEDF0;
+            --fg-muted: #7A7A88;
+            --fg-dim: #4A4A56;
+            --accent: #FF375F;
+            --accent-glow: rgba(255, 55, 95, 0.25);
+            --accent-soft: rgba(255, 55, 95, 0.1);
+            --accent2: #FF6B35;
+            --green: #34D399;
+            --yellow: #FBBF24;
+            --border: rgba(255,255,255,0.06);
+            --border-light: rgba(255,255,255,0.1);
+            --glass: rgba(11,11,14,0.82);
+            --glass-border: rgba(255,255,255,0.08);
+            --radius-sm: 8px;
+            --radius-md: 12px;
+            --radius-lg: 16px;
+            --radius-xl: 20px;
+            --radius-full: 9999px;
+            --shadow-card: 0 2px 12px rgba(0,0,0,0.3), 0 0 0 1px var(--border);
             --shadow-elevated: 0 8px 32px rgba(0,0,0,0.5), 0 0 0 1px var(--border);
-            --font-display:  'Space Grotesk', sans-serif;
-            --font-body:     'DM Sans', sans-serif;
-            --header-h:      60px;
-            --cat-h:         52px;
-            --subcat-h:      46px;
-            --safe-bottom:   env(safe-area-inset-bottom, 0px);
+            --font-display: 'Space Grotesk', sans-serif;
+            --font-body: 'DM Sans', sans-serif;
+            --header-h: 60px;
+            --cat-h: 52px;
+            --subcat-h: 46px;
+            --safe-bottom: env(safe-area-inset-bottom, 0px);
         }
 
         /* ═══════════════════════════════════════════
@@ -1182,7 +1203,14 @@
     <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-database-compat.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
     <script src="script.js"></script>
-
+        <!-- Google Analytics -->
+    <script async src="https://www.googletagmanager.com/gtag/js?id=G-XXXXXXXXXX"></script>
+    <script>
+        window.dataLayer = window.dataLayer || [];
+        function gtag(){dataLayer.push(arguments);}
+        gtag('js', new Date());
+        gtag('config', 'G-XXXXXXXXXX');
+    </script>
     <!-- Yandex.Metrika -->
     <a href="https://metrika.yandex.ru/stat/?id=104248573&amp;from=informer" target="_blank" rel="nofollow" class="ym-fix">
         <img src="https://metrika-informer.com/informer/104248573/3_1_FFFFFFFF_EFEFEFFF_0_pageviews"
